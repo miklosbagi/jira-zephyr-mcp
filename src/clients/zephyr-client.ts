@@ -64,11 +64,12 @@ export class ZephyrClient {
     description?: string;
     projectKey: string;
     versionId: string;
+    folderId?: string | number;
     environment?: string;
     startDate?: string;
     endDate?: string;
   }): Promise<ZephyrTestCycle> {
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: data.name,
       description: data.description,
       projectKey: data.projectKey,
@@ -77,8 +78,37 @@ export class ZephyrClient {
       plannedStartDate: data.startDate,
       plannedEndDate: data.endDate,
     };
+    if (data.folderId != null) {
+      payload.folderId = data.folderId;
+    }
 
     const response = await this.client.post('/testcycles', payload);
+    return response.data;
+  }
+
+  async updateTestCycle(cycleKey: string, data: {
+    name?: string;
+    description?: string;
+    folderId?: string | number | null;
+    environment?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<ZephyrTestCycle> {
+    const existing = (await this.client.get(`/testcycles/${cycleKey}`)).data;
+    const payload: Record<string, unknown> = {
+      ...existing,
+      id: existing.id,
+      key: existing.key,
+      name: data.name !== undefined ? data.name : existing.name,
+      description: data.description !== undefined ? data.description : existing.description,
+      status: existing.status,
+      project: existing.project ?? (existing.projectKey != null ? { id: existing.projectId ?? existing.projectKey } : undefined),
+      plannedStartDate: data.startDate !== undefined ? data.startDate : existing.plannedStartDate,
+      plannedEndDate: data.endDate !== undefined ? data.endDate : existing.plannedEndDate,
+    };
+    if (data.environment !== undefined) payload.environment = data.environment;
+    if (data.folderId !== undefined) payload.folderId = data.folderId;
+    const response = await this.client.put(`/testcycles/${cycleKey}`, payload);
     return response.data;
   }
 
