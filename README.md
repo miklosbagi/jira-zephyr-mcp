@@ -1,77 +1,30 @@
 # JIRA Zephyr MCP Server
 
-A Model Context Protocol (MCP) server that provides comprehensive integration with JIRA's Zephyr test management system. This server enables seamless test management operations including creating test plans, managing test cycles, executing tests, and reading JIRA issues.
+An [MCP](https://modelcontextprotocol.io/) server for JIRA and **Zephyr Scale** (test management): create and list test plans/cycles, manage test cases (create, search, update), run and report on test executions, and read JIRA issues. Targets **Zephyr Scale for Jira Cloud**; works with US or EU (and other) Zephyr API endpoints.
 
-## Features
+---
 
-### Core Capabilities
-- **Test Plan Management**: Create and list test plans in Zephyr
-- **Test Cycle Management**: Create and manage test execution cycles
-- **JIRA Integration**: Read JIRA issue details and metadata
-- **Test Execution**: Update test execution results and status
-- **Progress Tracking**: Monitor test execution progress and statistics
-- **Issue Linking**: Associate test cases with JIRA issues
-- **Reporting**: Generate comprehensive test execution reports
+## Why this fork?
 
-### Available Tools
+This repo is a fork of [leorosignoli/jira-zephyr-mcp](https://github.com/leorosignoli/jira-zephyr-mcp). We forked to:
 
-1. **read_jira_issue** - Retrieve JIRA issue information
-2. **create_test_plan** - Create new test plans in Zephyr
-3. **list_test_plans** - Browse existing test plans
-4. **create_test_cycle** - Create test execution cycles
-5. **list_test_cycles** - View test cycles with execution status
-6. **execute_test** - Update test execution results
-7. **get_test_execution_status** - Check test execution progress
-8. **link_tests_to_issues** - Associate tests with JIRA issues
-9. **generate_test_report** - Create test execution reports
-10. **create_test_case** - Create a new test case in Zephyr
-11. **search_test_cases** - Search test cases in a project
-12. **get_test_case** - Get detailed information about a test case
-13. **update_test_case** - Update an existing test case (name, objective, custom fields, etc.)
-14. **create_multiple_test_cases** - Create multiple test cases at once
+- **Use a configurable Zephyr API base URL** — The upstream server used a hardcoded US endpoint (`api.zephyrscale.smartbear.com`). We need the **EU endpoint** (and optionally others), so we added an optional `ZEPHYR_BASE_URL` environment variable. No code changes required when switching regions.
+- **Support updating test cases** — The Zephyr Scale API expects a full payload on PUT. We added an `update_test_case` tool that fetches the existing test case, merges your updates (including custom fields), and sends the full payload so you can update name, objective, custom fields, and more from MCP.
 
-## Prerequisites
+We contribute changes back upstream where possible and keep this fork as our base for further extensions (see [Roadmap](#roadmap)).
 
-- Node.js 18.0.0 or higher
-- JIRA instance with Zephyr Scale or Zephyr Squad
-- Valid JIRA API credentials
-- Zephyr API access token
+---
 
+## Quick start (Cursor + Docker Hub)
 
-### Integration with Cursor
-
-Clone the project, then add the following to your Cursor configuration:
-
-```json
-{
-  "mcpServers": {
-    "jira-zephyr": {
-      "command": "node",
-      "args": ["/path/to/jira-zephyr-mcp/dist/index.js"],
-      "env": {
-        "JIRA_BASE_URL": "https://your-domain.atlassian.net",
-        "JIRA_USERNAME": "your-email@company.com",
-        "JIRA_API_TOKEN": "your-jira-api-token",
-        "ZEPHYR_API_TOKEN": "your-zephyr-api-token",
-        "ZEPHYR_BASE_URL": "https://eu.api.zephyrscale.smartbear.com/v2"
-      }
-    }
-  }
-}
-```
-
-Set `ZEPHYR_BASE_URL` only when using the EU (or another) Zephyr Scale endpoint; omit it for the default US endpoint.
-
-#### Using Docker
-
-Alternatively, you can configure Cursor to run the MCP server in Docker (ensure the image is built first):
+No clone or build. Add this to your Cursor MCP config (e.g. **Settings → MCP** or `.cursor/mcp.json`). Replace the env values with your own.
 
 ```json
 {
   "mcpServers": {
     "jira-zephyr": {
       "command": "docker",
-      "args": ["run", "--rm", "-i","-e","JIRA_BASE_URL","-e","JIRA_USERNAME","-e","JIRA_API_TOKEN","-e","ZEPHYR_API_TOKEN","-e","ZEPHYR_BASE_URL", "jira-zephyr-mcp"],
+      "args": ["run", "--rm", "-i", "-e", "JIRA_BASE_URL", "-e", "JIRA_USERNAME", "-e", "JIRA_API_TOKEN", "-e", "ZEPHYR_API_TOKEN", "-e", "ZEPHYR_BASE_URL", "miklosbagi/jira-zephyr-mcp:latest"],
       "env": {
         "JIRA_BASE_URL": "https://your-domain.atlassian.net",
         "JIRA_USERNAME": "your-email@company.com",
@@ -84,269 +37,180 @@ Alternatively, you can configure Cursor to run the MCP server in Docker (ensure 
 }
 ```
 
-Pass `-e ZEPHYR_BASE_URL` in the `docker run` args if you use the EU endpoint.
+- **US Zephyr:** omit `ZEPHYR_BASE_URL` from both `args` and `env`.
+- **EU Zephyr:** keep `ZEPHYR_BASE_URL` as above (or your Zephyr base URL).
 
-## Installation (for development)
+Image: [Docker Hub — miklosbagi/jira-zephyr-mcp](https://hub.docker.com/r/miklosbagi/jira-zephyr-mcp). Multi-arch: **linux/amd64**, **linux/arm64** (Apple Silicon).
 
-1. Clone the repository:
-```bash
-git clone https://github.com/your-username/jira-zephyr-mcp.git
-cd jira-zephyr-mcp
-```
+---
 
-2. Install dependencies:
-```bash
-npm install
-```
+## Other ways to run
 
-3. Build the project:
-```bash
-npm run build
-```
+| Option | When to use |
+|--------|-------------|
+| **Docker (local build)** | You want to build from source. Use the same config as above but set the image in `args` to your tag, e.g. `jira-zephyr-mcp:latest`. Build with `docker build -t jira-zephyr-mcp:latest .` in the repo root. |
+| **Node** | No Docker. Clone, run `npm install` and `npm run build`, then set `"command": "node"` and `"args": ["/path/to/jira-zephyr-mcp/dist/index.js"]` in your MCP config, with the same `env` as above. |
+
+---
 
 ## Configuration
 
-1. Copy the example environment file:
-```bash
-cp .env.example .env
+Required environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `JIRA_BASE_URL` | JIRA base URL (e.g. `https://your-domain.atlassian.net`) |
+| `JIRA_USERNAME` | JIRA user email |
+| `JIRA_API_TOKEN` | JIRA API token |
+| `ZEPHYR_API_TOKEN` | Zephyr Scale API token (JIRA → Apps → Zephyr Scale → API Access Tokens) |
+
+Optional:
+
+| Variable | Description |
+|----------|-------------|
+| `ZEPHYR_BASE_URL` | Zephyr Scale API base URL. Default: `https://api.zephyrscale.smartbear.com/v2` (US). For EU use `https://eu.api.zephyrscale.smartbear.com/v2`. |
+
+For local development, copy `.env.example` to `.env` and fill in the values. For token creation, see [Atlassian API tokens](https://id.atlassian.com/profile) (JIRA) and Zephyr Scale API Access Tokens in your JIRA instance.
+
+---
+
+## Tools
+
+| Tool | Description |
+|------|-------------|
+| **read_jira_issue** | Get JIRA issue details (optional fields). |
+| **create_test_plan** / **list_test_plans** | Create and list test plans. |
+| **create_test_cycle** / **list_test_cycles** | Create and list test cycles. |
+| **create_test_case** / **search_test_cases** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, get, update (including custom fields), bulk create. |
+| **execute_test** | Update test execution status (PASS/FAIL/WIP/BLOCKED). |
+| **get_test_execution_status** | Execution progress and stats for a cycle. |
+| **link_tests_to_issues** | Link test cases to JIRA issues. |
+| **generate_test_report** | Generate cycle report (JSON or HTML). |
+
+---
+
+## Tool usage examples
+
+**JIRA issue**
+```ts
+read_jira_issue({ issueKey: "ABC-123" });
+read_jira_issue({ issueKey: "ABC-123", fields: ["summary", "status", "assignee"] });
 ```
 
-2. Configure your JIRA and Zephyr credentials in `.env`:
-```bash
-JIRA_BASE_URL=https://your-domain.atlassian.net
-JIRA_USERNAME=your-email@company.com
-JIRA_API_TOKEN=your-jira-api-token
-ZEPHYR_API_TOKEN=your-zephyr-api-token
-# Optional: Zephyr API base URL (default: https://api.zephyrscale.smartbear.com/v2)
-# Use EU endpoint: ZEPHYR_BASE_URL=https://eu.api.zephyrscale.smartbear.com/v2
-ZEPHYR_BASE_URL=https://api.zephyrscale.smartbear.com/v2
+**Test plans**
+```ts
+create_test_plan({ name: "Release 2.0", projectKey: "ABC", description: "..." });
+list_test_plans({ projectKey: "ABC", limit: 50 });
 ```
 
-### Configurable Zephyr API base URL
-
-By default the server uses the US Zephyr Scale endpoint (`https://api.zephyrscale.smartbear.com/v2`). To use the **EU endpoint** or another Zephyr Scale base URL, set the optional environment variable:
-
-- **`ZEPHYR_BASE_URL`** – Base URL for the Zephyr Scale API (e.g. `https://eu.api.zephyrscale.smartbear.com/v2` for EU). If unset, the US endpoint is used.
-
-### Getting API Tokens
-
-#### JIRA API Token
-1. Go to [Atlassian Account Settings](https://id.atlassian.com/profile)
-2. Navigate to Security → API tokens
-3. Create a new API token
-4. Copy the token to your `.env` file
-
-#### Zephyr API Token
-1. In JIRA, go to Apps → Zephyr Scale → API Access Tokens
-2. Generate a new token
-3. Copy the token to your `.env` file
-
-## Usage
-
-### Development
-```bash
-npm run dev
+**Test cycles**
+```ts
+create_test_cycle({ name: "Sprint 10", projectKey: "ABC", versionId: "10001", environment: "Production" });
+list_test_cycles({ projectKey: "ABC", limit: 25 });
 ```
 
-### Production
-```bash
-npm start
+**Test cases**
+```ts
+create_test_case({ projectKey: "ABC", name: "Login test", objective: "...", testScript: { type: "STEP_BY_STEP", steps: [...] }, customFields: { "Execution": "Manual" } });
+search_test_cases({ projectKey: "ABC", query: "login", limit: 20 });
+get_test_case({ testCaseId: "ABC-T123" });
+update_test_case({ testCaseId: "ABC-T123", customFields: { "Created On": "2026-03-11" } });
+create_multiple_test_cases({ testCases: [...], continueOnError: true });
 ```
 
-
-## Running with Docker
-
-You can containerize and run the MCP server using Docker.
-
-### Prerequisites
-- Docker installed on your system
-- The project cloned locally
-
-### Building the Docker Image
-1. Navigate to the project directory:
-
-```bash
-cd /path/to/jira-zephyr-mcp
+**Execution and reporting**
+```ts
+execute_test({ executionId: "12345", status: "PASS", comment: "All passed" });
+get_test_execution_status({ cycleId: "67890" });
+link_tests_to_issues({ testCaseId: "ABC-T123", issueKeys: ["ABC-456"] });
+generate_test_report({ cycleId: "67890", format: "JSON" });
 ```
 
-2. Build the Docker image:
+The Zephyr Scale API requires a full body for test case PUT; the server fetches the existing test case and merges your updates before sending.
+
+---
+
+## Development
+
+**Prerequisites:** Node.js 18+, JIRA with Zephyr Scale, JIRA and Zephyr API credentials.
 
 ```bash
-docker build -t jira-zephyr-mcp:latest .
+git clone https://github.com/miklosbagi/jira-zephyr-mcp.git
+cd jira-zephyr-mcp
+npm install
+npm run build
 ```
 
-You can specify a different tag if desired, e.g., `-t jira-zephyr-mcp:v1.0.0`.
+| Script | Purpose |
+|--------|---------|
+| `npm run build` | Compile TypeScript. |
+| `npm run dev` | Build and watch. |
+| `npm run lint` | ESLint. |
+| `npm run typecheck` | TypeScript check. |
+| `npm start` | Run `dist/index.js`. |
 
-### Running the Container
-1. Run the container with required environment variables:
+**Project layout:** `src/index.ts` (MCP server), `src/clients/` (JIRA and Zephyr API clients), `src/tools/` (tool handlers), `src/types/`, `src/utils/` (config, validation).
 
+---
+
+## Docker (CLI)
+
+**Pre-built image (no build):**
 ```bash
-docker run -d --name jira-zephyr-mcp \
+docker run --rm -i \
   -e JIRA_BASE_URL=https://your-domain.atlassian.net \
   -e JIRA_USERNAME=your-email@company.com \
   -e JIRA_API_TOKEN=your-jira-api-token \
   -e ZEPHYR_API_TOKEN=your-zephyr-api-token \
-  jira-zephyr-mcp:latest
+  -e ZEPHYR_BASE_URL=https://eu.api.zephyrscale.smartbear.com/v2 \
+  miklosbagi/jira-zephyr-mcp:latest
 ```
 
-Note: For integration with systems like Cursor, use the Docker configuration shown in the 'Integration with Cursor' section above. Ensure the image is built with the desired tag that matches your Cursor config. The server communicates via stdio, so ensure your setup supports this when running in a container.
+**Build from source:** `docker build -t jira-zephyr-mcp:latest .` then use your tag in the `docker run` above instead of `miklosbagi/jira-zephyr-mcp:latest`.
 
-## Tool Usage Examples
-
-### Reading JIRA Issues
-```typescript
-// Read basic issue information
-await readJiraIssue({ issueKey: "ABC-123" });
-
-// Read specific fields
-await readJiraIssue({ 
-  issueKey: "ABC-123", 
-  fields: ["summary", "status", "assignee"] 
-});
-```
-
-### Creating Test Plans
-```typescript
-await createTestPlan({
-  name: "Release 2.0 Test Plan",
-  description: "Comprehensive testing for release 2.0",
-  projectKey: "ABC",
-  startDate: "2024-01-15",
-  endDate: "2024-01-30"
-});
-```
-
-### Managing Test Cycles
-```typescript
-// Create a test cycle
-await createTestCycle({
-  name: "Sprint 10 Testing",
-  description: "Testing for sprint 10 features",
-  projectKey: "ABC",
-  versionId: "10001",
-  environment: "Production"
-});
-
-// List test cycles
-await listTestCycles({
-  projectKey: "ABC",
-  limit: 25
-});
-```
-
-### Test Execution
-```typescript
-// Update test execution status
-await executeTest({
-  executionId: "12345",
-  status: "PASS",
-  comment: "All tests passed successfully"
-});
-
-// Get execution status
-await getTestExecutionStatus({ cycleId: "67890" });
-```
-
-### Updating test cases
-```typescript
-// Update custom fields (e.g. "Created On", "Execution", "Target Platforms")
-await updateTestCase({
-  testCaseId: "CP-T4307",
-  customFields: { "Created On": "2026-03-11" }
-});
-
-// Update name and objective
-await updateTestCase({
-  testCaseId: "CP-T4307",
-  name: "Updated name",
-  objective: "Updated objective"
-});
-```
-
-The Zephyr Scale API requires a full payload for PUT; the server fetches the existing test case and merges your updates (including custom fields) before sending.
-
-### Generating Reports
-```typescript
-// Generate JSON report
-await generateTestReport({
-  cycleId: "67890",
-  format: "JSON"
-});
-
-// Generate HTML report
-await generateTestReport({
-  cycleId: "67890",
-  format: "HTML"
-});
-```
-
-## Error Handling
-
-The server implements comprehensive error handling:
-- Input validation using Zod schemas
-- API error mapping and user-friendly messages
-- Network timeout handling
-- Authentication error detection
-
-## Development
-
-### Scripts
-- `npm run build` - Build the TypeScript project
-- `npm run dev` - Run in development mode with file watching
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - Run TypeScript type checking
-
-### Project Structure
-```
-src/
-├── index.ts              # Main MCP server entry point
-├── clients/              # API clients
-│   ├── jira-client.ts    # JIRA REST API client
-│   └── zephyr-client.ts  # Zephyr API client
-├── tools/                # MCP tool implementations
-│   ├── jira-issues.ts    # JIRA issue tools
-│   ├── test-plans.ts     # Test plan management
-│   ├── test-cycles.ts    # Test cycle management
-│   └── test-execution.ts # Test execution tools
-├── types/                # TypeScript type definitions
-│   ├── jira-types.ts     # JIRA API types
-│   └── zephyr-types.ts   # Zephyr API types
-└── utils/                # Utility functions
-    ├── config.ts         # Configuration management
-    └── validation.ts     # Input validation schemas
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
-
-## Security
-
-- Never commit API tokens or credentials to the repository
-- Use environment variables for all sensitive configuration
-- Regularly rotate API tokens
-- Implement proper access controls in your JIRA instance
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Support
-
-For issues and questions:
-1. Check the existing GitHub issues
-2. Create a new issue with detailed information
-3. Include error logs and configuration (without sensitive data)
+---
 
 ## Roadmap
 
-- [ ] Support for Zephyr Squad (in addition to Zephyr Scale)
-- [ ] Bulk test execution operations
-- [ ] Advanced reporting with charts and metrics
-- [ ] Test case creation and management
-- [ ] Integration with CI/CD pipelines
-- [ ] Custom field support for test management
+Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API](https://support.smartbear.com/zephyr-scale-cloud/api-docs/) capabilities not yet exposed by this server. See [docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md) for details.
+
+- [ ] **Add test cases to a test cycle** — `POST /testcycles/{key}/testcases` so existing tests can be added to a cycle (create cycle → add tests → run).
+- [ ] **Get single test plan / test cycle** — Fetch one plan or cycle by key/id (today only list is exposed).
+- [ ] **List test cases or executions in a cycle** — See which tests and executions belong to a cycle.
+- [ ] **Create test execution** — Start a new execution for a test in a cycle (today only update of existing execution).
+- [ ] **Folders** — List and create folders (today `folderId` is accepted but folders cannot be listed or created).
+- [ ] **Zephyr projects list** — List projects from Zephyr API for projectKey discovery.
+- [ ] **Priorities and statuses** — List valid priority/status values for test cases.
+- [ ] **Environments** — List or manage environments for cycles.
+- [ ] **Test case archive / delete** — Archive and delete test cases (per Zephyr docs).
+- [ ] **Test steps as separate resource** — If the API supports it: list/edit/delete steps for a test case independently.
+- [ ] **Remove test case from cycle** — Remove a test from a cycle (if supported by API).
+- [ ] **Update test plan / test cycle** — PUT for plans and cycles (rename, dates, status).
+- [ ] **Bulk operations** — Bulk execution updates or bulk add-to-cycle (beyond `create_multiple_test_cases`).
+
+---
+
+## Contributing
+
+Fork, create a feature branch, make changes, and open a pull request. For upstream contributions, see the two feature branches: `feat/zephyr-base-url` and `feat/update-test-case`.
+
+---
+
+## Security
+
+- Do not commit API tokens or credentials.
+- Use environment variables for all secrets.
+- Rotate tokens periodically and restrict JIRA/Zephyr access as needed.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+## Support
+
+- Open a [GitHub issue](https://github.com/miklosbagi/jira-zephyr-mcp/issues) with details and logs (no secrets).
+- Upstream: [leorosignoli/jira-zephyr-mcp](https://github.com/leorosignoli/jira-zephyr-mcp).
