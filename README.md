@@ -13,7 +13,7 @@ This repo is a fork of [leorosignoli/jira-zephyr-mcp](https://github.com/leorosi
 - **Use a configurable Zephyr API base URL** — The upstream server used a hardcoded US endpoint (`api.zephyrscale.smartbear.com`). We need the **EU endpoint** (and optionally others), so we added an optional `ZEPHYR_BASE_URL` environment variable. No code changes required when switching regions.
 - **Support updating test cases** — The Zephyr Scale API expects a full payload on PUT. We added an `update_test_case` tool that fetches the existing test case, merges your updates (including custom fields), and sends the full payload so you can update name, objective, custom fields, and more from MCP.
 
-We contribute changes back upstream where possible and keep this fork as our base for further extensions (see [Roadmap](#roadmap)).
+We keep this fork as our base for further extensions (see [Roadmap](#roadmap)).
 
 ---
 
@@ -214,7 +214,7 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 
 ## Contributing
 
-Fork, create a feature branch, make changes, and open a pull request. For upstream contributions, see the two feature branches: `feat/zephyr-base-url` and `feat/update-test-case`.
+Fork, create a feature branch, make changes, and open a pull request.
 
 ---
 
