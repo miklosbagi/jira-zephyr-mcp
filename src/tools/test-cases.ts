@@ -158,7 +158,7 @@ export const updateTestCase = async (input: UpdateTestCaseInput) => {
         name: testCase.name,
         customFields: testCase.customFields,
         links: {
-          self: `https://api.zephyrscale.smartbear.com/v2/testcases/${testCase.key}`,
+          self: `${getZephyrBaseUrl().replace(/\/$/, '')}/testcases/${testCase.key}`,
         },
       },
     };
