@@ -7,6 +7,7 @@ import {
   ZephyrTestCase,
   ZephyrTestReport,
   ZephyrExecutionSummary,
+  ZephyrFolder,
 } from '../types/zephyr-types.js';
 
 export class ZephyrClient {
@@ -95,6 +96,55 @@ export class ZephyrClient {
       testCycles,
       total: response.data.total ?? testCycles.length,
     };
+  }
+
+  async getFolders(projectKey: string, options?: {
+    folderType?: 'TEST_CASE' | 'TEST_CYCLE';
+    parentId?: number | null;
+    limit?: number;
+    startAt?: number;
+  }): Promise<{ folders: ZephyrFolder[]; total: number }> {
+    const params: Record<string, string | number | undefined> = {
+      projectKey,
+      maxResults: options?.limit ?? 50,
+      startAt: options?.startAt ?? 0,
+    };
+    if (options?.folderType) {
+      params.folderType = options.folderType;
+    }
+    if (options?.parentId != null) {
+      params.parentId = options.parentId;
+    }
+    const response = await this.client.get('/folders', { params });
+    const folders = Array.isArray(response.data.values)
+      ? response.data.values
+      : Array.isArray(response.data)
+        ? response.data
+        : [];
+    return {
+      folders: folders as ZephyrFolder[],
+      total: response.data.total ?? folders.length,
+    };
+  }
+
+  async createFolder(data: {
+    projectKey: string;
+    name: string;
+    parentId?: number | null;
+    folderType?: 'TEST_CASE' | 'TEST_CYCLE';
+  }): Promise<ZephyrFolder> {
+    const payload: Record<string, string | number | null | undefined> = {
+      projectKey: data.projectKey,
+      name: data.name,
+    };
+    if (data.parentId != null) {
+      payload.parentId = data.parentId;
+    }
+    if (data.folderType) {
+      payload.folderType = data.folderType;
+    }
+    const response = await this.client.post('/folders', payload);
+    return response.data;
   }
 
   async addTestCasesToCycle(cycleKey: string, testCaseKeys: string[]): Promise<void> {

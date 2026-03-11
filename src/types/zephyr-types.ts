@@ -106,6 +106,17 @@ export interface ZephyrTestCase {
   };
 }
 
+export interface ZephyrFolder {
+  id: number;
+  name: string;
+  projectKey?: string;
+  projectId?: number;
+  parentId?: number | null;
+  type?: 'TEST_CASE' | 'TEST_CYCLE';
+  self?: string;
+  folders?: ZephyrFolder[];
+}
+
 export interface ZephyrExecutionSummary {
   total: number;
   passed: number;

@@ -55,6 +55,24 @@ export const addTestCasesToCycleSchema = z.object({
   testCaseKeys: z.array(z.string().min(1)).min(1, 'At least one test case key is required'),
 });
 
+export const listFoldersSchema = z.object({
+  projectKey: z.string().min(1, 'Project key is required'),
+  folderType: z.enum(['TEST_CASE', 'TEST_CYCLE']).optional(),
+  parentId: z.number().int().min(0).optional().nullable(),
+  limit: z.number().min(1).max(100).default(50),
+  startAt: z.number().min(0).default(0),
+});
+
+export const createFolderSchema = z.object({
+  projectKey: z.string().min(1, 'Project key is required'),
+  name: z.string().min(1, 'Folder name is required'),
+  parentId: z.number().int().min(0).optional().nullable(),
+  folderType: z.enum(['TEST_CASE', 'TEST_CYCLE']).optional(),
+});
+
+export type ListFoldersInput = z.infer<typeof listFoldersSchema>;
+export type CreateFolderInput = z.infer<typeof createFolderSchema>;
+
 export const createTestExecutionSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),
   testCaseKey: z.string().min(1, 'Test case key is required'),
