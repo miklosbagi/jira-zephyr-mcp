@@ -127,7 +127,7 @@ export const createTestCaseSchema = z.object({
   componentId: z.string().optional(),
   customFields: z.record(z.any()).optional(),
   testScript: z.object({
-    type: z.enum(['STEP_BY_STEP', 'PLAIN_TEXT']),
+    type: z.enum(['STEP_BY_STEP', 'PLAIN_TEXT', 'CUCUMBER']).optional(),
     steps: z.array(z.object({
       index: z.number().min(1),
       description: z.string().min(1),
@@ -161,7 +161,7 @@ export const updateTestCaseSchema = z.object({
   componentId: z.string().optional(),
   customFields: z.record(z.any()).optional(),
   testScript: z.object({
-    type: z.enum(['STEP_BY_STEP', 'PLAIN_TEXT']),
+    type: z.enum(['STEP_BY_STEP', 'PLAIN_TEXT', 'CUCUMBER']).optional(),
     steps: z.array(z.object({
       index: z.number().min(1),
       description: z.string().min(1),
@@ -183,6 +183,38 @@ export const createMultipleTestCasesSchema = z.object({
   continueOnError: z.boolean().default(true),
 });
 
+export const listTestStepsSchema = z.object({
+  testCaseKey: z.string().min(1, 'Test case key is required'),
+});
+
+export const createTestStepSchema = z.object({
+  testCaseKey: z.string().min(1, 'Test case key is required'),
+  description: z.string().min(1, 'Step description is required'),
+  expectedResult: z.string().min(1, 'Expected result is required'),
+  testData: z.string().optional(),
+  index: z.number().min(1).optional(),
+});
+
+export const updateTestStepSchema = z.object({
+  testCaseKey: z.string().min(1, 'Test case key is required'),
+  stepId: z.number().int().min(1, 'Step ID is required'),
+  description: z.string().min(1).optional(),
+  expectedResult: z.string().min(1).optional(),
+  testData: z.string().optional(),
+  index: z.number().min(1).optional(),
+}).refine(
+  data => {
+    const { testCaseKey, stepId, ...updates } = data;
+    return Object.keys(updates).length >= 1;
+  },
+  { message: 'At least one field to update (description, expectedResult, testData, index) is required' }
+);
+
+export const deleteTestStepSchema = z.object({
+  testCaseKey: z.string().min(1, 'Test case key is required'),
+  stepId: z.number().int().min(1, 'Step ID is required'),
+});
+
 export type CreateTestPlanInput = z.infer<typeof createTestPlanSchema>;
 export type CreateTestCycleInput = z.infer<typeof createTestCycleSchema>;
 export type ReadJiraIssueInput = z.infer<typeof readJiraIssueSchema>;
@@ -200,3 +232,7 @@ export type SearchTestCasesInput = z.infer<typeof searchTestCasesSchema>;
 export type GetTestCaseInput = z.infer<typeof getTestCaseSchema>;
 export type UpdateTestCaseInput = z.infer<typeof updateTestCaseSchema>;
 export type CreateMultipleTestCasesInput = z.infer<typeof createMultipleTestCasesSchema>;
+export type ListTestStepsInput = z.infer<typeof listTestStepsSchema>;
+export type CreateTestStepInput = z.infer<typeof createTestStepSchema>;
+export type UpdateTestStepInput = z.infer<typeof updateTestStepSchema>;
+export type DeleteTestStepInput = z.infer<typeof deleteTestStepSchema>;

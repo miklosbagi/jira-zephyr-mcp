@@ -114,7 +114,13 @@ export const searchTestCases = async (input: SearchTestCasesInput) => {
 export const getTestCase = async (input: { testCaseId: string }) => {
   try {
     const testCase = await getZephyrClient().getTestCase(input.testCaseId);
-    
+    let testScript = testCase.testScript as Record<string, unknown> | undefined;
+    if (testCase.key && testScript?.self) {
+      const scriptDetails = await getZephyrClient().getTestScript(testCase.key);
+      if (scriptDetails && typeof scriptDetails === 'object') {
+        testScript = { ...testScript, ...scriptDetails };
+      }
+    }
     return {
       success: true,
       data: {
@@ -134,7 +140,7 @@ export const getTestCase = async (input: { testCaseId: string }) => {
         createdOn: testCase.createdOn,
         customFields: testCase.customFields,
         links: testCase.links,
-        testScript: testCase.testScript,
+        testScript,
       },
     };
   } catch (error: any) {

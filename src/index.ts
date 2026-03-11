@@ -19,6 +19,7 @@ import {
   generateTestReport,
 } from './tools/test-execution.js';
 import { createTestCase, searchTestCases, getTestCase, updateTestCase, createMultipleTestCases } from './tools/test-cases.js';
+import { listTestSteps, createTestStep, updateTestStep, deleteTestStep } from './tools/test-steps.js';
 import { listFolders, createFolder } from './tools/folders.js';
 import { listPriorities, listStatuses } from './tools/priorities-statuses.js';
 import {
@@ -44,6 +45,10 @@ import {
   getTestCaseSchema,
   updateTestCaseSchema,
   createMultipleTestCasesSchema,
+  listTestStepsSchema,
+  createTestStepSchema,
+  updateTestStepSchema,
+  deleteTestStepSchema,
   ReadJiraIssueInput,
   CreateTestPlanInput,
   ListTestPlansInput,
@@ -66,6 +71,10 @@ import {
   GetTestCaseInput,
   UpdateTestCaseInput,
   CreateMultipleTestCasesInput,
+  ListTestStepsInput,
+  CreateTestStepInput,
+  UpdateTestStepInput,
+  DeleteTestStepInput,
 } from './utils/validation.js';
 
 const server = new Server(
@@ -326,9 +335,9 @@ const TOOLS = [
         customFields: { type: 'object', description: 'Custom fields as key-value pairs (optional)' },
         testScript: {
           type: 'object',
-          description: 'Test script with steps (optional)',
+          description: 'Test script (optional). type: STEP_BY_STEP (default when steps provided), PLAIN_TEXT, or CUCUMBER.',
           properties: {
-            type: { type: 'string', enum: ['STEP_BY_STEP', 'PLAIN_TEXT'], description: 'Script type' },
+            type: { type: 'string', enum: ['STEP_BY_STEP', 'PLAIN_TEXT', 'CUCUMBER'], description: 'Script type (default STEP_BY_STEP for steps, PLAIN_TEXT for free text)' },
             steps: {
               type: 'array',
               items: {
@@ -343,12 +352,65 @@ const TOOLS = [
               },
               description: 'Test steps (for STEP_BY_STEP type)',
             },
-            text: { type: 'string', description: 'Plain text script (for PLAIN_TEXT type)' },
+            text: { type: 'string', description: 'Plain text or Cucumber script (for PLAIN_TEXT/CUCUMBER type)' },
           },
-          required: ['type'],
         },
       },
       required: ['projectKey', 'name'],
+    },
+  },
+  {
+    name: 'list_test_steps',
+    description: 'List test steps for a test case (step-by-step script). Use test case key (e.g. CP-T123).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseKey: { type: 'string', description: 'Test case key (e.g. CP-T123)' },
+      },
+      required: ['testCaseKey'],
+    },
+  },
+  {
+    name: 'create_test_step',
+    description: 'Add a test step to an existing test case. Use for step-by-step test cases.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseKey: { type: 'string', description: 'Test case key' },
+        description: { type: 'string', description: 'Step description/action' },
+        expectedResult: { type: 'string', description: 'Expected result' },
+        testData: { type: 'string', description: 'Test data (optional)' },
+        index: { type: 'number', description: 'Step order (optional)' },
+      },
+      required: ['testCaseKey', 'description', 'expectedResult'],
+    },
+  },
+  {
+    name: 'update_test_step',
+    description: 'Update an existing test step (description, expectedResult, testData, or index).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseKey: { type: 'string', description: 'Test case key' },
+        stepId: { type: 'number', description: 'Step ID (from list_test_steps)' },
+        description: { type: 'string', description: 'New step description (optional)' },
+        expectedResult: { type: 'string', description: 'New expected result (optional)' },
+        testData: { type: 'string', description: 'New test data (optional)' },
+        index: { type: 'number', description: 'New step order (optional)' },
+      },
+      required: ['testCaseKey', 'stepId'],
+    },
+  },
+  {
+    name: 'delete_test_step',
+    description: 'Delete a test step from a test case.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseKey: { type: 'string', description: 'Test case key' },
+        stepId: { type: 'number', description: 'Step ID (from list_test_steps)' },
+      },
+      required: ['testCaseKey', 'stepId'],
     },
   },
   {
@@ -396,7 +458,7 @@ const TOOLS = [
           type: 'object',
           description: 'Test script (optional)',
           properties: {
-            type: { type: 'string', enum: ['STEP_BY_STEP', 'PLAIN_TEXT'] },
+            type: { type: 'string', enum: ['STEP_BY_STEP', 'PLAIN_TEXT', 'CUCUMBER'] },
             steps: {
               type: 'array',
               items: {
@@ -412,7 +474,6 @@ const TOOLS = [
             },
             text: { type: 'string' },
           },
-          required: ['type'],
         },
       },
       required: ['testCaseId'],
@@ -444,7 +505,7 @@ const TOOLS = [
                 type: 'object',
                 description: 'Test script with steps (optional)',
                 properties: {
-                  type: { type: 'string', enum: ['STEP_BY_STEP', 'PLAIN_TEXT'], description: 'Script type' },
+                  type: { type: 'string', enum: ['STEP_BY_STEP', 'PLAIN_TEXT', 'CUCUMBER'], description: 'Script type' },
                   steps: {
                     type: 'array',
                     items: {
@@ -755,6 +816,54 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await createMultipleTestCases(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_test_steps': {
+        const validatedArgs = validateInput<ListTestStepsInput>(listTestStepsSchema, args, 'list_test_steps');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listTestSteps(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'create_test_step': {
+        const validatedArgs = validateInput<CreateTestStepInput>(createTestStepSchema, args, 'create_test_step');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await createTestStep(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'update_test_step': {
+        const validatedArgs = validateInput<UpdateTestStepInput>(updateTestStepSchema, args, 'update_test_step');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await updateTestStep(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'delete_test_step': {
+        const validatedArgs = validateInput<DeleteTestStepInput>(deleteTestStepSchema, args, 'delete_test_step');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await deleteTestStep(validatedArgs), null, 2),
             },
           ],
         };
