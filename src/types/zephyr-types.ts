@@ -117,6 +117,18 @@ export interface ZephyrFolder {
   folders?: ZephyrFolder[];
 }
 
+export interface ZephyrPriority {
+  id: number;
+  name: string;
+  self?: string;
+}
+
+export interface ZephyrStatus {
+  id: number;
+  name: string;
+  self?: string;
+}
+
 export interface ZephyrExecutionSummary {
   total: number;
   passed: number;

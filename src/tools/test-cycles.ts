@@ -3,9 +3,11 @@ import {
   createTestCycleSchema,
   listTestCyclesSchema,
   addTestCasesToCycleSchema,
+  updateTestCycleSchema,
   CreateTestCycleInput,
   ListTestCyclesInput,
   AddTestCasesToCycleInput,
+  UpdateTestCycleInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
@@ -26,6 +28,7 @@ export const createTestCycle = async (input: CreateTestCycleInput) => {
       description: validatedInput.description,
       projectKey: validatedInput.projectKey,
       versionId: validatedInput.versionId,
+      folderId: validatedInput.folderId,
       environment: validatedInput.environment,
       startDate: validatedInput.startDate,
       endDate: validatedInput.endDate,
@@ -46,6 +49,37 @@ export const createTestCycle = async (input: CreateTestCycleInput) => {
         plannedEndDate: testCycle.plannedEndDate,
         createdOn: testCycle.createdOn,
         executionSummary: testCycle.executionSummary,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const updateTestCycle = async (input: UpdateTestCycleInput) => {
+  const validatedInput = updateTestCycleSchema.parse(input);
+  try {
+    const testCycle = await getZephyrClient().updateTestCycle(validatedInput.cycleKey, {
+      name: validatedInput.name,
+      description: validatedInput.description,
+      folderId: validatedInput.folderId,
+      environment: validatedInput.environment,
+      startDate: validatedInput.startDate,
+      endDate: validatedInput.endDate,
+    });
+    return {
+      success: true,
+      data: {
+        id: testCycle.id,
+        key: testCycle.key,
+        name: testCycle.name,
+        description: testCycle.description,
+        status: testCycle.status,
+        plannedStartDate: testCycle.plannedStartDate,
+        plannedEndDate: testCycle.plannedEndDate,
       },
     };
   } catch (error: any) {

@@ -101,6 +101,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **create_test_plan** / **list_test_plans** | Create and list test plans. |
 | **create_test_cycle** / **list_test_cycles** | Create and list test cycles. |
 | **list_folders** / **create_folder** | List and create folders (for organizing test cases or test cycles). Filter by folderType (TEST_CASE / TEST_CYCLE) and parentId for subfolders. |
+| **list_priorities** / **list_statuses** | List test case priorities and statuses (id and name). Use the returned ids when creating or updating test cases. Optional projectKey. |
 | **list_test_executions_in_cycle** | List test cases and executions in a cycle. |
 | **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
 | **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
@@ -142,6 +143,12 @@ list_folders({ projectKey: "ABC", folderType: "TEST_CASE", limit: 50 });
 list_folders({ projectKey: "ABC", parentId: 12345 });  // subfolders of folder 12345
 create_folder({ projectKey: "ABC", name: "Regression", folderType: "TEST_CASE" });
 create_folder({ projectKey: "ABC", name: "Subfolder", parentId: 12345 });
+```
+
+**Priorities and statuses**
+```ts
+list_priorities({ projectKey: "ABC" });   // or omit projectKey for all
+list_statuses({ projectKey: "ABC" });     // use returned id in create_test_case / update_test_case
 ```
 
 **Test cases**
@@ -219,6 +226,7 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Create test execution** — `create_test_execution` creates a test execution (e.g. add test case to cycle with status “Not Executed”).
 - [ ] **Get single test plan / test cycle** — Fetch one plan or cycle by key/id (today only list is exposed).
 - [x] **Folders** — `list_folders` and `create_folder` (filter by folderType, parentId for hierarchy).
+- [x] **Priorities and statuses** — `list_priorities` and `list_statuses` (id and name for create/update test case).
 - [ ] **Zephyr projects list** — List projects from Zephyr API for projectKey discovery.
 - [ ] **Priorities and statuses** — List valid priority/status values for test cases.
 - [ ] **Environments** — List or manage environments for cycles.

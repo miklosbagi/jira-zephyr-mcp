@@ -13,6 +13,7 @@ export const createTestCycleSchema = z.object({
   description: z.string().optional(),
   projectKey: z.string().min(1, 'Project key is required'),
   versionId: z.string().min(1, 'Version ID is required'),
+  folderId: z.union([z.string(), z.number()]).optional(),
   environment: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
@@ -33,6 +34,16 @@ export const listTestCyclesSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),
   versionId: z.string().optional(),
   limit: z.number().min(1).max(100).default(50),
+});
+
+export const updateTestCycleSchema = z.object({
+  cycleKey: z.string().min(1, 'Test cycle key is required'),
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  folderId: z.union([z.string(), z.number(), z.null()]).optional(),
+  environment: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
 });
 
 export const executeTestSchema = z.object({
@@ -70,8 +81,18 @@ export const createFolderSchema = z.object({
   folderType: z.enum(['TEST_CASE', 'TEST_CYCLE']).optional(),
 });
 
+export const listPrioritiesSchema = z.object({
+  projectKey: z.string().min(1).optional(),
+});
+
+export const listStatusesSchema = z.object({
+  projectKey: z.string().min(1).optional(),
+});
+
 export type ListFoldersInput = z.infer<typeof listFoldersSchema>;
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
+export type ListPrioritiesInput = z.infer<typeof listPrioritiesSchema>;
+export type ListStatusesInput = z.infer<typeof listStatusesSchema>;
 
 export const createTestExecutionSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),
@@ -167,6 +188,7 @@ export type CreateTestCycleInput = z.infer<typeof createTestCycleSchema>;
 export type ReadJiraIssueInput = z.infer<typeof readJiraIssueSchema>;
 export type ListTestPlansInput = z.infer<typeof listTestPlansSchema>;
 export type ListTestCyclesInput = z.infer<typeof listTestCyclesSchema>;
+export type UpdateTestCycleInput = z.infer<typeof updateTestCycleSchema>;
 export type ExecuteTestInput = z.infer<typeof executeTestSchema>;
 export type GetTestExecutionStatusInput = z.infer<typeof getTestExecutionStatusSchema>;
 export type ListTestExecutionsInCycleInput = z.infer<typeof listTestExecutionsInCycleSchema>;

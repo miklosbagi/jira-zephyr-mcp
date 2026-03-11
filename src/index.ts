@@ -9,7 +9,7 @@ import {
 
 import { readJiraIssue } from './tools/jira-issues.js';
 import { createTestPlan, listTestPlans } from './tools/test-plans.js';
-import { createTestCycle, listTestCycles, addTestCasesToCycle } from './tools/test-cycles.js';
+import { createTestCycle, listTestCycles, addTestCasesToCycle, updateTestCycle } from './tools/test-cycles.js';
 import {
   createTestExecution,
   executeTest,
@@ -20,12 +20,14 @@ import {
 } from './tools/test-execution.js';
 import { createTestCase, searchTestCases, getTestCase, updateTestCase, createMultipleTestCases } from './tools/test-cases.js';
 import { listFolders, createFolder } from './tools/folders.js';
+import { listPriorities, listStatuses } from './tools/priorities-statuses.js';
 import {
   readJiraIssueSchema,
   createTestPlanSchema,
   listTestPlansSchema,
   createTestCycleSchema,
   listTestCyclesSchema,
+  updateTestCycleSchema,
   executeTestSchema,
   getTestExecutionStatusSchema,
   listTestExecutionsInCycleSchema,
@@ -33,6 +35,8 @@ import {
   createTestExecutionSchema,
   listFoldersSchema,
   createFolderSchema,
+  listPrioritiesSchema,
+  listStatusesSchema,
   linkTestsToIssuesSchema,
   generateTestReportSchema,
   createTestCaseSchema,
@@ -45,6 +49,7 @@ import {
   ListTestPlansInput,
   CreateTestCycleInput,
   ListTestCyclesInput,
+  UpdateTestCycleInput,
   ExecuteTestInput,
   GetTestExecutionStatusInput,
   ListTestExecutionsInCycleInput,
@@ -52,6 +57,8 @@ import {
   CreateTestExecutionInput,
   ListFoldersInput,
   CreateFolderInput,
+  ListPrioritiesInput,
+  ListStatusesInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
   CreateTestCaseInput,
@@ -126,11 +133,29 @@ const TOOLS = [
         description: { type: 'string', description: 'Test cycle description (optional)' },
         projectKey: { type: 'string', description: 'JIRA project key' },
         versionId: { type: 'string', description: 'JIRA version ID' },
+        folderId: { type: 'string', description: 'Folder ID (TEST_CYCLE) to place the cycle in (optional)' },
         environment: { type: 'string', description: 'Test environment (optional)' },
         startDate: { type: 'string', description: 'Planned start date (ISO format, optional)' },
         endDate: { type: 'string', description: 'Planned end date (ISO format, optional)' },
       },
       required: ['name', 'projectKey', 'versionId'],
+    },
+  },
+  {
+    name: 'update_test_cycle',
+    description: 'Update a test cycle (e.g. name, description, folderId, dates)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cycleKey: { type: 'string', description: 'Test cycle key (e.g. CP-R32)' },
+        name: { type: 'string', description: 'New name (optional)' },
+        description: { type: 'string', description: 'New description (optional)' },
+        folderId: { type: 'string', description: 'Move to this folder ID (optional)' },
+        environment: { type: 'string', description: 'Environment (optional)' },
+        startDate: { type: 'string', description: 'Planned start date ISO (optional)' },
+        endDate: { type: 'string', description: 'Planned end date ISO (optional)' },
+      },
+      required: ['cycleKey'],
     },
   },
   {
@@ -260,6 +285,26 @@ const TOOLS = [
         folderType: { type: 'string', enum: ['TEST_CASE', 'TEST_CYCLE'], description: 'Folder type (optional; default may be TEST_CASE)' },
       },
       required: ['projectKey', 'name'],
+    },
+  },
+  {
+    name: 'list_priorities',
+    description: 'List test case priorities (id and name). Use ids when creating or updating test cases. Optional projectKey to scope by project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key (optional; if omitted returns all priorities)' },
+      },
+    },
+  },
+  {
+    name: 'list_statuses',
+    description: 'List test case statuses (id and name). Use ids when creating or updating test cases. Optional projectKey to scope by project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key (optional; if omitted returns all statuses)' },
+      },
     },
   },
   {
@@ -499,6 +544,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case 'update_test_cycle': {
+        const validatedArgs = validateInput<UpdateTestCycleInput>(updateTestCycleSchema, args, 'update_test_cycle');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await updateTestCycle(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
       case 'list_test_cycles': {
         const validatedArgs = validateInput<ListTestCyclesInput>(listTestCyclesSchema, args, 'list_test_cycles');
         return {
@@ -614,6 +671,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await createFolder(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_priorities': {
+        const validatedArgs = validateInput<ListPrioritiesInput>(listPrioritiesSchema, args, 'list_priorities');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listPriorities(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_statuses': {
+        const validatedArgs = validateInput<ListStatusesInput>(listStatusesSchema, args, 'list_statuses');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listStatuses(validatedArgs), null, 2),
             },
           ],
         };
