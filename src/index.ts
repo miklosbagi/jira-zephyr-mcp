@@ -16,7 +16,7 @@ import {
   linkTestsToIssues,
   generateTestReport,
 } from './tools/test-execution.js';
-import { createTestCase, searchTestCases, getTestCase, createMultipleTestCases } from './tools/test-cases.js';
+import { createTestCase, searchTestCases, getTestCase, updateTestCase, createMultipleTestCases } from './tools/test-cases.js';
 import {
   readJiraIssueSchema,
   createTestPlanSchema,
@@ -30,6 +30,7 @@ import {
   createTestCaseSchema,
   searchTestCasesSchema,
   getTestCaseSchema,
+  updateTestCaseSchema,
   createMultipleTestCasesSchema,
   ReadJiraIssueInput,
   CreateTestPlanInput,
@@ -43,6 +44,7 @@ import {
   CreateTestCaseInput,
   SearchTestCasesInput,
   GetTestCaseInput,
+  UpdateTestCaseInput,
   CreateMultipleTestCasesInput,
 } from './utils/validation.js';
 
@@ -244,6 +246,49 @@ const TOOLS = [
       type: 'object',
       properties: {
         testCaseId: { type: 'string', description: 'Test case ID or key' },
+      },
+      required: ['testCaseId'],
+    },
+  },
+  {
+    name: 'update_test_case',
+    description: 'Update an existing test case (e.g. name, objective, custom fields)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseId: { type: 'string', description: 'Test case ID or key to update' },
+        name: { type: 'string', description: 'Test case name (optional)' },
+        objective: { type: 'string', description: 'Test case objective (optional)' },
+        precondition: { type: 'string', description: 'Preconditions (optional)' },
+        estimatedTime: { type: 'number', description: 'Estimated time in minutes (optional)' },
+        priority: { type: 'string', description: 'Priority (optional)' },
+        status: { type: 'string', description: 'Status (optional)' },
+        folderId: { type: 'string', description: 'Folder ID (optional)' },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Labels (optional)' },
+        componentId: { type: 'string', description: 'Component ID (optional)' },
+        customFields: { type: 'object', description: 'Custom fields as key-value pairs (optional)' },
+        testScript: {
+          type: 'object',
+          description: 'Test script (optional)',
+          properties: {
+            type: { type: 'string', enum: ['STEP_BY_STEP', 'PLAIN_TEXT'] },
+            steps: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  index: { type: 'number' },
+                  description: { type: 'string' },
+                  testData: { type: 'string' },
+                  expectedResult: { type: 'string' },
+                },
+                required: ['index', 'description', 'expectedResult'],
+              },
+            },
+            text: { type: 'string' },
+          },
+          required: ['type'],
+        },
       },
       required: ['testCaseId'],
     },
@@ -465,6 +510,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await getTestCase(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'update_test_case': {
+        const validatedArgs = validateInput<UpdateTestCaseInput>(updateTestCaseSchema, args, 'update_test_case');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await updateTestCase(validatedArgs), null, 2),
             },
           ],
         };

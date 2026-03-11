@@ -24,6 +24,11 @@ A Model Context Protocol (MCP) server that provides comprehensive integration wi
 7. **get_test_execution_status** - Check test execution progress
 8. **link_tests_to_issues** - Associate tests with JIRA issues
 9. **generate_test_report** - Create test execution reports
+10. **create_test_case** - Create a new test case in Zephyr
+11. **search_test_cases** - Search test cases in a project
+12. **get_test_case** - Get detailed information about a test case
+13. **update_test_case** - Update an existing test case (name, objective, custom fields, etc.)
+14. **create_multiple_test_cases** - Create multiple test cases at once
 
 ## Prerequisites
 
@@ -47,12 +52,15 @@ Clone the project, then add the following to your Cursor configuration:
         "JIRA_BASE_URL": "https://your-domain.atlassian.net",
         "JIRA_USERNAME": "your-email@company.com",
         "JIRA_API_TOKEN": "your-jira-api-token",
-        "ZEPHYR_API_TOKEN": "your-zephyr-api-token"
+        "ZEPHYR_API_TOKEN": "your-zephyr-api-token",
+        "ZEPHYR_BASE_URL": "https://eu.api.zephyrscale.smartbear.com/v2"
       }
     }
   }
 }
 ```
+
+Set `ZEPHYR_BASE_URL` only when using the EU (or another) Zephyr Scale endpoint; omit it for the default US endpoint.
 
 #### Using Docker
 
@@ -63,17 +71,20 @@ Alternatively, you can configure Cursor to run the MCP server in Docker (ensure 
   "mcpServers": {
     "jira-zephyr": {
       "command": "docker",
-      "args": ["run", "--rm", "-i","-e","JIRA_BASE_URL","-e","JIRA_USERNAME","-e","JIRA_API_TOKEN","-e","ZEPHYR_API_TOKEN", "jira-zephyr-mcp"],
+      "args": ["run", "--rm", "-i","-e","JIRA_BASE_URL","-e","JIRA_USERNAME","-e","JIRA_API_TOKEN","-e","ZEPHYR_API_TOKEN","-e","ZEPHYR_BASE_URL", "jira-zephyr-mcp"],
       "env": {
         "JIRA_BASE_URL": "https://your-domain.atlassian.net",
         "JIRA_USERNAME": "your-email@company.com",
         "JIRA_API_TOKEN": "your-jira-api-token",
-        "ZEPHYR_API_TOKEN": "your-zephyr-api-token"
+        "ZEPHYR_API_TOKEN": "your-zephyr-api-token",
+        "ZEPHYR_BASE_URL": "https://eu.api.zephyrscale.smartbear.com/v2"
       }
     }
   }
 }
 ```
+
+Pass `-e ZEPHYR_BASE_URL` in the `docker run` args if you use the EU endpoint.
 
 ## Installation (for development)
 
@@ -106,7 +117,16 @@ JIRA_BASE_URL=https://your-domain.atlassian.net
 JIRA_USERNAME=your-email@company.com
 JIRA_API_TOKEN=your-jira-api-token
 ZEPHYR_API_TOKEN=your-zephyr-api-token
+# Optional: Zephyr API base URL (default: https://api.zephyrscale.smartbear.com/v2)
+# Use EU endpoint: ZEPHYR_BASE_URL=https://eu.api.zephyrscale.smartbear.com/v2
+ZEPHYR_BASE_URL=https://api.zephyrscale.smartbear.com/v2
 ```
+
+### Configurable Zephyr API base URL
+
+By default the server uses the US Zephyr Scale endpoint (`https://api.zephyrscale.smartbear.com/v2`). To use the **EU endpoint** or another Zephyr Scale base URL, set the optional environment variable:
+
+- **`ZEPHYR_BASE_URL`** – Base URL for the Zephyr Scale API (e.g. `https://eu.api.zephyrscale.smartbear.com/v2` for EU). If unset, the US endpoint is used.
 
 ### Getting API Tokens
 
@@ -226,6 +246,24 @@ await executeTest({
 // Get execution status
 await getTestExecutionStatus({ cycleId: "67890" });
 ```
+
+### Updating test cases
+```typescript
+// Update custom fields (e.g. "Created On", "Execution", "Target Platforms")
+await updateTestCase({
+  testCaseId: "CP-T4307",
+  customFields: { "Created On": "2026-03-11" }
+});
+
+// Update name and objective
+await updateTestCase({
+  testCaseId: "CP-T4307",
+  name: "Updated name",
+  objective: "Updated objective"
+});
+```
+
+The Zephyr Scale API requires a full payload for PUT; the server fetches the existing test case and merges your updates (including custom fields) before sending.
 
 ### Generating Reports
 ```typescript

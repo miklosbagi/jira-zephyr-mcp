@@ -90,6 +90,36 @@ export const getTestCaseSchema = z.object({
   testCaseId: z.string().min(1, 'Test case ID is required'),
 });
 
+export const updateTestCaseSchema = z.object({
+  testCaseId: z.string().min(1, 'Test case ID or key is required'),
+  name: z.string().min(1).optional(),
+  objective: z.string().optional(),
+  precondition: z.string().optional(),
+  estimatedTime: z.number().min(0).optional(),
+  priority: z.string().optional(),
+  status: z.string().optional(),
+  folderId: z.string().optional(),
+  labels: z.array(z.string()).optional(),
+  componentId: z.string().optional(),
+  customFields: z.record(z.any()).optional(),
+  testScript: z.object({
+    type: z.enum(['STEP_BY_STEP', 'PLAIN_TEXT']),
+    steps: z.array(z.object({
+      index: z.number().min(1),
+      description: z.string().min(1),
+      testData: z.string().optional(),
+      expectedResult: z.string().min(1),
+    })).optional(),
+    text: z.string().optional(),
+  }).optional(),
+}).refine(
+  data => {
+    const { testCaseId, ...updates } = data;
+    return Object.keys(updates).length >= 1;
+  },
+  { message: 'At least one field to update (name, objective, customFields, etc.) is required' }
+);
+
 export const createMultipleTestCasesSchema = z.object({
   testCases: z.array(createTestCaseSchema).min(1, 'At least one test case is required'),
   continueOnError: z.boolean().default(true),
@@ -107,4 +137,5 @@ export type GenerateTestReportInput = z.infer<typeof generateTestReportSchema>;
 export type CreateTestCaseInput = z.infer<typeof createTestCaseSchema>;
 export type SearchTestCasesInput = z.infer<typeof searchTestCasesSchema>;
 export type GetTestCaseInput = z.infer<typeof getTestCaseSchema>;
+export type UpdateTestCaseInput = z.infer<typeof updateTestCaseSchema>;
 export type CreateMultipleTestCasesInput = z.infer<typeof createMultipleTestCasesSchema>;
