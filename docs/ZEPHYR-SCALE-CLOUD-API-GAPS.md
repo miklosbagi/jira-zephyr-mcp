@@ -10,7 +10,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 |------|-------------|
 | **Test plans** | Create, list (by projectKey) |
 | **Test cycles** | Create, list (by projectKey, optional versionId) |
-| **Test executions** | Get one, update status/comment/defects, summary by cycle |
+| **Test executions** | Create (add test case to cycle), get one, update status/comment/defects, list in cycle, summary by cycle |
 | **Test cases** | Get one, search, create, update, create multiple |
 | **Links** | Link test case to Jira issue(s) (POST testcases/{id}/links) |
 | **Reporting** | Generate test report for a cycle (JSON/HTML) |
@@ -21,10 +21,10 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 ### 1. **Add test cases to a test cycle**
 
-- **API:** `POST /testcycles/{testCycleKey}/testcases`
+- **API (documented):** `POST /testcycles/{testCycleKey}/testcases`
 - **Body:** `{ "items": [ { "testCaseKey": "PROJ-1" }, ... ] }`
-- **Gap:** The server can create a cycle and create test cases, but there is no tool to add existing test cases to an existing cycle. Required for “create cycle → add tests → run” workflows.
-- **Ref:** [Community: add test cases to cycle](https://community.smartbear.com/discussions/zephyrscale/use-zephyr-scale-cloud-api-to-add-existing-test-cases-to-and-newly-created-test-/277335)
+- **MCP status:** Implemented (`add_test_cases_to_cycle`). The API is documented in [Zephyr Scale Cloud API docs](https://support.smartbear.com/zephyr-scale-cloud/api-docs/) (Test Cycles). In practice the endpoint can return 404 (“path doesn’t exist”) in some setups—e.g. EU base URL vs US, or when using a cycle key from **list** vs a key from **create**. If you create a cycle via the API and use the returned `key` immediately to add test cases, that flow is the one documented; keys from `GET /testcycles` may or may not be accepted depending on environment.
+- **Ref:** [Community: add test cases to cycle (same path, 404 reported)](https://community.smartbear.com/discussions/zephyrscale/use-zephyr-scale-cloud-api-to-add-existing-test-cases-to-and-newly-created-test-/277335)
 
 ### 2. **Get single test plan**
 
@@ -38,13 +38,13 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 ### 4. **List test cases (or executions) in a cycle**
 
-- **API:** e.g. `GET /testcycles/{testCycleKey}/testexecutions` (or testcases, depending on API).
-- **Gap:** No tool to list which test cases or executions belong to a cycle. Needed to inspect cycle contents and drive execution flows.
+- **API:** `GET /testexecutions?testCycle={cycleId}` (path `/testcycles/{id}/testexecutions` may not exist on all regions).
+- **MCP status:** Implemented (`list_test_executions_in_cycle`). Lists executions in a cycle by cycle id or key.
 
 ### 5. **Create test execution**
 
-- **API:** Likely `POST` to create a new execution (e.g. “run” a test in a cycle).
-- **Gap:** Only **update** of an existing execution is implemented (`execute_test`). Creating new executions (e.g. “start run” for a test case in a cycle) is not exposed.
+- **API:** `POST /testexecutions` with `projectKey`, `testCaseKey`, `testCycleKey`, `statusName` (e.g. “Not Executed”).
+- **MCP status:** Implemented (`create_test_execution`). Use to add a test case to a cycle by creating an execution with status “Not Executed”—this is the **recommended workaround when `add_test_cases_to_cycle` returns 404** (e.g. on EU API). Verified on EU.
 
 ### 6. **Folders**
 
@@ -99,11 +99,11 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 | # | Capability | Typical API | MCP status |
 |---|------------|-------------|------------|
-| 1 | Add test cases to cycle | POST testcycles/{key}/testcases | Not implemented |
+| 1 | Add test cases to cycle | POST testcycles/{key}/testcases | Implemented (per API docs); 404 in some envs |
 | 2 | Get test plan by key/id | GET testplans/{key} | Not implemented |
 | 3 | Get test cycle by key/id | GET testcycles/{key} | Not implemented |
-| 4 | List test cases/executions in cycle | GET testcycles/{key}/... | Not implemented |
-| 5 | Create test execution | POST (executions) | Not implemented |
+| 4 | List test cases/executions in cycle | GET testexecutions?testCycle=... | Implemented |
+| 5 | Create test execution | POST testexecutions | Implemented (workaround for add-to-cycle on EU) |
 | 6 | List/create folders | GET/POST folders | Not implemented |
 | 7 | List Zephyr projects | GET projects | Not implemented |
 | 8 | List priorities/statuses | GET priorities, statuses | Not implemented |

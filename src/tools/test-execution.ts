@@ -5,11 +5,13 @@ import {
   listTestExecutionsInCycleSchema,
   linkTestsToIssuesSchema,
   generateTestReportSchema,
+  createTestExecutionSchema,
   ExecuteTestInput,
   GetTestExecutionStatusInput,
   ListTestExecutionsInCycleInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
+  CreateTestExecutionInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
@@ -19,6 +21,36 @@ const getZephyrClient = (): ZephyrClient => {
     zephyrClient = new ZephyrClient();
   }
   return zephyrClient;
+};
+
+export const createTestExecution = async (input: CreateTestExecutionInput) => {
+  const validatedInput = createTestExecutionSchema.parse(input);
+  try {
+    const execution = await getZephyrClient().createTestExecution({
+      projectKey: validatedInput.projectKey,
+      testCaseKey: validatedInput.testCaseKey,
+      testCycleKey: validatedInput.testCycleKey,
+      statusName: validatedInput.statusName,
+      environmentName: validatedInput.environmentName,
+    });
+    return {
+      success: true,
+      data: {
+        id: execution.id,
+        key: execution.key,
+        cycleId: execution.cycleId,
+        testCaseId: execution.testCaseId,
+        status: execution.status,
+        executedOn: execution.executedOn,
+        executedBy: execution.executedBy?.displayName,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
 };
 
 export const executeTest = async (input: ExecuteTestInput) => {
