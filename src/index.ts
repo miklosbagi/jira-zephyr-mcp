@@ -19,6 +19,7 @@ import {
   generateTestReport,
 } from './tools/test-execution.js';
 import { createTestCase, searchTestCases, getTestCase, updateTestCase, createMultipleTestCases } from './tools/test-cases.js';
+import { listFolders, createFolder } from './tools/folders.js';
 import {
   readJiraIssueSchema,
   createTestPlanSchema,
@@ -30,6 +31,8 @@ import {
   listTestExecutionsInCycleSchema,
   addTestCasesToCycleSchema,
   createTestExecutionSchema,
+  listFoldersSchema,
+  createFolderSchema,
   linkTestsToIssuesSchema,
   generateTestReportSchema,
   createTestCaseSchema,
@@ -47,6 +50,8 @@ import {
   ListTestExecutionsInCycleInput,
   AddTestCasesToCycleInput,
   CreateTestExecutionInput,
+  ListFoldersInput,
+  CreateFolderInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
   CreateTestCaseInput,
@@ -226,6 +231,35 @@ const TOOLS = [
         format: { type: 'string', enum: ['JSON', 'HTML'], description: 'Report format (default: JSON)' },
       },
       required: ['cycleId'],
+    },
+  },
+  {
+    name: 'list_folders',
+    description: 'List folders in a project (for organizing test cases or test cycles). Optionally filter by type and parent folder.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key' },
+        folderType: { type: 'string', enum: ['TEST_CASE', 'TEST_CYCLE'], description: 'Filter by folder type (optional)' },
+        parentId: { type: 'number', description: 'List only children of this folder ID (optional)' },
+        limit: { type: 'number', description: 'Max results (default: 50)' },
+        startAt: { type: 'number', description: 'Offset for pagination (default: 0)' },
+      },
+      required: ['projectKey'],
+    },
+  },
+  {
+    name: 'create_folder',
+    description: 'Create a folder in a project (for organizing test cases or test cycles). Use parentId for subfolders.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key' },
+        name: { type: 'string', description: 'Folder name' },
+        parentId: { type: 'number', description: 'Parent folder ID for subfolders (optional)' },
+        folderType: { type: 'string', enum: ['TEST_CASE', 'TEST_CYCLE'], description: 'Folder type (optional; default may be TEST_CASE)' },
+      },
+      required: ['projectKey', 'name'],
     },
   },
   {
@@ -556,6 +590,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await generateTestReport(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_folders': {
+        const validatedArgs = validateInput<ListFoldersInput>(listFoldersSchema, args, 'list_folders');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listFolders(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'create_folder': {
+        const validatedArgs = validateInput<CreateFolderInput>(createFolderSchema, args, 'create_folder');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await createFolder(validatedArgs), null, 2),
             },
           ],
         };

@@ -12,6 +12,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | **Test cycles** | Create, list (by projectKey, optional versionId) |
 | **Test executions** | Create (add test case to cycle), get one, update status/comment/defects, list in cycle, summary by cycle |
 | **Test cases** | Get one, search, create, update, create multiple |
+| **Folders** | List (by projectKey, optional folderType, parentId), create (with optional parentId, folderType) |
 | **Links** | Link test case to Jira issue(s) (POST testcases/{id}/links) |
 | **Reporting** | Generate test report for a cycle (JSON/HTML) |
 
@@ -48,8 +49,8 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 ### 6. **Folders**
 
-- **API:** Folder endpoints for organizing test cases (list/create folders, possibly update/delete if documented).
-- **Gap:** Test cases can be created with `folderId`, but there is no tool to list folders or create a folder. Users cannot discover valid `folderId` values or create structure via MCP.
+- **API:** `GET /folders` (projectKey, folderType, parentId, pagination), `POST /folders` (projectKey, name, parentId?, folderType?).
+- **MCP status:** Implemented (`list_folders`, `create_folder`). List with optional folderType (TEST_CASE / TEST_CYCLE) and parentId for subfolders; create with optional parentId and folderType. Enables coherent folder structure for test cases and cycles; use returned folder `id` as `folderId` when creating/updating test cases.
 - **Ref:** [Community: folder/test case delete](https://community.smartbear.com/discussions/zephyrscale/zephyr-scale-api---how-to-delete-folder--test-case/266801)
 
 ### 7. **Zephyr projects**
@@ -104,7 +105,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 3 | Get test cycle by key/id | GET testcycles/{key} | Not implemented |
 | 4 | List test cases/executions in cycle | GET testexecutions?testCycle=... | Implemented |
 | 5 | Create test execution | POST testexecutions | Implemented (workaround for add-to-cycle on EU) |
-| 6 | List/create folders | GET/POST folders | Not implemented |
+| 6 | List/create folders | GET/POST folders | Implemented |
 | 7 | List Zephyr projects | GET projects | Not implemented |
 | 8 | List priorities/statuses | GET priorities, statuses | Not implemented |
 | 9 | List/manage environments | GET (environments) | Not implemented |
