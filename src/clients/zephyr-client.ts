@@ -369,11 +369,15 @@ export class ZephyrClient {
     };
 
     if (data.priority) {
-      payload.priority = data.priority;
+      payload.priority = typeof data.priority === 'object' && data.priority !== null && 'id' in data.priority
+        ? data.priority
+        : { id: Number(data.priority) || data.priority };
     }
 
     if (data.status) {
-      payload.status = data.status;
+      payload.status = typeof data.status === 'object' && data.status !== null && 'id' in data.status
+        ? data.status
+        : { id: Number(data.status) || data.status };
     }
 
     if (data.folderId) {

@@ -149,6 +149,7 @@ create_folder({ projectKey: "ABC", name: "Subfolder", parentId: 12345 });
 ```ts
 list_priorities({ projectKey: "ABC" });   // or omit projectKey for all
 list_statuses({ projectKey: "ABC" });     // use returned id in create_test_case / update_test_case
+create_test_case({ projectKey: "ABC", name: "...", priority: "365033" });  // priority/status sent as { id } to API
 ```
 
 **Test cases**

@@ -62,7 +62,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 ### 8. **Priorities and statuses (lookups)**
 
 - **API:** `GET /priorities`, `GET /statuses` (optional projectKey).
-- **MCP status:** Implemented (`list_priorities`, `list_statuses`). Returns id and name for each; use these ids when creating or updating test cases (priority, status fields).
+- **MCP status:** Implemented (`list_priorities`, `list_statuses`). Returns id and name for each; use these ids when creating or updating test cases (priority, status fields). Create test case sends priority/status as `{ id: <id> }` so the API accepts them (v0.6.1).
 
 ### 9. **Environments**
 
