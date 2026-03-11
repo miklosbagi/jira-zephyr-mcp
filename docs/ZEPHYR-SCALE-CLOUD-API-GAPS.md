@@ -77,8 +77,16 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 ### 11. **Test steps as a separate resource**
 
-- **API:** If the Cloud v2 API exposes e.g. `GET/POST/PUT/DELETE /testcases/{key}/teststeps` for managing steps independently.
-- **Gap:** Steps are only supported inline in create/update test case (`testScript.steps`). No dedicated “list/edit/delete steps” for an existing test case if the API supports it.
+- **API:** Cloud v2 exposes `GET/POST/PUT/DELETE /testcases/{key}/teststeps` for managing steps independently.
+- **MCP status:** Implemented (v0.7). `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step`. Steps are normalized (description, expectedResult, testData) regardless of API field names (step/data/result). Test script types supported in create/update test case: **STEP_BY_STEP** (default when steps provided), **PLAIN_TEXT** (free text), **CUCUMBER** (BDD/Gherkin; support may vary by instance).
+
+### 11b. **Setting test script type to BDD (Gherkin) via public API**
+
+- **Observed behaviour:** Plain text works via Scale API `PUT /testcases/{key}/testscript` with `{ plainScript: { text } }`. The same endpoint accepts `{ bddScript: { text } }` (no error) but the test case remains **Step-by-step** in the UI; the script type is not changed.
+- **UI behaviour:** When switching to BDD in the Zephyr UI, the browser calls **TM4J app backend** `PUT https://eu.app.tm4j.smartbear.com/backend/rest/tests/2.0/testcase/{id}` with body `{ id, projectId, testScript: { bddScript: { text } } }`. That backend is not the public Scale API; calling it with the same Bearer token returns **404 Tenant could not be found** (tenant likely resolved from session/cookies in the browser).
+- **What users report:** Community threads ([Create test script](https://community.smartbear.com/discussions/zephyrscale/api-documentation-for-create-test-script/215537), [Step-by-step vs Plain text](https://community.smartbear.com/discussions/zephyrscale/does-zephyr-support-both-test-script-types-step-by-step-and-plain-text-for-same-/219729)) describe the **Create test script** endpoint with a `type` parameter (e.g. `"steps"`); examples for multiple steps or non-steps types are limited. No clear success stories for setting BDD via the **public** Scale API only.
+- **Other product (Zephyr Squad Cloud):** The [BDD Content API](https://zephyr-squad-cloud-v1.sb-docs.com/en/zephyr-squad-cloud-rest-api/bdd-content-api) uses a different base URL (`prod-api.zephyr4jiracloud.com`), works with issues that have labels `BDD_Feature` / `BDD_Scenario`, and uses Jira issue ID (not test case key). That is a different product/API from Zephyr Scale.
+- **Conclusion / workaround:** With the **public Zephyr Scale API** (api.zephyrscale.smartbear.com) we can create test cases and set **plain text** script; **BDD** type appears to be applied only via the **TM4J app backend**, which is not reliably callable with the same API token (tenant/404). Workaround: create the test case via API, then set script type to BDD and paste Gherkin content **manually in the UI**, or use a different integration (e.g. Atlassian Connect–style endpoint or session-based auth) if available.
 
 ### 12. **Remove test case from cycle**
 
@@ -111,10 +119,32 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 8 | List priorities/statuses | GET priorities, statuses | Implemented |
 | 9 | List/manage environments | GET (environments) | Not implemented |
 | 10 | Archive/delete test case | Archive + delete (per docs) | Not implemented |
-| 11 | Test steps CRUD (if separate) | testcases/{key}/teststeps | Not implemented |
+| 11 | Test steps CRUD | testcases/{key}/teststeps | Implemented (v0.7) |
 | 12 | Remove test case from cycle | DELETE (if exists) | Not implemented |
 | 13 | Update test plan / test cycle | PUT testplans, testcycles | Not implemented |
 | 14 | Bulk operations (executions, cycle) | Bulk endpoints (if any) | Not implemented |
+
+---
+
+## Known issues (with evidence)
+
+These are limitations or bugs we have confirmed and for which we have references (community threads, API behaviour).
+
+### BDD script type cannot be set via the public Scale API
+
+- **Conclusion:** The public Zephyr Scale API does not switch a test case’s script type to BDD. Sending `PUT /testcases/{key}/testscript` with `{ bddScript: { text } }` is accepted (no error) but the UI stays Step-by-step. The UI uses the **TM4J app backend** (`eu.app.tm4j.smartbear.com/backend/rest/tests/2.0/testcase/{id}`) to set BDD; calling that backend with the same Bearer token returns **404 Tenant could not be found**.
+- **References:**
+  - [API Documentation for Create test script](https://community.smartbear.com/discussions/zephyrscale/api-documentation-for-create-test-script/215537) — describes Create test script with limited examples for script types.
+  - [Step-by-step vs Plain text (same test case)](https://community.smartbear.com/discussions/zephyrscale/does-zephyr-support-both-test-script-types-step-by-step-and-plain-text-for-same-/219729) — discussion of script types; no clear success for BDD via public API only.
+- **Documentation:** The official API docs do not describe how to create or set BDD script type via the API; BDD is documented only in the UI (Test Script tab → Type dropdown → BDD - Gherkin). So BDD via API is **underdocumented** at best.
+- **Tried:** On create: `testScript: { type: 'bdd' }` and `type: 'bddScript'`; after create: PUT with `bddScript: { text }`, and PUT with `{ type: 'bdd' | 'bddScript', bddScript: { text } }` or `{ type, text }`. All accepted; UI still shows Step-by-step. Plain text and step-by-step work via the same API. **Conclusion: likely a product bug or undocumented limitation** (only BDD cannot be set via the public API).
+- **Workaround:** Create the test case via API, then set script type to BDD and paste Gherkin in the UI; or use an integration that can call the TM4J app backend with session/tenant context.
+
+### Step-by-step: bulk “createTestCaseTestSteps” fails; add steps one-by-one
+
+- **Observed:** When creating a test case with step-by-step script, a post-create call to add steps using the documented bulk shape fails. Sending `POST /testcases/{key}/teststeps` with `{ mode: "APPEND", items: [ { inline: { description, testData, expectedResult }, testCase: { testCaseKey, self } } ] }` returns **400** with message like **`createTestCaseTestSteps: must not be null`** (US) or **`createTestCaseTestSteps.mode: must not be null`** (EU). Wrapping in `{ createTestCaseTestSteps: { mode, items } }` does not resolve it on EU.
+- **Community evidence:** [Test to write to Zephyr Scale – createTestCaseTestSteps: must not be null](https://community.smartbear.com/discussions/zephyrscale/test-to-write-to-zphyr-scales--errorcode400messagecreatetestcaseteststeps-must-n/235621) — same payload and same error (bulk with `mode` and `items`).
+- **Workaround:** Add steps **one at a time** with a **flat** body per step: `POST /testcases/{key}/teststeps` with `{ description, expectedResult, testData }` (or `step` / `result` / `data`). The MCP server uses this single-step contract for `create_test_step` and for the step-by-step fallback after create.
 
 ---
 

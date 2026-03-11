@@ -105,7 +105,8 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **list_test_executions_in_cycle** | List test cases and executions in a cycle. |
 | **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
 | **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
-| **create_test_case** / **search_test_cases** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, get, update (including custom fields), bulk create. |
+| **create_test_case** / **search_test_cases** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
+| **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). |
 | **execute_test** | Update test execution status (PASS/FAIL/WIP/BLOCKED). |
 | **get_test_execution_status** | Execution progress and stats for a cycle. |
 | **link_tests_to_issues** | Link test cases to JIRA issues. |
@@ -152,13 +153,23 @@ list_statuses({ projectKey: "ABC" });     // use returned id in create_test_case
 create_test_case({ projectKey: "ABC", name: "...", priority: "365033" });  // priority/status sent as { id } to API
 ```
 
-**Test cases**
+**Test cases and script types**
 ```ts
 create_test_case({ projectKey: "ABC", name: "Login test", objective: "...", testScript: { type: "STEP_BY_STEP", steps: [...] }, customFields: { "Execution": "Manual" } });
+create_test_case({ projectKey: "ABC", name: "Free text test", testScript: { type: "PLAIN_TEXT", text: "Manual instructions here." } });
+create_test_case({ projectKey: "ABC", name: "BDD scenario", testScript: { type: "CUCUMBER", text: "Given ... When ... Then ..." });  // CUCUMBER if supported by instance
 search_test_cases({ projectKey: "ABC", query: "login", limit: 20 });
 get_test_case({ testCaseId: "ABC-T123" });
 update_test_case({ testCaseId: "ABC-T123", customFields: { "Created On": "2026-03-11" } });
 create_multiple_test_cases({ testCases: [...], continueOnError: true });
+```
+
+**Test steps (step-by-step test cases)**
+```ts
+list_test_steps({ testCaseKey: "ABC-T123" });
+create_test_step({ testCaseKey: "ABC-T123", description: "Click Login", expectedResult: "Form submits", testData: "user@example.com" });
+update_test_step({ testCaseKey: "ABC-T123", stepId: 1, expectedResult: "Redirect to dashboard" });
+delete_test_step({ testCaseKey: "ABC-T123", stepId: 2 });
 ```
 
 **Execution and reporting**
@@ -229,10 +240,9 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Folders** — `list_folders` and `create_folder` (filter by folderType, parentId for hierarchy).
 - [x] **Priorities and statuses** — `list_priorities` and `list_statuses` (id and name for create/update test case).
 - [ ] **Zephyr projects list** — List projects from Zephyr API for projectKey discovery.
-- [ ] **Priorities and statuses** — List valid priority/status values for test cases.
 - [ ] **Environments** — List or manage environments for cycles.
 - [ ] **Test case archive / delete** — Archive and delete test cases (per Zephyr docs).
-- [ ] **Test steps as separate resource** — If the API supports it: list/edit/delete steps for a test case independently.
+- [x] **Test steps as separate resource** — `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` (v0.7). Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER.
 - [ ] **Remove test case from cycle** — Remove a test from a cycle (if supported by API).
 - [ ] **Update test plan / test cycle** — PUT for plans and cycles (rename, dates, status).
 - [ ] **Bulk operations** — Bulk execution updates or bulk add-to-cycle (beyond `create_multiple_test_cases`).
