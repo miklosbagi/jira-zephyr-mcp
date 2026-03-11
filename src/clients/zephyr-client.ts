@@ -129,9 +129,12 @@ export class ZephyrClient {
     executions: ZephyrTestExecution[];
     total: number;
   }> {
-    const response = await this.client.get(`/testcycles/${cycleId}/testexecutions`);
+    // Zephyr Scale Cloud: use query param (path /testcycles/{id}/testexecutions may not exist)
+    const response = await this.client.get('/testexecutions', {
+      params: { testCycle: cycleId },
+    });
     const executions = response.data.values || response.data || [];
-    const total = response.data.total ?? executions.length;
+    const total = response.data.total ?? (Array.isArray(executions) ? executions.length : 0);
     return { executions: Array.isArray(executions) ? executions : [], total };
   }
 
