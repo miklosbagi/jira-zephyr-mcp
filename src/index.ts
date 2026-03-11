@@ -9,7 +9,7 @@ import {
 
 import { readJiraIssue } from './tools/jira-issues.js';
 import { createTestPlan, listTestPlans } from './tools/test-plans.js';
-import { createTestCycle, listTestCycles, addTestCasesToCycle } from './tools/test-cycles.js';
+import { createTestCycle, listTestCycles, addTestCasesToCycle, updateTestCycle } from './tools/test-cycles.js';
 import {
   createTestExecution,
   executeTest,
@@ -26,6 +26,7 @@ import {
   listTestPlansSchema,
   createTestCycleSchema,
   listTestCyclesSchema,
+  updateTestCycleSchema,
   executeTestSchema,
   getTestExecutionStatusSchema,
   listTestExecutionsInCycleSchema,
@@ -45,6 +46,7 @@ import {
   ListTestPlansInput,
   CreateTestCycleInput,
   ListTestCyclesInput,
+  UpdateTestCycleInput,
   ExecuteTestInput,
   GetTestExecutionStatusInput,
   ListTestExecutionsInCycleInput,
@@ -126,11 +128,29 @@ const TOOLS = [
         description: { type: 'string', description: 'Test cycle description (optional)' },
         projectKey: { type: 'string', description: 'JIRA project key' },
         versionId: { type: 'string', description: 'JIRA version ID' },
+        folderId: { type: 'string', description: 'Folder ID (TEST_CYCLE) to place the cycle in (optional)' },
         environment: { type: 'string', description: 'Test environment (optional)' },
         startDate: { type: 'string', description: 'Planned start date (ISO format, optional)' },
         endDate: { type: 'string', description: 'Planned end date (ISO format, optional)' },
       },
       required: ['name', 'projectKey', 'versionId'],
+    },
+  },
+  {
+    name: 'update_test_cycle',
+    description: 'Update a test cycle (e.g. name, description, folderId, dates)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cycleKey: { type: 'string', description: 'Test cycle key (e.g. CP-R32)' },
+        name: { type: 'string', description: 'New name (optional)' },
+        description: { type: 'string', description: 'New description (optional)' },
+        folderId: { type: 'string', description: 'Move to this folder ID (optional)' },
+        environment: { type: 'string', description: 'Environment (optional)' },
+        startDate: { type: 'string', description: 'Planned start date ISO (optional)' },
+        endDate: { type: 'string', description: 'Planned end date ISO (optional)' },
+      },
+      required: ['cycleKey'],
     },
   },
   {
@@ -494,6 +514,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await createTestCycle(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'update_test_cycle': {
+        const validatedArgs = validateInput<UpdateTestCycleInput>(updateTestCycleSchema, args, 'update_test_cycle');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await updateTestCycle(validatedArgs), null, 2),
             },
           ],
         };
