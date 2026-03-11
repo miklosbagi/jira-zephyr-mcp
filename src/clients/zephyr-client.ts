@@ -261,6 +261,56 @@ export class ZephyrClient {
     return response.data;
   }
 
+  async updateTestCase(testCaseKey: string, data: {
+    name?: string;
+    objective?: string;
+    precondition?: string;
+    estimatedTime?: number;
+    priority?: string;
+    status?: string;
+    folderId?: string;
+    labels?: string[];
+    componentId?: string;
+    customFields?: Record<string, any>;
+    testScript?: {
+      type: 'STEP_BY_STEP' | 'PLAIN_TEXT';
+      steps?: Array<{
+        index: number;
+        description: string;
+        testData?: string;
+        expectedResult: string;
+      }>;
+      text?: string;
+    };
+  }): Promise<ZephyrTestCase> {
+    const existing = await this.getTestCase(testCaseKey);
+    const projectId = existing.project?.id ?? (existing as any).projectKey;
+    const priorityId = existing.priority?.id ?? (existing as any).priority;
+    const statusId = existing.status?.id ?? (existing as any).status;
+    const payload: Record<string, any> = {
+      id: existing.id,
+      key: existing.key,
+      name: data.name !== undefined ? data.name : existing.name,
+      project: { id: projectId },
+      priority: { id: data.priority !== undefined ? data.priority : priorityId },
+      status: { id: data.status !== undefined ? data.status : statusId },
+      objective: data.objective !== undefined ? data.objective : existing.objective,
+      precondition: data.precondition !== undefined ? data.precondition : existing.precondition,
+      estimatedTime: data.estimatedTime !== undefined ? data.estimatedTime : existing.estimatedTime,
+      folderId: data.folderId !== undefined ? data.folderId : existing.folder?.id,
+      labels: data.labels !== undefined ? data.labels : existing.labels ?? [],
+      componentId: data.componentId !== undefined ? data.componentId : existing.component?.id,
+      customFields: {
+        ...(existing.customFields ?? {}),
+        ...(data.customFields ?? {}),
+      },
+    };
+    if (data.testScript !== undefined) payload.testScript = data.testScript;
+
+    const response = await this.client.put(`/testcases/${testCaseKey}`, payload);
+    return response.data;
+  }
+
   async createMultipleTestCases(testCases: Array<{
     projectKey: string;
     name: string;

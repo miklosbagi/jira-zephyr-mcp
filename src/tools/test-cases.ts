@@ -4,9 +4,11 @@ import {
   createTestCaseSchema,
   searchTestCasesSchema,
   createMultipleTestCasesSchema,
+  updateTestCaseSchema,
   CreateTestCaseInput,
   SearchTestCasesInput,
   CreateMultipleTestCasesInput,
+  UpdateTestCaseInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
@@ -133,6 +135,31 @@ export const getTestCase = async (input: { testCaseId: string }) => {
         customFields: testCase.customFields,
         links: testCase.links,
         testScript: testCase.testScript,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const updateTestCase = async (input: UpdateTestCaseInput) => {
+  const validatedInput = updateTestCaseSchema.parse(input);
+  const { testCaseId, ...updates } = validatedInput;
+  try {
+    const testCase = await getZephyrClient().updateTestCase(testCaseId, updates);
+    return {
+      success: true,
+      data: {
+        id: testCase.id,
+        key: testCase.key,
+        name: testCase.name,
+        customFields: testCase.customFields,
+        links: {
+          self: `https://api.zephyrscale.smartbear.com/v2/testcases/${testCase.key}`,
+        },
       },
     };
   } catch (error: any) {
