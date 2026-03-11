@@ -70,33 +70,36 @@ export const listTestCycles = async (input: ListTestCyclesInput) => {
       success: true,
       data: {
         total: result.total,
-        testCycles: result.testCycles.map(cycle => ({
-          id: cycle.id,
-          key: cycle.key,
-          name: cycle.name,
-          description: cycle.description,
-          projectId: cycle.projectId,
-          versionId: cycle.versionId,
-          environment: cycle.environment,
-          status: cycle.status,
-          plannedStartDate: cycle.plannedStartDate,
-          plannedEndDate: cycle.plannedEndDate,
-          actualStartDate: cycle.actualStartDate,
-          actualEndDate: cycle.actualEndDate,
-          createdOn: cycle.createdOn,
-          updatedOn: cycle.updatedOn,
-          executionSummary: {
-            total: cycle.executionSummary.total,
-            passed: cycle.executionSummary.passed,
-            failed: cycle.executionSummary.failed,
-            blocked: cycle.executionSummary.blocked,
-            inProgress: cycle.executionSummary.inProgress,
-            notExecuted: cycle.executionSummary.notExecuted,
-            passRate: cycle.executionSummary.total > 0 
-              ? Math.round((cycle.executionSummary.passed / cycle.executionSummary.total) * 100)
-              : 0,
-          },
-        })),
+        testCycles: result.testCycles.map(cycle => {
+          const summary = cycle.executionSummary ?? {};
+          return {
+            id: cycle.id,
+            key: cycle.key,
+            name: cycle.name,
+            description: cycle.description,
+            projectId: cycle.projectId,
+            versionId: cycle.versionId,
+            environment: cycle.environment,
+            status: cycle.status,
+            plannedStartDate: cycle.plannedStartDate,
+            plannedEndDate: cycle.plannedEndDate,
+            actualStartDate: cycle.actualStartDate,
+            actualEndDate: cycle.actualEndDate,
+            createdOn: cycle.createdOn,
+            updatedOn: cycle.updatedOn,
+            executionSummary: {
+              total: summary.total ?? 0,
+              passed: summary.passed ?? 0,
+              failed: summary.failed ?? 0,
+              blocked: summary.blocked ?? 0,
+              inProgress: summary.inProgress ?? 0,
+              notExecuted: summary.notExecuted ?? 0,
+              passRate: (summary.total ?? 0) > 0
+                ? Math.round(((summary.passed ?? 0) / (summary.total ?? 1)) * 100)
+                : 0,
+            },
+          };
+        }),
       },
     };
   } catch (error: any) {

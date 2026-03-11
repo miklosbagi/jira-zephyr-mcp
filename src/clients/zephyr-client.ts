@@ -90,9 +90,10 @@ export class ZephyrClient {
     };
 
     const response = await this.client.get('/testcycles', { params });
+    const testCycles = Array.isArray(response.data.values) ? response.data.values : (Array.isArray(response.data) ? response.data : []);
     return {
-      testCycles: response.data.values || response.data,
-      total: response.data.total || response.data.length,
+      testCycles,
+      total: response.data.total ?? testCycles.length,
     };
   }
 
