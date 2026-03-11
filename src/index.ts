@@ -493,13 +493,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 async function main() {
   try {
-    console.error('Starting Jira Zephyr MCP server...');
-    
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    
-    console.error('Jira Zephyr MCP server running...');
-    
+
     // Handle graceful shutdown
     process.on('SIGINT', () => {
       console.error('Received SIGINT, shutting down gracefully...');

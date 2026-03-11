@@ -8,6 +8,7 @@ const configSchema = z.object({
   JIRA_USERNAME: z.string().email(),
   JIRA_API_TOKEN: z.string().min(1),
   ZEPHYR_API_TOKEN: z.string().min(1),
+  ZEPHYR_BASE_URL: z.string().url().optional(),
 });
 
 let cachedConfig: z.infer<typeof configSchema> | null = null;
@@ -49,6 +50,13 @@ export const getJiraAuth = () => {
     username: config.JIRA_USERNAME,
     password: config.JIRA_API_TOKEN,
   };
+};
+
+const DEFAULT_ZEPHYR_BASE_URL = 'https://api.zephyrscale.smartbear.com/v2';
+
+export const getZephyrBaseUrl = (): string => {
+  const config = getAppConfig();
+  return config.ZEPHYR_BASE_URL ?? DEFAULT_ZEPHYR_BASE_URL;
 };
 
 export const getZephyrHeaders = () => {

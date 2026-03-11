@@ -1,4 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { getZephyrBaseUrl } from '../utils/config.js';
 import {
   createTestCaseSchema,
   searchTestCasesSchema,
@@ -54,7 +55,7 @@ export const createTestCase = async (input: CreateTestCaseInput) => {
         owner: testCase.owner?.accountId,
         createdOn: testCase.createdOn,
         links: {
-          self: `https://api.zephyrscale.smartbear.com/v2/testcases/${testCase.key}`,
+          self: `${getZephyrBaseUrl().replace(/\/$/, '')}/testcases/${testCase.key}`,
           issues: testCase.links?.issues?.length || 0,
         },
       },
@@ -173,7 +174,7 @@ export const createMultipleTestCases = async (input: CreateMultipleTestCasesInpu
             owner: r.data?.owner?.accountId,
             createdOn: r.data?.createdOn,
             links: {
-              self: r.data ? `https://api.zephyrscale.smartbear.com/v2/testcases/${r.data.key}` : undefined,
+              self: r.data ? `${getZephyrBaseUrl().replace(/\/$/, '')}/testcases/${r.data.key}` : undefined,
             },
           } : undefined,
           error: r.error,

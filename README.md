@@ -47,12 +47,15 @@ Clone the project, then add the following to your Cursor configuration:
         "JIRA_BASE_URL": "https://your-domain.atlassian.net",
         "JIRA_USERNAME": "your-email@company.com",
         "JIRA_API_TOKEN": "your-jira-api-token",
-        "ZEPHYR_API_TOKEN": "your-zephyr-api-token"
+        "ZEPHYR_API_TOKEN": "your-zephyr-api-token",
+        "ZEPHYR_BASE_URL": "https://eu.api.zephyrscale.smartbear.com/v2"
       }
     }
   }
 }
 ```
+
+Set `ZEPHYR_BASE_URL` only when using the EU (or another) Zephyr Scale endpoint; omit it for the default US endpoint.
 
 #### Using Docker
 
@@ -63,17 +66,20 @@ Alternatively, you can configure Cursor to run the MCP server in Docker (ensure 
   "mcpServers": {
     "jira-zephyr": {
       "command": "docker",
-      "args": ["run", "--rm", "-i","-e","JIRA_BASE_URL","-e","JIRA_USERNAME","-e","JIRA_API_TOKEN","-e","ZEPHYR_API_TOKEN", "jira-zephyr-mcp"],
+      "args": ["run", "--rm", "-i","-e","JIRA_BASE_URL","-e","JIRA_USERNAME","-e","JIRA_API_TOKEN","-e","ZEPHYR_API_TOKEN","-e","ZEPHYR_BASE_URL", "jira-zephyr-mcp"],
       "env": {
         "JIRA_BASE_URL": "https://your-domain.atlassian.net",
         "JIRA_USERNAME": "your-email@company.com",
         "JIRA_API_TOKEN": "your-jira-api-token",
-        "ZEPHYR_API_TOKEN": "your-zephyr-api-token"
+        "ZEPHYR_API_TOKEN": "your-zephyr-api-token",
+        "ZEPHYR_BASE_URL": "https://eu.api.zephyrscale.smartbear.com/v2"
       }
     }
   }
 }
 ```
+
+Pass `-e ZEPHYR_BASE_URL` in the `docker run` args if you use the EU endpoint.
 
 ## Installation (for development)
 
@@ -106,7 +112,16 @@ JIRA_BASE_URL=https://your-domain.atlassian.net
 JIRA_USERNAME=your-email@company.com
 JIRA_API_TOKEN=your-jira-api-token
 ZEPHYR_API_TOKEN=your-zephyr-api-token
+# Optional: Zephyr API base URL (default: https://api.zephyrscale.smartbear.com/v2)
+# Use EU endpoint: ZEPHYR_BASE_URL=https://eu.api.zephyrscale.smartbear.com/v2
+ZEPHYR_BASE_URL=https://api.zephyrscale.smartbear.com/v2
 ```
+
+### Configurable Zephyr API base URL
+
+By default the server uses the US Zephyr Scale endpoint (`https://api.zephyrscale.smartbear.com/v2`). To use the **EU endpoint** or another Zephyr Scale base URL, set the optional environment variable:
+
+- **`ZEPHYR_BASE_URL`** – Base URL for the Zephyr Scale API (e.g. `https://eu.api.zephyrscale.smartbear.com/v2` for EU). If unset, the US endpoint is used.
 
 ### Getting API Tokens
 
