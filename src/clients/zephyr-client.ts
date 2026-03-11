@@ -90,10 +90,41 @@ export class ZephyrClient {
     };
 
     const response = await this.client.get('/testcycles', { params });
+    const testCycles = Array.isArray(response.data.values) ? response.data.values : (Array.isArray(response.data) ? response.data : []);
     return {
-      testCycles: response.data.values || response.data,
-      total: response.data.total || response.data.length,
+      testCycles,
+      total: response.data.total ?? testCycles.length,
     };
+  }
+
+  async addTestCasesToCycle(cycleKey: string, testCaseKeys: string[]): Promise<void> {
+    const payload = {
+      items: testCaseKeys.map(testCaseKey => ({ testCaseKey })),
+    };
+    await this.client.post(`/testcycles/${cycleKey}/testcases`, payload);
+  }
+
+  /**
+   * Create a test execution (workaround for adding test cases to a cycle when
+   * POST /testcycles/{key}/testcases is not available, e.g. on EU API).
+   * Use statusName "Not Executed" to mimic adding a test case to a cycle in the UI.
+   */
+  async createTestExecution(data: {
+    projectKey: string;
+    testCaseKey: string;
+    testCycleKey: string;
+    statusName?: string;
+    environmentName?: string;
+  }): Promise<ZephyrTestExecution> {
+    const payload = {
+      projectKey: data.projectKey,
+      testCaseKey: data.testCaseKey,
+      testCycleKey: data.testCycleKey,
+      statusName: data.statusName ?? 'Not Executed',
+      ...(data.environmentName && { environmentName: data.environmentName }),
+    };
+    const response = await this.client.post('/testexecutions', payload);
+    return response.data;
   }
 
   async getTestExecution(executionId: string): Promise<ZephyrTestExecution> {
@@ -117,9 +148,21 @@ export class ZephyrClient {
     return response.data;
   }
 
+  async getTestExecutionsInCycle(cycleId: string): Promise<{
+    executions: ZephyrTestExecution[];
+    total: number;
+  }> {
+    // Zephyr Scale Cloud: use query param (path /testcycles/{id}/testexecutions may not exist)
+    const response = await this.client.get('/testexecutions', {
+      params: { testCycle: cycleId },
+    });
+    const executions = response.data.values || response.data || [];
+    const total = response.data.total ?? (Array.isArray(executions) ? executions.length : 0);
+    return { executions: Array.isArray(executions) ? executions : [], total };
+  }
+
   async getTestExecutionSummary(cycleId: string): Promise<ZephyrExecutionSummary> {
-    const response = await this.client.get(`/testcycles/${cycleId}/testexecutions`);
-    const executions = response.data.values;
+    const { executions } = await this.getTestExecutionsInCycle(cycleId);
 
     const summary = executions.reduce(
       (acc: any, execution: any) => {

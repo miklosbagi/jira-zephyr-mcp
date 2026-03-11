@@ -100,6 +100,9 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **read_jira_issue** | Get JIRA issue details (optional fields). |
 | **create_test_plan** / **list_test_plans** | Create and list test plans. |
 | **create_test_cycle** / **list_test_cycles** | Create and list test cycles. |
+| **list_test_executions_in_cycle** | List test cases and executions in a cycle. |
+| **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
+| **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
 | **create_test_case** / **search_test_cases** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, get, update (including custom fields), bulk create. |
 | **execute_test** | Update test execution status (PASS/FAIL/WIP/BLOCKED). |
 | **get_test_execution_status** | Execution progress and stats for a cycle. |
@@ -126,6 +129,10 @@ list_test_plans({ projectKey: "ABC", limit: 50 });
 ```ts
 create_test_cycle({ name: "Sprint 10", projectKey: "ABC", versionId: "10001", environment: "Production" });
 list_test_cycles({ projectKey: "ABC", limit: 25 });
+list_test_executions_in_cycle({ cycleId: "ABC-R1" });
+add_test_cases_to_cycle({ cycleKey: "ABC-R1", testCaseKeys: ["ABC-T1", "ABC-T2"] });
+// If add_test_cases_to_cycle returns 404 (e.g. EU API), use create_test_execution per test case:
+create_test_execution({ projectKey: "ABC", testCycleKey: "ABC-R1", testCaseKey: "ABC-T1" });
 ```
 
 **Test cases**
@@ -164,11 +171,13 @@ npm run build
 
 | Script | Purpose |
 |--------|---------|
-| `npm run build` | Compile TypeScript. |
+| `npm run build` | Compile TypeScript (server + optional script). |
 | `npm run dev` | Build and watch. |
 | `npm run lint` | ESLint. |
 | `npm run typecheck` | TypeScript check. |
 | `npm start` | Run `dist/index.js`. |
+
+To test adding a test case to a cycle via Create Test Execution (e.g. when on EU and `add_test_cases_to_cycle` returns 404): set env (or use `.env`), then `node dist/scripts/test-create-execution.js [projectKey] [testCycleKey] [testCaseKey]` (defaults: CP, CP-R31, CP-T4305).
 
 **Project layout:** `src/index.ts` (MCP server), `src/clients/` (JIRA and Zephyr API clients), `src/tools/` (tool handlers), `src/types/`, `src/utils/` (config, validation). To publish new image versions, see `scripts/push-multi-arch.sh`.
 
@@ -196,10 +205,10 @@ To build and run from source (contributors): `docker build -t jira-zephyr-mcp:la
 
 Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API](https://support.smartbear.com/zephyr-scale-cloud/api-docs/) capabilities not yet exposed by this server. See [docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md) for details.
 
-- [ ] **Add test cases to a test cycle** — `POST /testcycles/{key}/testcases` so existing tests can be added to a cycle (create cycle → add tests → run).
+- [x] **Add test cases to a test cycle** — `add_test_cases_to_cycle` calls `POST /testcycles/{key}/testcases`. On EU API this often returns 404; use **create_test_execution** (one per test case, status “Not Executed”) as a workaround.
+- [x] **List test cases or executions in a cycle** — `list_test_executions_in_cycle` lists executions in a cycle (by cycle id/key).
+- [x] **Create test execution** — `create_test_execution` creates a test execution (e.g. add test case to cycle with status “Not Executed”).
 - [ ] **Get single test plan / test cycle** — Fetch one plan or cycle by key/id (today only list is exposed).
-- [ ] **List test cases or executions in a cycle** — See which tests and executions belong to a cycle.
-- [ ] **Create test execution** — Start a new execution for a test in a cycle (today only update of existing execution).
 - [ ] **Folders** — List and create folders (today `folderId` is accepted but folders cannot be listed or created).
 - [ ] **Zephyr projects list** — List projects from Zephyr API for projectKey discovery.
 - [ ] **Priorities and statuses** — List valid priority/status values for test cases.

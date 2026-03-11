@@ -9,10 +9,12 @@ import {
 
 import { readJiraIssue } from './tools/jira-issues.js';
 import { createTestPlan, listTestPlans } from './tools/test-plans.js';
-import { createTestCycle, listTestCycles } from './tools/test-cycles.js';
+import { createTestCycle, listTestCycles, addTestCasesToCycle } from './tools/test-cycles.js';
 import {
+  createTestExecution,
   executeTest,
   getTestExecutionStatus,
+  listTestExecutionsInCycle,
   linkTestsToIssues,
   generateTestReport,
 } from './tools/test-execution.js';
@@ -25,6 +27,9 @@ import {
   listTestCyclesSchema,
   executeTestSchema,
   getTestExecutionStatusSchema,
+  listTestExecutionsInCycleSchema,
+  addTestCasesToCycleSchema,
+  createTestExecutionSchema,
   linkTestsToIssuesSchema,
   generateTestReportSchema,
   createTestCaseSchema,
@@ -39,6 +44,9 @@ import {
   ListTestCyclesInput,
   ExecuteTestInput,
   GetTestExecutionStatusInput,
+  ListTestExecutionsInCycleInput,
+  AddTestCasesToCycleInput,
+  CreateTestExecutionInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
   CreateTestCaseInput,
@@ -131,6 +139,44 @@ const TOOLS = [
         limit: { type: 'number', description: 'Maximum number of results (default: 50)' },
       },
       required: ['projectKey'],
+    },
+  },
+  {
+    name: 'list_test_executions_in_cycle',
+    description: 'List test cases and executions in a test cycle',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cycleId: { type: 'string', description: 'Test cycle ID or key' },
+      },
+      required: ['cycleId'],
+    },
+  },
+  {
+    name: 'add_test_cases_to_cycle',
+    description: 'Add existing test cases to a test cycle',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cycleKey: { type: 'string', description: 'Test cycle key (e.g. PROJ-C1)' },
+        testCaseKeys: { type: 'array', items: { type: 'string' }, description: 'Test case keys to add (e.g. [\'PROJ-T1\', \'PROJ-T2\'])' },
+      },
+      required: ['cycleKey', 'testCaseKeys'],
+    },
+  },
+  {
+    name: 'create_test_execution',
+    description: 'Create a test execution (add a test case to a cycle). Use when add_test_cases_to_cycle returns 404 (e.g. EU API). Status "Not Executed" mimics adding via UI.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key (e.g. CP)' },
+        testCaseKey: { type: 'string', description: 'Test case key (e.g. CP-T4305)' },
+        testCycleKey: { type: 'string', description: 'Test cycle key (e.g. CP-R31)' },
+        statusName: { type: 'string', description: 'Execution status (default: Not Executed)' },
+        environmentName: { type: 'string', description: 'Environment name (optional)' },
+      },
+      required: ['projectKey', 'testCaseKey', 'testCycleKey'],
     },
   },
   {
@@ -450,6 +496,42 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await getTestExecutionStatus(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_test_executions_in_cycle': {
+        const validatedArgs = validateInput<ListTestExecutionsInCycleInput>(listTestExecutionsInCycleSchema, args, 'list_test_executions_in_cycle');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listTestExecutionsInCycle(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'add_test_cases_to_cycle': {
+        const validatedArgs = validateInput<AddTestCasesToCycleInput>(addTestCasesToCycleSchema, args, 'add_test_cases_to_cycle');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await addTestCasesToCycle(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'create_test_execution': {
+        const validatedArgs = validateInput<CreateTestExecutionInput>(createTestExecutionSchema, args, 'create_test_execution');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await createTestExecution(validatedArgs), null, 2),
             },
           ],
         };

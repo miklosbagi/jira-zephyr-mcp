@@ -2,12 +2,16 @@ import { ZephyrClient } from '../clients/zephyr-client.js';
 import {
   executeTestSchema,
   getTestExecutionStatusSchema,
+  listTestExecutionsInCycleSchema,
   linkTestsToIssuesSchema,
   generateTestReportSchema,
+  createTestExecutionSchema,
   ExecuteTestInput,
   GetTestExecutionStatusInput,
+  ListTestExecutionsInCycleInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
+  CreateTestExecutionInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
@@ -17,6 +21,36 @@ const getZephyrClient = (): ZephyrClient => {
     zephyrClient = new ZephyrClient();
   }
   return zephyrClient;
+};
+
+export const createTestExecution = async (input: CreateTestExecutionInput) => {
+  const validatedInput = createTestExecutionSchema.parse(input);
+  try {
+    const execution = await getZephyrClient().createTestExecution({
+      projectKey: validatedInput.projectKey,
+      testCaseKey: validatedInput.testCaseKey,
+      testCycleKey: validatedInput.testCycleKey,
+      statusName: validatedInput.statusName,
+      environmentName: validatedInput.environmentName,
+    });
+    return {
+      success: true,
+      data: {
+        id: execution.id,
+        key: execution.key,
+        cycleId: execution.cycleId,
+        testCaseId: execution.testCaseId,
+        status: execution.status,
+        executedOn: execution.executedOn,
+        executedBy: execution.executedBy?.displayName,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
 };
 
 export const executeTest = async (input: ExecuteTestInput) => {
@@ -44,6 +78,36 @@ export const executeTest = async (input: ExecuteTestInput) => {
         defects: execution.defects.map(defect => ({
           key: defect.key,
           summary: defect.summary,
+        })),
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const listTestExecutionsInCycle = async (input: ListTestExecutionsInCycleInput) => {
+  const validatedInput = listTestExecutionsInCycleSchema.parse(input);
+  try {
+    const { executions, total } = await getZephyrClient().getTestExecutionsInCycle(validatedInput.cycleId);
+    return {
+      success: true,
+      data: {
+        cycleId: validatedInput.cycleId,
+        total,
+        executions: executions.map((ex: any) => ({
+          id: ex.id,
+          key: ex.key,
+          testCaseId: ex.testCaseId ?? ex.testCase?.key,
+          testCaseKey: ex.testCase?.key ?? ex.testCaseKey,
+          status: ex.status,
+          comment: ex.comment,
+          executedOn: ex.executedOn,
+          executedBy: ex.executedBy?.displayName,
+          defects: ex.defects?.map((d: any) => ({ key: d.key, summary: d.summary })) ?? [],
         })),
       },
     };
