@@ -2,10 +2,12 @@ import { ZephyrClient } from '../clients/zephyr-client.js';
 import {
   executeTestSchema,
   getTestExecutionStatusSchema,
+  listTestExecutionsInCycleSchema,
   linkTestsToIssuesSchema,
   generateTestReportSchema,
   ExecuteTestInput,
   GetTestExecutionStatusInput,
+  ListTestExecutionsInCycleInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
 } from '../utils/validation.js';
@@ -44,6 +46,36 @@ export const executeTest = async (input: ExecuteTestInput) => {
         defects: execution.defects.map(defect => ({
           key: defect.key,
           summary: defect.summary,
+        })),
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const listTestExecutionsInCycle = async (input: ListTestExecutionsInCycleInput) => {
+  const validatedInput = listTestExecutionsInCycleSchema.parse(input);
+  try {
+    const { executions, total } = await getZephyrClient().getTestExecutionsInCycle(validatedInput.cycleId);
+    return {
+      success: true,
+      data: {
+        cycleId: validatedInput.cycleId,
+        total,
+        executions: executions.map((ex: any) => ({
+          id: ex.id,
+          key: ex.key,
+          testCaseId: ex.testCaseId ?? ex.testCase?.key,
+          testCaseKey: ex.testCase?.key ?? ex.testCaseKey,
+          status: ex.status,
+          comment: ex.comment,
+          executedOn: ex.executedOn,
+          executedBy: ex.executedBy?.displayName,
+          defects: ex.defects?.map((d: any) => ({ key: d.key, summary: d.summary })) ?? [],
         })),
       },
     };

@@ -96,6 +96,13 @@ export class ZephyrClient {
     };
   }
 
+  async addTestCasesToCycle(cycleKey: string, testCaseKeys: string[]): Promise<void> {
+    const payload = {
+      items: testCaseKeys.map(testCaseKey => ({ testCaseKey })),
+    };
+    await this.client.post(`/testcycles/${cycleKey}/testcases`, payload);
+  }
+
   async getTestExecution(executionId: string): Promise<ZephyrTestExecution> {
     const response = await this.client.get(`/testexecutions/${executionId}`);
     return response.data;
@@ -117,9 +124,18 @@ export class ZephyrClient {
     return response.data;
   }
 
-  async getTestExecutionSummary(cycleId: string): Promise<ZephyrExecutionSummary> {
+  async getTestExecutionsInCycle(cycleId: string): Promise<{
+    executions: ZephyrTestExecution[];
+    total: number;
+  }> {
     const response = await this.client.get(`/testcycles/${cycleId}/testexecutions`);
-    const executions = response.data.values;
+    const executions = response.data.values || response.data || [];
+    const total = response.data.total ?? executions.length;
+    return { executions: Array.isArray(executions) ? executions : [], total };
+  }
+
+  async getTestExecutionSummary(cycleId: string): Promise<ZephyrExecutionSummary> {
+    const { executions } = await this.getTestExecutionsInCycle(cycleId);
 
     const summary = executions.reduce(
       (acc: any, execution: any) => {

@@ -100,6 +100,8 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **read_jira_issue** | Get JIRA issue details (optional fields). |
 | **create_test_plan** / **list_test_plans** | Create and list test plans. |
 | **create_test_cycle** / **list_test_cycles** | Create and list test cycles. |
+| **list_test_executions_in_cycle** | List test cases and executions in a cycle. |
+| **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). |
 | **create_test_case** / **search_test_cases** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, get, update (including custom fields), bulk create. |
 | **execute_test** | Update test execution status (PASS/FAIL/WIP/BLOCKED). |
 | **get_test_execution_status** | Execution progress and stats for a cycle. |

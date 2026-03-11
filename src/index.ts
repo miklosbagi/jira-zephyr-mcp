@@ -9,10 +9,11 @@ import {
 
 import { readJiraIssue } from './tools/jira-issues.js';
 import { createTestPlan, listTestPlans } from './tools/test-plans.js';
-import { createTestCycle, listTestCycles } from './tools/test-cycles.js';
+import { createTestCycle, listTestCycles, addTestCasesToCycle } from './tools/test-cycles.js';
 import {
   executeTest,
   getTestExecutionStatus,
+  listTestExecutionsInCycle,
   linkTestsToIssues,
   generateTestReport,
 } from './tools/test-execution.js';
@@ -25,6 +26,8 @@ import {
   listTestCyclesSchema,
   executeTestSchema,
   getTestExecutionStatusSchema,
+  listTestExecutionsInCycleSchema,
+  addTestCasesToCycleSchema,
   linkTestsToIssuesSchema,
   generateTestReportSchema,
   createTestCaseSchema,
@@ -39,6 +42,8 @@ import {
   ListTestCyclesInput,
   ExecuteTestInput,
   GetTestExecutionStatusInput,
+  ListTestExecutionsInCycleInput,
+  AddTestCasesToCycleInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
   CreateTestCaseInput,
@@ -131,6 +136,29 @@ const TOOLS = [
         limit: { type: 'number', description: 'Maximum number of results (default: 50)' },
       },
       required: ['projectKey'],
+    },
+  },
+  {
+    name: 'list_test_executions_in_cycle',
+    description: 'List test cases and executions in a test cycle',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cycleId: { type: 'string', description: 'Test cycle ID or key' },
+      },
+      required: ['cycleId'],
+    },
+  },
+  {
+    name: 'add_test_cases_to_cycle',
+    description: 'Add existing test cases to a test cycle',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cycleKey: { type: 'string', description: 'Test cycle key (e.g. PROJ-C1)' },
+        testCaseKeys: { type: 'array', items: { type: 'string' }, description: 'Test case keys to add (e.g. [\'PROJ-T1\', \'PROJ-T2\'])' },
+      },
+      required: ['cycleKey', 'testCaseKeys'],
     },
   },
   {
@@ -450,6 +478,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await getTestExecutionStatus(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_test_executions_in_cycle': {
+        const validatedArgs = validateInput<ListTestExecutionsInCycleInput>(listTestExecutionsInCycleSchema, args, 'list_test_executions_in_cycle');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listTestExecutionsInCycle(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'add_test_cases_to_cycle': {
+        const validatedArgs = validateInput<AddTestCasesToCycleInput>(addTestCasesToCycleSchema, args, 'add_test_cases_to_cycle');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await addTestCasesToCycle(validatedArgs), null, 2),
             },
           ],
         };
