@@ -70,8 +70,18 @@ export const createFolderSchema = z.object({
   folderType: z.enum(['TEST_CASE', 'TEST_CYCLE']).optional(),
 });
 
+export const listPrioritiesSchema = z.object({
+  projectKey: z.string().min(1).optional(),
+});
+
+export const listStatusesSchema = z.object({
+  projectKey: z.string().min(1).optional(),
+});
+
 export type ListFoldersInput = z.infer<typeof listFoldersSchema>;
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
+export type ListPrioritiesInput = z.infer<typeof listPrioritiesSchema>;
+export type ListStatusesInput = z.infer<typeof listStatusesSchema>;
 
 export const createTestExecutionSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),

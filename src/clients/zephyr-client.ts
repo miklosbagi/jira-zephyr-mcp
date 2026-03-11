@@ -8,6 +8,8 @@ import {
   ZephyrTestReport,
   ZephyrExecutionSummary,
   ZephyrFolder,
+  ZephyrPriority,
+  ZephyrStatus,
 } from '../types/zephyr-types.js';
 
 export class ZephyrClient {
@@ -145,6 +147,20 @@ export class ZephyrClient {
     }
     const response = await this.client.post('/folders', payload);
     return response.data;
+  }
+
+  async getPriorities(projectKey?: string): Promise<ZephyrPriority[]> {
+    const params = projectKey ? { projectKey } : {};
+    const response = await this.client.get('/priorities', { params });
+    const list = response.data.values ?? response.data ?? [];
+    return Array.isArray(list) ? list : [];
+  }
+
+  async getStatuses(projectKey?: string): Promise<ZephyrStatus[]> {
+    const params = projectKey ? { projectKey } : {};
+    const response = await this.client.get('/statuses', { params });
+    const list = response.data.values ?? response.data ?? [];
+    return Array.isArray(list) ? list : [];
   }
 
   async addTestCasesToCycle(cycleKey: string, testCaseKeys: string[]): Promise<void> {

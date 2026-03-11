@@ -20,6 +20,7 @@ import {
 } from './tools/test-execution.js';
 import { createTestCase, searchTestCases, getTestCase, updateTestCase, createMultipleTestCases } from './tools/test-cases.js';
 import { listFolders, createFolder } from './tools/folders.js';
+import { listPriorities, listStatuses } from './tools/priorities-statuses.js';
 import {
   readJiraIssueSchema,
   createTestPlanSchema,
@@ -33,6 +34,8 @@ import {
   createTestExecutionSchema,
   listFoldersSchema,
   createFolderSchema,
+  listPrioritiesSchema,
+  listStatusesSchema,
   linkTestsToIssuesSchema,
   generateTestReportSchema,
   createTestCaseSchema,
@@ -52,6 +55,8 @@ import {
   CreateTestExecutionInput,
   ListFoldersInput,
   CreateFolderInput,
+  ListPrioritiesInput,
+  ListStatusesInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
   CreateTestCaseInput,
@@ -260,6 +265,26 @@ const TOOLS = [
         folderType: { type: 'string', enum: ['TEST_CASE', 'TEST_CYCLE'], description: 'Folder type (optional; default may be TEST_CASE)' },
       },
       required: ['projectKey', 'name'],
+    },
+  },
+  {
+    name: 'list_priorities',
+    description: 'List test case priorities (id and name). Use ids when creating or updating test cases. Optional projectKey to scope by project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key (optional; if omitted returns all priorities)' },
+      },
+    },
+  },
+  {
+    name: 'list_statuses',
+    description: 'List test case statuses (id and name). Use ids when creating or updating test cases. Optional projectKey to scope by project.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key (optional; if omitted returns all statuses)' },
+      },
     },
   },
   {
@@ -614,6 +639,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await createFolder(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_priorities': {
+        const validatedArgs = validateInput<ListPrioritiesInput>(listPrioritiesSchema, args, 'list_priorities');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listPriorities(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_statuses': {
+        const validatedArgs = validateInput<ListStatusesInput>(listStatusesSchema, args, 'list_statuses');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listStatuses(validatedArgs), null, 2),
             },
           ],
         };

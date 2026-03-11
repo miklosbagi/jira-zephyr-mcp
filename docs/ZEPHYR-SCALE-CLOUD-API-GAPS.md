@@ -13,6 +13,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | **Test executions** | Create (add test case to cycle), get one, update status/comment/defects, list in cycle, summary by cycle |
 | **Test cases** | Get one, search, create, update, create multiple |
 | **Folders** | List (by projectKey, optional folderType, parentId), create (with optional parentId, folderType) |
+| **Priorities / statuses** | List priorities and statuses (GET /priorities, GET /statuses; optional projectKey) for test case create/update |
 | **Links** | Link test case to Jira issue(s) (POST testcases/{id}/links) |
 | **Reporting** | Generate test report for a cycle (JSON/HTML) |
 
@@ -60,8 +61,8 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 ### 8. **Priorities and statuses (lookups)**
 
-- **API:** Likely `GET /priorities`, `GET /statuses` (or similar) for test case metadata.
-- **Gap:** Create/update test case accept priority/status ids, but there is no tool to list valid priorities or statuses. Users must get ids from elsewhere.
+- **API:** `GET /priorities`, `GET /statuses` (optional projectKey).
+- **MCP status:** Implemented (`list_priorities`, `list_statuses`). Returns id and name for each; use these ids when creating or updating test cases (priority, status fields).
 
 ### 9. **Environments**
 
@@ -107,7 +108,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 5 | Create test execution | POST testexecutions | Implemented (workaround for add-to-cycle on EU) |
 | 6 | List/create folders | GET/POST folders | Implemented |
 | 7 | List Zephyr projects | GET projects | Not implemented |
-| 8 | List priorities/statuses | GET priorities, statuses | Not implemented |
+| 8 | List priorities/statuses | GET priorities, statuses | Implemented |
 | 9 | List/manage environments | GET (environments) | Not implemented |
 | 10 | Archive/delete test case | Archive + delete (per docs) | Not implemented |
 | 11 | Test steps CRUD (if separate) | testcases/{key}/teststeps | Not implemented |
