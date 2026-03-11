@@ -2,6 +2,8 @@
 
 An [MCP](https://modelcontextprotocol.io/) server for JIRA and **Zephyr Scale** (test management): create and list test plans/cycles, manage test cases (create, search, update), run and report on test executions, and read JIRA issues. Targets **Zephyr Scale for Jira Cloud**; works with US or EU (and other) Zephyr API endpoints.
 
+**Running it:** Use the published Docker image—no clone or build. Docker pulls the image when needed; you only add a small config block to Cursor (or another MCP host). Cloning and building from source is for **developers and contributors** only.
+
 ---
 
 ## Why this fork?
@@ -15,9 +17,9 @@ We contribute changes back upstream where possible and keep this fork as our bas
 
 ---
 
-## Quick start (Cursor + Docker Hub)
+## Quick start — run from Docker Hub (recommended)
 
-No clone or build. Add this to your Cursor MCP config (e.g. **Settings → MCP** or `.cursor/mcp.json`). Replace the env values with your own.
+Run the server using the published image. Docker will pull `miklosbagi/jira-zephyr-mcp:latest` when needed; no clone or build. Add this to your Cursor MCP config (e.g. **Settings → MCP** or `.cursor/mcp.json`) and replace the env values with your own.
 
 ```json
 {
@@ -44,12 +46,14 @@ Image: [Docker Hub — miklosbagi/jira-zephyr-mcp](https://hub.docker.com/r/mikl
 
 ---
 
-## Other ways to run
+## Running from source (developers & contributors)
 
-| Option | When to use |
-|--------|-------------|
-| **Docker (local build)** | You want to build from source. Use the same config as above but set the image in `args` to your tag, e.g. `jira-zephyr-mcp:latest`. Build with `docker build -t jira-zephyr-mcp:latest .` in the repo root. |
-| **Node** | No Docker. Clone, run `npm install` and `npm run build`, then set `"command": "node"` and `"args": ["/path/to/jira-zephyr-mcp/dist/index.js"]` in your MCP config, with the same `env` as above. |
+Only needed if you’re developing or contributing. Otherwise use the [Quick start](#quick-start--run-from-docker-hub-recommended) above.
+
+| Option | Use when |
+|--------|----------|
+| **Docker (local build)** | You’re iterating on the image. Same MCP config as Quick start, but use your own image in `args` (e.g. `jira-zephyr-mcp:latest`). Build with `docker build -t jira-zephyr-mcp:latest .` in the repo root. |
+| **Node** | You’re debugging or changing code without Docker. Clone the repo, run `npm install` and `npm run build`, then set `"command": "node"` and `"args": ["/path/to/jira-zephyr-mcp/dist/index.js"]` in your MCP config, with the same `env` as Quick start. |
 
 ---
 
@@ -70,7 +74,7 @@ Optional:
 |----------|-------------|
 | `ZEPHYR_BASE_URL` | Zephyr Scale API base URL. Default: `https://api.zephyrscale.smartbear.com/v2` (US). For EU use `https://eu.api.zephyrscale.smartbear.com/v2`. |
 
-For local development, copy `.env.example` to `.env` and fill in the values. For token creation, see [Atlassian API tokens](https://id.atlassian.com/profile) (JIRA) and Zephyr Scale API Access Tokens in your JIRA instance.
+When using the Docker image, pass these via your MCP config’s `env` (as in Quick start). For local development, copy `.env.example` to `.env`. Token creation: [Atlassian API tokens](https://id.atlassian.com/profile) (JIRA) and Zephyr Scale → API Access Tokens in your JIRA instance.
 
 ---
 
@@ -130,9 +134,11 @@ The Zephyr Scale API requires a full body for test case PUT; the server fetches 
 
 ---
 
-## Development
+## For developers and contributors
 
-**Prerequisites:** Node.js 18+, JIRA with Zephyr Scale, JIRA and Zephyr API credentials.
+If you’re modifying the server or building the image yourself:
+
+**Prerequisites:** Node.js 18+, Docker (optional), JIRA with Zephyr Scale, JIRA and Zephyr API credentials.
 
 ```bash
 git clone https://github.com/miklosbagi/jira-zephyr-mcp.git
@@ -149,13 +155,14 @@ npm run build
 | `npm run typecheck` | TypeScript check. |
 | `npm start` | Run `dist/index.js`. |
 
-**Project layout:** `src/index.ts` (MCP server), `src/clients/` (JIRA and Zephyr API clients), `src/tools/` (tool handlers), `src/types/`, `src/utils/` (config, validation).
+**Project layout:** `src/index.ts` (MCP server), `src/clients/` (JIRA and Zephyr API clients), `src/tools/` (tool handlers), `src/types/`, `src/utils/` (config, validation). To publish new image versions, see `scripts/push-multi-arch.sh`.
 
 ---
 
 ## Docker (CLI)
 
-**Pre-built image (no build):**
+Run the published image (same as Quick start, but from the command line; image is pulled if missing):
+
 ```bash
 docker run --rm -i \
   -e JIRA_BASE_URL=https://your-domain.atlassian.net \
@@ -166,7 +173,7 @@ docker run --rm -i \
   miklosbagi/jira-zephyr-mcp:latest
 ```
 
-**Build from source:** `docker build -t jira-zephyr-mcp:latest .` then use your tag in the `docker run` above instead of `miklosbagi/jira-zephyr-mcp:latest`.
+To build and run from source (contributors): `docker build -t jira-zephyr-mcp:latest .` then use your tag in the command above instead of `miklosbagi/jira-zephyr-mcp:latest`.
 
 ---
 
