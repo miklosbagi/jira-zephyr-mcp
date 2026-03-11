@@ -2,7 +2,7 @@
 
 An [MCP](https://modelcontextprotocol.io/) server for JIRA and **Zephyr Scale** (test management): create and list test plans/cycles, manage test cases (create, search, update), run and report on test executions, and read JIRA issues. Targets **Zephyr Scale for Jira Cloud**; works with US or EU (and other) Zephyr API endpoints.
 
-**Running it:** Use the published Docker image—no clone or build. Docker pulls the image when needed; you only add a small config block to Cursor (or another MCP host). Cloning and building from source is for **developers and contributors** only.
+**Running it:** Use the published Docker image—no clone or build. Docker pulls the image when needed; you add a small config block to your AI tool (Cursor, Claude, Gemini, Windsurf, etc.). Cloning and building from source is for **developers and contributors** only.
 
 ---
 
@@ -19,7 +19,7 @@ We contribute changes back upstream where possible and keep this fork as our bas
 
 ## Quick start — run from Docker Hub (recommended)
 
-Run the server using the published image. Docker will pull `miklosbagi/jira-zephyr-mcp:latest` when needed; no clone or build. Add this to your Cursor MCP config (e.g. **Settings → MCP** or `.cursor/mcp.json`) and replace the env values with your own.
+Run the server using the published image. Docker will pull `miklosbagi/jira-zephyr-mcp:latest` when needed; no clone or build. Add the block below to your MCP host config (see [AI integrations](#ai-integrations-mcp-hosts) for Cursor, Claude, Gemini, Windsurf) and replace the env values with your own.
 
 ```json
 {
@@ -43,6 +43,21 @@ Run the server using the published image. Docker will pull `miklosbagi/jira-zeph
 - **EU Zephyr:** keep `ZEPHYR_BASE_URL` as above (or your Zephyr base URL).
 
 Image: [Docker Hub — miklosbagi/jira-zephyr-mcp](https://hub.docker.com/r/miklosbagi/jira-zephyr-mcp). Multi-arch: **linux/amd64**, **linux/arm64** (Apple Silicon).
+
+---
+
+## AI integrations (MCP hosts)
+
+The same server config (Quick start JSON above) works in any MCP-capable client. Add the `jira-zephyr` entry under `mcpServers` in the config file for your host; use the same `command`, `args`, and `env` (with your real credentials).
+
+| Host | Config file | How to open |
+|------|-------------|-------------|
+| **Cursor** | `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) | Settings → MCP, or Command Palette → “Open MCP Settings” |
+| **Claude Desktop** | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)<br>`%APPDATA%\Claude\claude_desktop_config.json` (Windows) | Claude Desktop → Settings → Developer → Edit Config |
+| **Gemini CLI** | `settings.json` (see [Gemini CLI MCP docs](https://google-gemini.github.io/gemini-cli/docs/tools/mcp-server.html)) | Configure MCP servers in your Gemini CLI settings |
+| **Windsurf** | `~/.codeium/windsurf/mcp_config.json` (macOS/Linux)<br>`%USERPROFILE%\.codeium\windsurf\mcp_config.json` (Windows) | Cascade panel → MCPs → Configure (enable MCP in Advanced Settings if needed) |
+
+After editing, restart the app so it picks up the new server. Other MCP hosts (e.g. VS Code with MCP extension, or custom clients) use the same JSON structure: `command` + `args` + `env` for the Docker image.
 
 ---
 
