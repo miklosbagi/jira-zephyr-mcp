@@ -1,5 +1,5 @@
 # Zephyr integration contract tests (real API).
-# Manual only (workflow_dispatch). Set repo secrets under Settings → Secrets and variables → Actions.
+# Runs daily at 6am CET (05:00 UTC) and on manual trigger. Set repo secrets under Settings → Secrets and variables → Actions.
 #
 # Required secrets (must match these exact names):
 #   JIRA_BASE_URL   - e.g. https://your-domain.atlassian.net
@@ -12,6 +12,9 @@
 name: Zephyr contract
 
 on:
+  schedule:
+    # 6am CET = 05:00 UTC (CEST = 04:00 UTC; we use 05:00 for CET)
+    - cron: '0 5 * * *'
   workflow_dispatch:
 
 jobs:
