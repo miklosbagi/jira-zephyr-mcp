@@ -1,0 +1,7 @@
+{
+  "values": [
+    { "id": 5001, "key": "PROJ-E1", "testCase": { "key": "PROJ-T1" }, "status": "NOT_EXECUTED" },
+    { "id": 5002, "key": "PROJ-E2", "testCase": { "key": "PROJ-T2" }, "status": "PASS" }
+  ],
+  "total": 2
+}

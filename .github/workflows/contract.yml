@@ -1,0 +1,35 @@
+# Zephyr integration contract tests (real API).
+# Manual only for now (workflow_dispatch). Re-enable schedule once repo secrets are set.
+# Required secrets: ZEPHYR_BASE_URL, ZEPHYR_API_TOKEN, JIRA_BASE_URL, JIRA_USERNAME, JIRA_API_TOKEN
+# Optional: ZEPHYR_CONTRACT_PROJECT_KEY, ZEPHYR_CONTRACT_PLAN_KEY, ZEPHYR_CONTRACT_CYCLE_KEY
+name: Zephyr contract
+
+on:
+  workflow_dispatch:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Zephyr contract tests
+        env:
+          ZEPHYR_BASE_URL: ${{ secrets.ZEPHYR_BASE_URL }}
+          ZEPHYR_API_TOKEN: ${{ secrets.ZEPHYR_API_TOKEN }}
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          ZEPHYR_CONTRACT_PROJECT_KEY: ${{ secrets.ZEPHYR_CONTRACT_PROJECT_KEY }}
+          ZEPHYR_CONTRACT_PLAN_KEY: ${{ secrets.ZEPHYR_CONTRACT_PLAN_KEY }}
+          ZEPHYR_CONTRACT_CYCLE_KEY: ${{ secrets.ZEPHYR_CONTRACT_CYCLE_KEY }}
+        run: npm run test:contract

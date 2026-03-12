@@ -1,0 +1,7 @@
+{
+  "values": [
+    { "id": 1, "name": "Folder A", "projectKey": "PROJ", "parentId": null, "folderType": "TEST_CASE" },
+    { "id": 2, "name": "Folder B", "projectKey": "PROJ", "parentId": 1, "folderType": "TEST_CASE" }
+  ],
+  "total": 2
+}
