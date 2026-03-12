@@ -11,6 +11,7 @@ import {
   ZephyrPriority,
   ZephyrStatus,
   ZephyrTestStep,
+  ZephyrProject,
 } from '../types/zephyr-types.js';
 
 export class ZephyrClient {
@@ -58,6 +59,11 @@ export class ZephyrClient {
       testPlans: response.data.values || response.data,
       total: response.data.total || response.data.length,
     };
+  }
+
+  async getTestPlan(planKeyOrId: string): Promise<ZephyrTestPlan> {
+    const response = await this.client.get(`/testplans/${planKeyOrId}`);
+    return response.data;
   }
 
   async createTestCycle(data: {
@@ -128,6 +134,25 @@ export class ZephyrClient {
     return {
       testCycles,
       total: response.data.total ?? testCycles.length,
+    };
+  }
+
+  async getTestCycle(cycleKeyOrId: string): Promise<ZephyrTestCycle> {
+    const response = await this.client.get(`/testcycles/${cycleKeyOrId}`);
+    return response.data;
+  }
+
+  async getProjects(limit = 50, startAt = 0): Promise<{ projects: ZephyrProject[]; total: number }> {
+    const params = { maxResults: limit, startAt };
+    const response = await this.client.get('/projects', { params });
+    const projects = Array.isArray(response.data.values)
+      ? response.data.values
+      : Array.isArray(response.data)
+        ? response.data
+        : [];
+    return {
+      projects: projects as ZephyrProject[],
+      total: response.data.total ?? projects.length,
     };
   }
 

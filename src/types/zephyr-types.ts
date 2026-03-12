@@ -166,3 +166,10 @@ export interface ZephyrTestStep {
   expectedResult?: string;
   result?: string;
 }
+
+export interface ZephyrProject {
+  id: number;
+  key: string;
+  name: string;
+  self?: string;
+}

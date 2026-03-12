@@ -2,10 +2,12 @@ import { ZephyrClient } from '../clients/zephyr-client.js';
 import {
   createTestCycleSchema,
   listTestCyclesSchema,
+  getTestCycleSchema,
   addTestCasesToCycleSchema,
   updateTestCycleSchema,
   CreateTestCycleInput,
   ListTestCyclesInput,
+  GetTestCycleInput,
   AddTestCasesToCycleInput,
   UpdateTestCycleInput,
 } from '../utils/validation.js';
@@ -164,18 +166,9 @@ export const addTestCasesToCycle = async (input: AddTestCasesToCycleInput) => {
   }
 };
 
-export const getTestCycle = async (input: { cycleId: string }) => {
+export const getTestCycle = async (input: GetTestCycleInput) => {
   try {
-    const result = await getZephyrClient().getTestCycles('', undefined, 1000);
-    const testCycle = result.testCycles.find(cycle => cycle.id === input.cycleId);
-    
-    if (!testCycle) {
-      return {
-        success: false,
-        error: 'Test cycle not found',
-      };
-    }
-    
+    const testCycle = await getZephyrClient().getTestCycle(input.cycleKey);
     return {
       success: true,
       data: {

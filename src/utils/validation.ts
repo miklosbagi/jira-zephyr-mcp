@@ -24,16 +24,29 @@ export const readJiraIssueSchema = z.object({
   fields: z.array(z.string()).optional(),
 });
 
+export const listProjectsSchema = z.object({
+  limit: z.number().min(1).max(100).default(50),
+  startAt: z.number().min(0).default(0),
+});
+
 export const listTestPlansSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),
   limit: z.number().min(1).max(100).default(50),
   offset: z.number().min(0).default(0),
 });
 
+export const getTestPlanSchema = z.object({
+  planKey: z.string().min(1, 'Test plan key or ID is required'),
+});
+
 export const listTestCyclesSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),
   versionId: z.string().optional(),
   limit: z.number().min(1).max(100).default(50),
+});
+
+export const getTestCycleSchema = z.object({
+  cycleKey: z.string().min(1, 'Test cycle key or ID is required'),
 });
 
 export const updateTestCycleSchema = z.object({
@@ -218,8 +231,11 @@ export const deleteTestStepSchema = z.object({
 export type CreateTestPlanInput = z.infer<typeof createTestPlanSchema>;
 export type CreateTestCycleInput = z.infer<typeof createTestCycleSchema>;
 export type ReadJiraIssueInput = z.infer<typeof readJiraIssueSchema>;
+export type ListProjectsInput = z.infer<typeof listProjectsSchema>;
 export type ListTestPlansInput = z.infer<typeof listTestPlansSchema>;
+export type GetTestPlanInput = z.infer<typeof getTestPlanSchema>;
 export type ListTestCyclesInput = z.infer<typeof listTestCyclesSchema>;
+export type GetTestCycleInput = z.infer<typeof getTestCycleSchema>;
 export type UpdateTestCycleInput = z.infer<typeof updateTestCycleSchema>;
 export type ExecuteTestInput = z.infer<typeof executeTestSchema>;
 export type GetTestExecutionStatusInput = z.infer<typeof getTestExecutionStatusSchema>;

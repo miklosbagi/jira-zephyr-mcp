@@ -8,8 +8,8 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { readJiraIssue } from './tools/jira-issues.js';
-import { createTestPlan, listTestPlans } from './tools/test-plans.js';
-import { createTestCycle, listTestCycles, addTestCasesToCycle, updateTestCycle } from './tools/test-cycles.js';
+import { createTestPlan, listTestPlans, getTestPlan } from './tools/test-plans.js';
+import { createTestCycle, listTestCycles, getTestCycle, addTestCasesToCycle, updateTestCycle } from './tools/test-cycles.js';
 import {
   createTestExecution,
   executeTest,
@@ -22,12 +22,16 @@ import { createTestCase, searchTestCases, getTestCase, updateTestCase, createMul
 import { listTestSteps, createTestStep, updateTestStep, deleteTestStep } from './tools/test-steps.js';
 import { listFolders, createFolder } from './tools/folders.js';
 import { listPriorities, listStatuses } from './tools/priorities-statuses.js';
+import { listProjects } from './tools/projects.js';
 import {
   readJiraIssueSchema,
+  listProjectsSchema,
   createTestPlanSchema,
   listTestPlansSchema,
+  getTestPlanSchema,
   createTestCycleSchema,
   listTestCyclesSchema,
+  getTestCycleSchema,
   updateTestCycleSchema,
   executeTestSchema,
   getTestExecutionStatusSchema,
@@ -50,10 +54,13 @@ import {
   updateTestStepSchema,
   deleteTestStepSchema,
   ReadJiraIssueInput,
+  ListProjectsInput,
   CreateTestPlanInput,
   ListTestPlansInput,
+  GetTestPlanInput,
   CreateTestCycleInput,
   ListTestCyclesInput,
+  GetTestCycleInput,
   UpdateTestCycleInput,
   ExecuteTestInput,
   GetTestExecutionStatusInput,
@@ -80,7 +87,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '1.0.0',
+    version: '0.8.0',
   },
   {
     capabilities: {
@@ -102,6 +109,18 @@ const TOOLS = [
         fields: { type: 'array', items: { type: 'string' }, description: 'Specific fields to retrieve (optional)' },
       },
       required: ['issueKey'],
+    },
+  },
+  {
+    name: 'list_projects',
+    description: 'List Zephyr-visible projects (for projectKey discovery and validation)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Maximum number of results (default: 50)' },
+        startAt: { type: 'number', description: 'Index to start at for pagination (default: 0)' },
+      },
+      required: [],
     },
   },
   {
@@ -130,6 +149,17 @@ const TOOLS = [
         offset: { type: 'number', description: 'Number of results to skip (default: 0)' },
       },
       required: ['projectKey'],
+    },
+  },
+  {
+    name: 'get_test_plan',
+    description: 'Get a single test plan by key or ID',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        planKey: { type: 'string', description: 'Test plan key or ID (e.g. CP-P1 or numeric id)' },
+      },
+      required: ['planKey'],
     },
   },
   {
@@ -178,6 +208,17 @@ const TOOLS = [
         limit: { type: 'number', description: 'Maximum number of results (default: 50)' },
       },
       required: ['projectKey'],
+    },
+  },
+  {
+    name: 'get_test_cycle',
+    description: 'Get a single test cycle by key or ID',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cycleKey: { type: 'string', description: 'Test cycle key or ID (e.g. CP-R34 or numeric id)' },
+      },
+      required: ['cycleKey'],
     },
   },
   {
@@ -569,6 +610,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case 'list_projects': {
+        const validatedArgs = validateInput<ListProjectsInput>(listProjectsSchema, args, 'list_projects');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listProjects(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
       case 'create_test_plan': {
         const validatedArgs = validateInput<CreateTestPlanInput>(createTestPlanSchema, args, 'create_test_plan');
         return {
@@ -588,6 +641,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await listTestPlans(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'get_test_plan': {
+        const validatedArgs = validateInput<GetTestPlanInput>(getTestPlanSchema, args, 'get_test_plan');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await getTestPlan(validatedArgs), null, 2),
             },
           ],
         };
@@ -624,6 +689,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await listTestCycles(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'get_test_cycle': {
+        const validatedArgs = validateInput<GetTestCycleInput>(getTestCycleSchema, args, 'get_test_cycle');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await getTestCycle(validatedArgs), null, 2),
             },
           ],
         };

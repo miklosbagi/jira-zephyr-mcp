@@ -1,0 +1,13 @@
+{
+  "values": [
+    {
+      "id": 100,
+      "key": "TP-1",
+      "name": "Test Plan 1",
+      "project": { "id": 10000 },
+      "plannedStartDate": "2024-01-01",
+      "plannedEndDate": "2024-12-31"
+    }
+  ],
+  "total": 1
+}

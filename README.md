@@ -102,6 +102,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **create_test_cycle** / **list_test_cycles** | Create and list test cycles. |
 | **list_folders** / **create_folder** | List and create folders (for organizing test cases or test cycles). Filter by folderType (TEST_CASE / TEST_CYCLE) and parentId for subfolders. |
 | **list_priorities** / **list_statuses** | List test case priorities and statuses (id and name). Use the returned ids when creating or updating test cases. Optional projectKey. |
+| **list_projects** | List Zephyr-visible projects (id, key, name). Optional `limit`, `startAt` for pagination. Use for projectKey discovery. |
 | **list_test_executions_in_cycle** | List test cases and executions in a cycle. |
 | **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
 | **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
@@ -120,6 +121,12 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 ```ts
 read_jira_issue({ issueKey: "ABC-123" });
 read_jira_issue({ issueKey: "ABC-123", fields: ["summary", "status", "assignee"] });
+```
+
+**Zephyr projects**
+```ts
+list_projects();
+list_projects({ limit: 20, startAt: 0 });
 ```
 
 **Test plans**
@@ -236,7 +243,7 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Add test cases to a test cycle** — `add_test_cases_to_cycle` calls `POST /testcycles/{key}/testcases`. On EU API this often returns 404; use **create_test_execution** (one per test case, status “Not Executed”) as a workaround.
 - [x] **List test cases or executions in a cycle** — `list_test_executions_in_cycle` lists executions in a cycle (by cycle id/key).
 - [x] **Create test execution** — `create_test_execution` creates a test execution (e.g. add test case to cycle with status “Not Executed”).
-- [ ] **Get single test plan / test cycle** — Fetch one plan or cycle by key/id (today only list is exposed).
+- [x] **Get single test plan / test cycle** — `get_test_plan` and `get_test_cycle` fetch one plan or cycle by key or ID.
 - [x] **Folders** — `list_folders` and `create_folder` (filter by folderType, parentId for hierarchy).
 - [x] **Priorities and statuses** — `list_priorities` and `list_statuses` (id and name for create/update test case).
 - [ ] **Zephyr projects list** — List projects from Zephyr API for projectKey discovery.

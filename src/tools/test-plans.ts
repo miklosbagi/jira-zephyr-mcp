@@ -2,8 +2,10 @@ import { ZephyrClient } from '../clients/zephyr-client.js';
 import {
   createTestPlanSchema,
   listTestPlansSchema,
+  getTestPlanSchema,
   CreateTestPlanInput,
   ListTestPlansInput,
+  GetTestPlanInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
@@ -82,18 +84,9 @@ export const listTestPlans = async (input: ListTestPlansInput) => {
   }
 };
 
-export const getTestPlan = async (input: { testPlanId: string }) => {
+export const getTestPlan = async (input: GetTestPlanInput) => {
   try {
-    const result = await getZephyrClient().getTestPlans('', 1, 0);
-    const testPlan = result.testPlans.find(plan => plan.id === input.testPlanId);
-    
-    if (!testPlan) {
-      return {
-        success: false,
-        error: 'Test plan not found',
-      };
-    }
-    
+    const testPlan = await getZephyrClient().getTestPlan(input.planKey);
     return {
       success: true,
       data: {
@@ -105,7 +98,7 @@ export const getTestPlan = async (input: { testPlanId: string }) => {
         status: testPlan.status,
         createdOn: testPlan.createdOn,
         updatedOn: testPlan.updatedOn,
-        createdBy: testPlan.createdBy.displayName,
+        createdBy: testPlan.createdBy?.displayName,
       },
     };
   } catch (error: any) {
