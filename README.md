@@ -19,6 +19,14 @@ We keep this fork as our base for further extensions (see [Roadmap](#roadmap)).
 
 ---
 
+## Sponsorship
+
+**We need sponsor support to keep the autotests running.** Jira is free for small teams, but **Zephyr Scale costs about $10/month**. With income tax and fees, it takes roughly **$17/month** to break even—so the project stays a zero-sum game rather than a monthly cost. The next Zephyr payment is due **April 11, 2026**.
+
+If this MCP server is useful to you, consider sponsoring via the links in the repo sidebar (GitHub Sponsors, Buy Me a Coffee, or Patreon). Thank you.
+
+---
+
 ## Quick start — run from Docker Hub (recommended)
 
 Run the server using the published image. Docker will pull `miklosbagi/jira-zephyr-mcp:latest` when needed; no clone or build. Add the block below to your MCP host config (see [AI integrations](#ai-integrations-mcp-hosts) for Cursor, Claude, Gemini, Windsurf) and replace the env values with your own.
