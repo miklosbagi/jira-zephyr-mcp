@@ -1,7 +1,8 @@
 # Zephyr integration contract tests (real API).
 # Manual only for now (workflow_dispatch). Re-enable schedule once repo secrets are set.
 # Required secrets: ZEPHYR_BASE_URL, ZEPHYR_API_TOKEN, JIRA_BASE_URL, JIRA_USERNAME, JIRA_API_TOKEN
-# Optional: ZEPHYR_CONTRACT_PROJECT_KEY, ZEPHYR_CONTRACT_PLAN_KEY, ZEPHYR_CONTRACT_CYCLE_KEY
+# Optional but needed for testplans/testcycles list tests: ZEPHYR_CONTRACT_PROJECT_KEY (your project key)
+# Optional for get-by-key tests: ZEPHYR_CONTRACT_PLAN_KEY, ZEPHYR_CONTRACT_CYCLE_KEY
 name: Zephyr contract
 
 on:
