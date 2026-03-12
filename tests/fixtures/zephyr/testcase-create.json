@@ -1,0 +1,14 @@
+{
+  "id": 1002,
+  "key": "CP-T2",
+  "name": "Created test case",
+  "project": { "id": 10000 },
+  "objective": null,
+  "precondition": null,
+  "estimatedTime": null,
+  "folder": null,
+  "status": { "id": 1 },
+  "priority": { "id": 2 },
+  "labels": [],
+  "links": { "issues": [] }
+}
