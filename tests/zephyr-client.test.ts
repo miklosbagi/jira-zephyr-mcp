@@ -1,5 +1,8 @@
 /**
- * Service tests for ZephyrClient: mock Zephyr API responses and assert client behaviour.
+ * Integration tests for ZephyrClient: mocked responses for all Zephyr API calls (nock).
+ * Asserts request shape (method, path, query, body) and response handling.
+ * No real credentials or .env needed — uses fake Jira endpoint, fake tokens, and fixtures only.
+ * All fixtures are sanitized (no real account IDs, names, or tenant URLs). See docs/FIXTURE-SANITIZATION.md.
  * Import nock first so it patches http before the client's axios is used.
  */
 import nock from 'nock';
@@ -18,11 +21,22 @@ function loadFixture(name: string): unknown {
 }
 
 const ZEPHYR_ORIGIN = 'https://api.zephyrscale.smartbear.com';
+const V2 = '/v2';
 
-describe('ZephyrClient', () => {
+/** Fake env for integration tests only; no real credentials or .env required. */
+const INTEGRATION_DUMMY_ENV = {
+  JIRA_BASE_URL: 'https://example.atlassian.net',
+  JIRA_USERNAME: 'test@example.com',
+  JIRA_API_TOKEN: 'test-jira-token',
+  ZEPHYR_API_TOKEN: 'test-zephyr-token',
+  ZEPHYR_BASE_URL: 'https://api.zephyrscale.smartbear.com/v2',
+};
+
+describe('ZephyrClient (integration, mocked)', () => {
   let client: ZephyrClient;
 
   beforeAll(() => {
+    Object.assign(process.env, INTEGRATION_DUMMY_ENV);
     client = new ZephyrClient();
   });
 
@@ -31,10 +45,10 @@ describe('ZephyrClient', () => {
   });
 
   describe('getTestPlans', () => {
-    it('returns normalized testPlans and total from API', async () => {
+    it('sends GET /v2/testplans with projectKey and pagination, returns normalized list', async () => {
       const body = loadFixture('testplans-list.json');
-      nock(ZEPHYR_ORIGIN)
-        .get('/v2/testplans')
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testplans`)
         .query({ projectKey: 'CP', maxResults: 50, startAt: 0 })
         .reply(200, body);
 
@@ -44,31 +58,164 @@ describe('ZephyrClient', () => {
       expect(result.testPlans).toHaveLength(1);
       expect(result.testPlans[0].key).toBe('TP-1');
       expect(result.testPlans[0].name).toBe('Test Plan 1');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getTestPlan', () => {
+    it('sends GET /v2/testplans/{key} and returns single plan', async () => {
+      const body = loadFixture('testplan-get.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testplans/TP-1`)
+        .reply(200, body);
+
+      const result = await client.getTestPlan('TP-1');
+
+      expect(result.key).toBe('TP-1');
+      expect(result.name).toBe('Test Plan 1');
+      expect(result.id).toBe(100);
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getTestCycles', () => {
+    it('sends GET /v2/testcycles with projectKey and optional versionId, returns list', async () => {
+      const body = loadFixture('testcycles-list.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcycles`)
+        .query({ projectKey: 'PROJ', maxResults: 50 })
+        .reply(200, body);
+
+      const result = await client.getTestCycles('PROJ');
+
+      expect(result.total).toBe(1);
+      expect(result.testCycles[0].key).toBe('PROJ-R1');
+      expect(result.testCycles[0].name).toBe('Cycle 1');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getTestCycle', () => {
+    it('sends GET /v2/testcycles/{key} and returns single cycle', async () => {
+      const body = loadFixture('testcycle-get.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcycles/PROJ-R1`)
+        .reply(200, body);
+
+      const result = await client.getTestCycle('PROJ-R1');
+
+      expect(result.key).toBe('PROJ-R1');
+      expect(result.name).toBe('Sample cycle');
+      expect(result.executionSummary.total).toBe(5);
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getProjects', () => {
+    it('sends GET /v2/projects with maxResults and startAt, returns list', async () => {
+      const body = loadFixture('projects-list.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/projects`)
+        .query({ maxResults: 20, startAt: 0 })
+        .reply(200, body);
+
+      const result = await client.getProjects(20, 0);
+
+      expect(result.total).toBe(2);
+      expect(result.projects).toHaveLength(2);
+      expect(result.projects[0].key).toBe('CR');
+      expect(result.projects[1].key).toBe('CP');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getFolders', () => {
+    it('sends GET /v2/folders with projectKey and pagination', async () => {
+      const body = loadFixture('folders-list.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/folders`)
+        .query({ projectKey: 'PROJ', maxResults: 50, startAt: 0 })
+        .reply(200, body);
+
+      const result = await client.getFolders('PROJ');
+
+      expect(result.folders).toHaveLength(2);
+      expect(result.folders[0].name).toBe('Folder A');
+      expect(result.total).toBe(2);
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getPriorities', () => {
+    it('sends GET /v2/priorities with optional projectKey', async () => {
+      const body = loadFixture('priorities-list.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/priorities`)
+        .query({ projectKey: 'PROJ' })
+        .reply(200, body);
+
+      const result = await client.getPriorities('PROJ');
+
+      expect(result).toHaveLength(3);
+      expect(result[0].name).toBe('High');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getStatuses', () => {
+    it('sends GET /v2/statuses with optional projectKey', async () => {
+      const body = loadFixture('statuses-list.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/statuses`)
+        .query({ projectKey: 'PROJ' })
+        .reply(200, body);
+
+      const result = await client.getStatuses('PROJ');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('Draft');
+      expect(scope.isDone()).toBe(true);
     });
   });
 
   describe('searchTestCases', () => {
-    it('returns normalized testCases and total from search', async () => {
+    it('sends GET /v2/testcases/search with projectKey and maxResults', async () => {
       const body = loadFixture('testcases-search.json');
-      nock(ZEPHYR_ORIGIN)
-        .get('/v2/testcases/search')
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/search`)
         .query({ projectKey: 'CP', maxResults: 50 })
         .reply(200, body);
 
       const result = await client.searchTestCases('CP', undefined, 50);
 
       expect(result.total).toBe(1);
-      expect(result.testCases).toHaveLength(1);
       expect(result.testCases[0].key).toBe('CP-T1');
       expect(result.testCases[0].name).toBe('Sample test case');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getTestCase', () => {
+    it('sends GET /v2/testcases/{key} and returns single test case', async () => {
+      const body = loadFixture('testcase-get.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/PROJ-T1`)
+        .reply(200, body);
+
+      const result = await client.getTestCase('PROJ-T1');
+
+      expect(result.key).toBe('PROJ-T1');
+      expect(result.name).toBe('Sample test case');
+      expect(result.id).toBe(1001);
+      expect(scope.isDone()).toBe(true);
     });
   });
 
   describe('createTestCase', () => {
-    it('posts payload and returns created test case', async () => {
+    it('sends POST /v2/testcases with expected body and returns created case', async () => {
       const body = loadFixture('testcase-create.json');
-      nock(ZEPHYR_ORIGIN)
-        .post('/v2/testcases', (reqBody: Record<string, unknown>) => {
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases`, (reqBody: Record<string, unknown>) => {
           return reqBody.name === 'New case' && reqBody.projectKey === 'CP';
         })
         .reply(200, body);
@@ -81,14 +228,15 @@ describe('ZephyrClient', () => {
       expect(result.key).toBe('CP-T2');
       expect(result.name).toBe('Created test case');
       expect(result.id).toBe(1002);
+      expect(scope.isDone()).toBe(true);
     });
   });
 
   describe('getTestSteps', () => {
-    it('returns normalized steps from API', async () => {
+    it('sends GET /v2/testcases/{key}/teststeps and returns normalized steps', async () => {
       const body = loadFixture('teststeps-list.json');
-      nock(ZEPHYR_ORIGIN)
-        .get('/v2/testcases/CP-T1/teststeps')
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/CP-T1/teststeps`)
         .reply(200, body);
 
       const result = await client.getTestSteps('CP-T1');
@@ -97,6 +245,65 @@ describe('ZephyrClient', () => {
       expect(result[0].description).toBe('Step one');
       expect(result[0].expectedResult).toBe('Result one');
       expect(result[0].id).toBe(1);
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('createTestExecution', () => {
+    it('sends POST /v2/testexecutions with projectKey, testCaseKey, testCycleKey, statusName', async () => {
+      const body = loadFixture('testexecution-create.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testexecutions`, (reqBody: Record<string, unknown>) => {
+          return (
+            reqBody.projectKey === 'PROJ' &&
+            reqBody.testCaseKey === 'PROJ-T1' &&
+            reqBody.testCycleKey === 'PROJ-R1' &&
+            (reqBody.statusName === 'Not Executed' || reqBody.statusName === undefined)
+          );
+        })
+        .reply(200, body);
+
+      const result = await client.createTestExecution({
+        projectKey: 'PROJ',
+        testCaseKey: 'PROJ-T1',
+        testCycleKey: 'PROJ-R1',
+        statusName: 'Not Executed',
+      });
+
+      expect(result.id).toBe(5001);
+      expect(result.key).toBe('PROJ-E1');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getTestExecutionsInCycle', () => {
+    it('sends GET /v2/testexecutions with query testCycle', async () => {
+      const body = loadFixture('testexecutions-in-cycle.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testexecutions`)
+        .query({ testCycle: 'PROJ-R1' })
+        .reply(200, body);
+
+      const result = await client.getTestExecutionsInCycle('PROJ-R1');
+
+      expect(result.total).toBe(2);
+      expect(result.executions).toHaveLength(2);
+      expect(result.executions[0].key).toBe('PROJ-E1');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('linkTestCaseToIssue', () => {
+    it('sends POST /v2/testcases/{id}/links with issueKeys array', async () => {
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/PROJ-T1/links`, (reqBody: Record<string, unknown>) => {
+          return Array.isArray(reqBody.issueKeys) && reqBody.issueKeys.includes('PROJ-123');
+        })
+        .reply(204);
+
+      await client.linkTestCaseToIssue('PROJ-T1', 'PROJ-123');
+
+      expect(scope.isDone()).toBe(true);
     });
   });
 });

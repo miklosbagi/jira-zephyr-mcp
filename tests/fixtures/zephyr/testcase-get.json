@@ -1,0 +1,13 @@
+{
+  "id": 1001,
+  "key": "PROJ-T1",
+  "name": "Sample test case",
+  "project": { "id": 10000 },
+  "folder": { "id": 200 },
+  "status": { "id": 1 },
+  "priority": { "id": 2 },
+  "objective": null,
+  "precondition": null,
+  "labels": [],
+  "links": { "issues": [] }
+}

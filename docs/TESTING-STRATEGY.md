@@ -1,5 +1,14 @@
 # Service tests: strategy
 
+## Test layers
+
+| Layer | What | How | Run |
+|-------|------|-----|-----|
+| **Integration (mocked)** | Zephyr client with all API calls mocked | nock + fixtures; fake Jira URL and tokens only; no .env or real credentials | `npm run test:integration` or `npm run test:unit` |
+| **Contract** | Real Zephyr API (read-only) | No mocks; `.env` / secrets; assert response shape | `npm run test:contract` |
+
+We do **not** have separate “unit” tests in the narrow sense (e.g. pure functions only). The mocked suite is **integration tests** (mocked responses for all calls).
+
 ## Goal
 
 - **Mock** Zephyr (and optionally Jira) API responses.
@@ -32,8 +41,8 @@
    - Cover every `this.client.get/post/put/delete` in `zephyr-client.ts` (and later `jira-client.ts`) at least once.
 
 7. **GHA workflow**  
-   - `.github/workflows/test.yml`: on push/PR to main and feat/**; install deps, run `npm run test`, then `npm run typecheck`.  
-   - No secrets needed; all requests are mocked.
+   - **Integration (mocked):** `.github/workflows/test.yml` on push/PR to main and feat/**; `npm run test:unit` (same as `test:integration`), `npm run typecheck`. No secrets; all requests mocked.  
+   - **Contract:** `.github/workflows/contract.yml` is **manual only** (`workflow_dispatch`) for now; run once repo secrets are set. Required secrets: `ZEPHYR_BASE_URL`, `ZEPHYR_API_TOKEN`, `JIRA_BASE_URL`, `JIRA_USERNAME`, `JIRA_API_TOKEN`; optional: `ZEPHYR_CONTRACT_PROJECT_KEY`, `ZEPHYR_CONTRACT_PLAN_KEY`, `ZEPHYR_CONTRACT_CYCLE_KEY`. You can add a schedule later (e.g. daily) and a badge: `![Zephyr contract](https://github.com/OWNER/REPO/actions/workflows/contract.yml/badge.svg)`.
 
 ## Suggested layout
 
@@ -58,11 +67,13 @@ tests/
 
 ## Implementation (done)
 
-1. **nock** and **vitest** added as devDependencies; **`npm run test`** runs `vitest run`, **`npm run test:watch`** runs vitest in watch mode.
-2. **tests/setup.ts** sets minimal `process.env` so `getAppConfig()` passes when the client is created.
-3. **tests/zephyr-client.test.ts** tests four client methods with nock and fixtures: `getTestPlans`, `searchTestCases`, `createTestCase`, `getTestSteps`.
-4. **.github/workflows/test.yml** runs on push/PR to main and feat/**: `npm ci`, `npm run test`, `npm run typecheck`.
-5. **Next:** Add fixtures and tests for the remaining Zephyr client methods (test plans create, test cycles, folders, priorities, statuses, executions, test script, steps create/update/delete, etc.), then Jira client if desired.
+1. **nock** and **vitest** added as devDependencies; **`npm run test`** runs all; **`npm run test:integration`** / **`npm run test:unit`** run integration (mocked) only; **`npm run test:contract`** runs contract only; **`npm run test:watch`** runs vitest in watch mode.
+2. **tests/setup.ts** loads `.env` (for contract tests). Integration tests need no real config: they set fake Jira endpoint and fake tokens in their own `beforeAll` so nock intercepts; no .env required.
+3. **tests/zephyr-client.test.ts** = **integration tests (mocked):** Zephyr client with nock and sanitized fixtures; each test asserts request (method, path, query, body) and response shape (`scope.isDone()`).
+4. **.github/workflows/test.yml** runs on push/PR: `npm run test:unit` (integration mocked), `npm run typecheck`. No secrets.
+5. **Contract suite:** **tests/contract/zephyr-contract.test.ts** calls the real Zephyr API (read-only). Its `beforeAll` calls `dotenv.config()` so real credentials are used. **.github/workflows/contract.yml** runs `npm run test:contract` on manual trigger (`workflow_dispatch` only for now).
+6. **Run by file:** `npm run test` = all; `npm run test:integration` or `npm run test:unit` = integration (mocked) only; `npm run test:contract` = contract only.
+7. **Fixtures** are sanitized (see `docs/FIXTURE-SANITIZATION.md`); no real account IDs, names, or tokens in repo.
 
 ## Alternatives considered
 

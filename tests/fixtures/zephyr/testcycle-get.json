@@ -1,0 +1,21 @@
+{
+  "id": 200,
+  "key": "PROJ-R1",
+  "name": "Sample cycle",
+  "description": "Cycle for tests",
+  "projectId": "10000",
+  "versionId": "1",
+  "status": { "id": 365024 },
+  "plannedStartDate": "2024-01-01T00:00:00Z",
+  "plannedEndDate": "2024-12-31T23:59:59Z",
+  "createdOn": "2024-01-01T00:00:00Z",
+  "updatedOn": "2024-01-02T00:00:00Z",
+  "executionSummary": {
+    "total": 5,
+    "passed": 2,
+    "failed": 0,
+    "blocked": 0,
+    "inProgress": 0,
+    "notExecuted": 3
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "values": [
+    {
+      "id": 200,
+      "key": "PROJ-R1",
+      "name": "Cycle 1",
+      "description": "First cycle",
+      "projectId": "10000",
+      "versionId": "1",
+      "status": { "id": 365024 },
+      "plannedStartDate": "2024-01-01T00:00:00Z",
+      "plannedEndDate": "2024-12-31T23:59:59Z",
+      "executionSummary": { "total": 2, "passed": 1, "failed": 0, "blocked": 0, "inProgress": 0, "notExecuted": 1 }
+    }
+  ],
+  "total": 1
+}

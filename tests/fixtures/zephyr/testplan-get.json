@@ -1,0 +1,11 @@
+{
+  "id": 100,
+  "key": "TP-1",
+  "name": "Test Plan 1",
+  "description": "Sample plan",
+  "projectId": "10000",
+  "status": { "id": 365027 },
+  "createdOn": "2024-01-01T00:00:00Z",
+  "updatedOn": "2024-01-02T00:00:00Z",
+  "createdBy": { "accountId": "test-account", "displayName": "Test User" }
+}
