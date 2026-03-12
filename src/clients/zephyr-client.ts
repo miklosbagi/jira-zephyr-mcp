@@ -618,7 +618,7 @@ export class ZephyrClient {
    */
   private async _addOneTestStep(
     testCaseKey: string,
-    selfUrl: string,
+    _selfUrl: string,
     s: { index: number; description: string; testData?: string; expectedResult: string },
   ): Promise<void> {
     try {

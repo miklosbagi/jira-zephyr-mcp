@@ -2,7 +2,6 @@ import { ZephyrClient } from '../clients/zephyr-client.js';
 import {
   createTestPlanSchema,
   listTestPlansSchema,
-  getTestPlanSchema,
   CreateTestPlanInput,
   ListTestPlansInput,
   GetTestPlanInput,

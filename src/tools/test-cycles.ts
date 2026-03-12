@@ -2,7 +2,6 @@ import { ZephyrClient } from '../clients/zephyr-client.js';
 import {
   createTestCycleSchema,
   listTestCyclesSchema,
-  getTestCycleSchema,
   addTestCasesToCycleSchema,
   updateTestCycleSchema,
   CreateTestCycleInput,
