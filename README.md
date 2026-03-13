@@ -7,6 +7,7 @@ An [MCP](https://modelcontextprotocol.io/) server for JIRA and **Zephyr Scale** 
 [![Integration tests](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/test.yml) · Integration (PR/push)  
 [![Zephyr contract](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml/badge.svg)](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml) · Zephyr contract (daily 6am CET / on demand).
 
+[![Docker Pulls](https://badgen.net/docker/pulls/miklosbagi/jira-zephyr-mcp?icon=docker&label=Docker%20Pulls)](https://hub.docker.com/r/miklosbagi/jira-zephyr-mcp/)
 ---
 
 ## Why this fork?
