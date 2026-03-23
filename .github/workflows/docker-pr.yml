@@ -14,22 +14,35 @@
 #
 # Security: fork PRs are skipped — untrusted code must not receive registry credentials.
 #
+# Draft PRs: no build (saves registry churn). When you mark the PR ready, `ready_for_review`
+# runs a build without requiring a new commit (synchronize alone does not fire on draft→ready).
+# Pushes while draft still trigger the workflow run, but the Docker job is skipped (check Actions).
+#
 # Images are built for linux/amd64 and linux/arm64 (Apple Silicon) via QEMU + buildx.
 name: Docker (PR)
 
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 permissions:
   contents: read
   packages: write
   pull-requests: write
 
+# One active build per PR; newest push wins (avoids stacked runs finishing out of order).
+concurrency:
+  group: docker-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   build-push:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head
