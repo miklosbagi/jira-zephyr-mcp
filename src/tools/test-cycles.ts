@@ -106,7 +106,7 @@ export const listTestCycles = async (input: ListTestCyclesInput) => {
       data: {
         total: result.total,
         testCycles: result.testCycles.map(cycle => {
-          const summary = cycle.executionSummary ?? {};
+          const s = cycle.executionSummary;
           return {
             id: cycle.id,
             key: cycle.key,
@@ -123,14 +123,14 @@ export const listTestCycles = async (input: ListTestCyclesInput) => {
             createdOn: cycle.createdOn,
             updatedOn: cycle.updatedOn,
             executionSummary: {
-              total: summary.total ?? 0,
-              passed: summary.passed ?? 0,
-              failed: summary.failed ?? 0,
-              blocked: summary.blocked ?? 0,
-              inProgress: summary.inProgress ?? 0,
-              notExecuted: summary.notExecuted ?? 0,
-              passRate: (summary.total ?? 0) > 0
-                ? Math.round(((summary.passed ?? 0) / (summary.total ?? 1)) * 100)
+              total: s?.total ?? 0,
+              passed: s?.passed ?? 0,
+              failed: s?.failed ?? 0,
+              blocked: s?.blocked ?? 0,
+              inProgress: s?.inProgress ?? 0,
+              notExecuted: s?.notExecuted ?? 0,
+              passRate: (s?.total ?? 0) > 0
+                ? Math.round(((s?.passed ?? 0) / (s?.total ?? 1)) * 100)
                 : 0,
             },
           };
