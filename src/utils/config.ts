@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-// MCP stdio transport: stdout must be JSON-RPC only. dotenv v17+ prints tips to stdout by default.
+// MCP stdio: stdout must be JSON-RPC only. dotenv v17+ prints tips to stdout by default.
 config({ quiet: true });
 
 const configSchema = z.object({
