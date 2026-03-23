@@ -5,6 +5,7 @@ An [MCP](https://modelcontextprotocol.io/) server for JIRA and **Zephyr Scale** 
 **Running it:** Use the published Docker image—no clone or build. Docker pulls the image when needed; you add a small config block to your AI tool (Cursor, Claude, Gemini, Windsurf, etc.). Cloning and building from source is for **developers and contributors** only.
 
 [![Integration tests](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/test.yml) · Integration (PR/push)  
+[![CodeQL](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/codeql.yml) · Code scanning (PR/push to `main`)  
 [![Zephyr contract](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml/badge.svg)](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml) · Zephyr contract (daily 6am CET / on demand).
 
 [![Docker Pulls](https://badgen.net/docker/pulls/miklosbagi/jira-zephyr-mcp?icon=docker&label=Docker%20Pulls)](https://hub.docker.com/r/miklosbagi/jira-zephyr-mcp/)
