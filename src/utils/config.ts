@@ -1,7 +1,8 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-config();
+// MCP stdio transport: stdout must be JSON-RPC only. dotenv v17+ prints tips to stdout by default.
+config({ quiet: true });
 
 const configSchema = z.object({
   JIRA_BASE_URL: z.string().url(),

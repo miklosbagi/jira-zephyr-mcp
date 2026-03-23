@@ -307,5 +307,6 @@ MIT — see [LICENSE](LICENSE).
 
 ## Support
 
+- **Cursor + Docker:** The MCP log may show pull progress as `[error]` because Docker prints that to **stderr** while the UI treats stderr as errors. That is normal. A real problem is a **JSON parse** / “not valid JSON” line on startup: the MCP protocol requires a clean **stdout** stream. **v0.10.1+** loads dotenv with `quiet: true` so tip output does not break stdio (fixed from v0.10.0).
 - Open a [GitHub issue](https://github.com/miklosbagi/jira-zephyr-mcp/issues) with details and logs (no secrets).
 - Upstream: [leorosignoli/jira-zephyr-mcp](https://github.com/leorosignoli/jira-zephyr-mcp).
