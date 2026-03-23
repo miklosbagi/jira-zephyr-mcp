@@ -1,6 +1,6 @@
 # Dev / preview images for PRs to main (same-repo only).
 #
-# Tags (Docker Hub + GHCR): dev-YYYY-MM-DD-<7-char-sha> only.
+# Tags (Docker Hub + GHCR): dev-v<package.json version>-<7-char-sha> (e.g. dev-v0.10.0-a1b2c3d).
 # Production v* and :latest are pushed by docker-release.yml when you push a semver tag after merge.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
@@ -25,6 +25,7 @@ on:
 permissions:
   contents: read
   packages: write
+  pull-requests: write
 
 jobs:
   build-push:
@@ -64,8 +65,8 @@ jobs:
         run: |
           set -euo pipefail
           SHORT=$(echo "$HEAD_SHA" | cut -c1-7)
-          DATE=$(date -u +%Y-%m-%d)
-          DEV_TAG="dev-${DATE}-${SHORT}"
+          VERSION=$(jq -r .version package.json)
+          DEV_TAG="dev-v${VERSION}-${SHORT}"
 
           REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           DOCKERHUB_IMG="docker.io/${REPO_LC}"
@@ -73,7 +74,14 @@ jobs:
 
           TAGS="${DOCKERHUB_IMG}:${DEV_TAG}"$'\n'"${GHCR_IMG}:${DEV_TAG}"
 
+          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+          LINK_DH="https://hub.docker.com/r/${REPO_LC}/tags?name=${DEV_TAG}"
+          LINK_GHCR="https://github.com/${{ github.repository }}/pkgs/container/${REPO_NAME}"
+
           echo "dev_tag=${DEV_TAG}" >> "$GITHUB_OUTPUT"
+          echo "repo_lc=${REPO_LC}" >> "$GITHUB_OUTPUT"
+          echo "link_dockerhub=${LINK_DH}" >> "$GITHUB_OUTPUT"
+          echo "link_ghcr=${LINK_GHCR}" >> "$GITHUB_OUTPUT"
           {
             echo 'tags<<EOF'
             echo "$TAGS"
@@ -87,3 +95,21 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
+
+      - name: Comment PR with dev image links
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: dev-docker-image
+          number: ${{ github.event.pull_request.number }}
+          message: |
+            ### Dev Docker image
+
+            New **multi-arch** image published for this PR (`linux/amd64`, `linux/arm64`):
+
+            | Registry | Pull |
+            |----------|------|
+            | **Docker Hub** | [`docker.io/${{ steps.meta.outputs.repo_lc }}:${{ steps.meta.outputs.dev_tag }}`](${{ steps.meta.outputs.link_dockerhub }}) |
+            | **GHCR** | [`ghcr.io/${{ steps.meta.outputs.repo_lc }}:${{ steps.meta.outputs.dev_tag }}`](${{ steps.meta.outputs.link_ghcr }}) |
+
+            Same tag on both registries. Tag is `package.json` version + short commit SHA.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
