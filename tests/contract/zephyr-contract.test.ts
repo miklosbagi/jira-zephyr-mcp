@@ -19,7 +19,7 @@ import { config } from 'dotenv';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { ZephyrClient } from '../../src/clients/zephyr-client.js';
 
-config();
+config({ quiet: true });
 
 const hasContractCredentials =
   Boolean(process.env.ZEPHYR_API_TOKEN?.trim()) &&
