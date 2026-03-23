@@ -120,6 +120,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **list_test_executions_in_cycle** | List test cases and executions in a cycle. |
 | **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
 | **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
+| **remove_test_case_from_cycle** | Remove a test case from a cycle by deleting its test execution (`DELETE /testexecutions/{id}`). Pass **`executionId`** from `list_test_executions_in_cycle`, or **`cycleKey` + `testCaseKey`** to resolve it. If the public API returns 404/405 on your instance, use the Zephyr UI or contact SmartBear. |
 | **create_test_case** / **search_test_cases** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
 | **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). |
 | **execute_test** | Update test execution status (PASS/FAIL/WIP/BLOCKED). |
@@ -157,6 +158,9 @@ list_test_executions_in_cycle({ cycleId: "ABC-R1" });
 add_test_cases_to_cycle({ cycleKey: "ABC-R1", testCaseKeys: ["ABC-T1", "ABC-T2"] });
 // If add_test_cases_to_cycle returns 404 (e.g. EU API), use create_test_execution per test case:
 create_test_execution({ projectKey: "ABC", testCycleKey: "ABC-R1", testCaseKey: "ABC-T1" });
+// Remove from cycle: by execution id, or by cycle + case key
+remove_test_case_from_cycle({ executionId: "12345" });
+remove_test_case_from_cycle({ cycleKey: "ABC-R1", testCaseKey: "ABC-T1" });
 ```
 
 **Folders**
@@ -266,7 +270,7 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [ ] **Environments** — List or manage environments for cycles.
 - [ ] **Test case archive / delete** — Archive and delete test cases (per Zephyr docs).
 - [x] **Test steps as separate resource** — `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` (v0.7). Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER.
-- [ ] **Remove test case from cycle** — Remove a test from a cycle (if supported by API).
+- [x] **Remove test case from cycle** — `remove_test_case_from_cycle` calls `DELETE /testexecutions/{id}` (resolve via `list_test_executions_in_cycle` or pass `cycleKey` + `testCaseKey`). Official docs may not advertise this; some tenants return 404/405.
 - [ ] **Update test plan / test cycle** — PUT for plans and cycles (rename, dates, status).
 - [ ] **Bulk operations** — Bulk execution updates or bulk add-to-cycle (beyond `create_multiple_test_cases`).
 

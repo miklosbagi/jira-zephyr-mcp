@@ -293,6 +293,45 @@ describe('ZephyrClient (integration, mocked)', () => {
     });
   });
 
+  describe('deleteTestExecution', () => {
+    it('sends DELETE /v2/testexecutions/{id}', async () => {
+      const scope = nock(ZEPHYR_ORIGIN).delete(`${V2}/testexecutions/5001`).reply(204);
+
+      await client.deleteTestExecution('5001');
+
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('removeTestCaseFromCycle', () => {
+    it('lists cycle executions then DELETEs the matching test case execution', async () => {
+      const listBody = loadFixture('testexecutions-in-cycle.json');
+      const listScope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testexecutions`)
+        .query({ testCycle: 'PROJ-R1' })
+        .reply(200, listBody);
+      const delScope = nock(ZEPHYR_ORIGIN).delete(`${V2}/testexecutions/5002`).reply(204);
+
+      const result = await client.removeTestCaseFromCycle('PROJ-R1', 'PROJ-T2');
+
+      expect(result.executionId).toBe('5002');
+      expect(listScope.isDone()).toBe(true);
+      expect(delScope.isDone()).toBe(true);
+    });
+
+    it('throws when no execution matches test case key', async () => {
+      const listBody = loadFixture('testexecutions-in-cycle.json');
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testexecutions`)
+        .query({ testCycle: 'PROJ-R1' })
+        .reply(200, listBody);
+
+      await expect(client.removeTestCaseFromCycle('PROJ-R1', 'PROJ-T99')).rejects.toThrow(
+        'No test execution in cycle'
+      );
+    });
+  });
+
   describe('linkTestCaseToIssue', () => {
     it('sends POST /v2/testcases/{id}/links with issueKeys array', async () => {
       const scope = nock(ZEPHYR_ORIGIN)

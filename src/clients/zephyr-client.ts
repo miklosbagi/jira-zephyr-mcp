@@ -254,6 +254,48 @@ export class ZephyrClient {
     return response.data;
   }
 
+  /**
+   * Remove a test case from a cycle by deleting its test execution (Scale Cloud v2:
+   * DELETE /testexecutions/{id}). Some instances document this poorly; if the API returns
+   * 404/405, removal may not be enabled for your tenant.
+   */
+  async deleteTestExecution(executionIdOrKey: string): Promise<void> {
+    const id = encodeURIComponent(executionIdOrKey);
+    await this.client.delete(`/testexecutions/${id}`);
+  }
+
+  /**
+   * Find the execution for testCaseKey in the cycle and delete it (same effect as removing
+   * the test case from the cycle in the UI when one execution exists per case).
+   */
+  async removeTestCaseFromCycle(cycleKey: string, testCaseKey: string): Promise<{ executionId: string }> {
+    const { executions } = await this.getTestExecutionsInCycle(cycleKey);
+    type ExRow = ZephyrTestExecution & { testCase?: { key?: string }; testCaseKey?: string };
+    const rows = executions as ExRow[];
+    const matches = rows.filter(ex => {
+      const key = ex.testCase?.key ?? ex.testCaseKey;
+      return key === testCaseKey;
+    });
+    if (matches.length === 0) {
+      throw new Error(
+        `No test execution in cycle "${cycleKey}" for test case "${testCaseKey}". Use list_test_executions_in_cycle to list executions.`
+      );
+    }
+    if (matches.length > 1) {
+      throw new Error(
+        `Multiple executions for test case "${testCaseKey}" in cycle "${cycleKey}"; pass executionId from list_test_executions_in_cycle.`
+      );
+    }
+    const match = matches[0];
+    const rawId = match.id ?? match.key;
+    if (rawId == null || rawId === '') {
+      throw new Error('Matched execution has no id or key; cannot delete.');
+    }
+    const executionId = String(rawId);
+    await this.deleteTestExecution(executionId);
+    return { executionId };
+  }
+
   async updateTestExecution(data: {
     executionId: string;
     status: 'PASS' | 'FAIL' | 'WIP' | 'BLOCKED';
