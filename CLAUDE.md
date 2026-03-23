@@ -44,3 +44,7 @@ The following environment variables are required:
 - `npm run build`: Build the project
 - `npm run typecheck`: Check TypeScript types
 - `npm run lint`: Lint the code
+
+### Docker releases
+
+Published images (**v0.11.1+**): final stage is **`gcr.io/distroless/nodejs22-debian13:nonroot`** (Node 22 only, no `npm`/shell). Build stage is **`node:22-bookworm-slim`** with `npm ci`, `npm run build`, and `npm prune --omit=dev` before copying `node_modules` + `dist/` into distroless. **v0.11.0** and earlier used `node:22-bookworm-slim` for runtime too.
