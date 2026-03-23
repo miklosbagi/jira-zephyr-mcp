@@ -123,6 +123,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
 | **remove_test_case_from_cycle** | Remove a test case from a cycle by deleting its test execution (`DELETE /testexecutions/{id}`). Pass **`executionId`** from `list_test_executions_in_cycle`, or **`cycleKey` + `testCaseKey`** to resolve it. If the public API returns 404/405 on your instance, use the Zephyr UI or contact SmartBear. |
 | **create_test_case** / **search_test_cases** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
+| **archive_test_case** / **unarchive_test_case** / **delete_test_case** | Archive via PUT (`archived` flag), unarchive, or DELETE. **API support varies** — some instances reject `archived` or DELETE; see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md). |
 | **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). |
 | **execute_test** | Update test execution status (PASS/FAIL/WIP/BLOCKED). |
 | **get_test_execution_status** | Execution progress and stats for a cycle. |
@@ -196,6 +197,9 @@ search_test_cases({ projectKey: "ABC", query: "login", limit: 20 });
 get_test_case({ testCaseId: "ABC-T123" });
 update_test_case({ testCaseId: "ABC-T123", customFields: { "Created On": "2026-03-11" } });
 create_multiple_test_cases({ testCases: [...], continueOnError: true });
+archive_test_case({ testCaseKey: "ABC-T999" });
+unarchive_test_case({ testCaseKey: "ABC-T999" });
+delete_test_case({ testCaseKey: "ABC-T999" });  // may 404/405; remove from cycles first
 ```
 
 **Test steps (step-by-step test cases)**
@@ -277,7 +281,7 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Priorities and statuses** — `list_priorities` and `list_statuses` (id and name for create/update test case).
 - [x] **Zephyr projects list** — `list_projects` (id, key, name; pagination).
 - [x] **Environments** — `list_environments`, `get_environment`, `create_environment`, `update_environment` (v0.10.0).
-- [ ] **Test case archive / delete** — Archive and delete test cases (per Zephyr docs).
+- [x] **Test case archive / delete** — `archive_test_case`, `unarchive_test_case`, `delete_test_case` (v0.11.0; API caveats in gaps doc).
 - [x] **Test steps as separate resource** — `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` (v0.7). Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER.
 - [x] **Remove test case from cycle** — `remove_test_case_from_cycle` calls `DELETE /testexecutions/{id}` (resolve via `list_test_executions_in_cycle` or pass `cycleKey` + `testCaseKey`). Official docs may not advertise this; some tenants return 404/405.
 - [ ] **Update test plan / test cycle** — PUT for plans and cycles (rename, dates, status).
@@ -287,7 +291,7 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 
 ## Contributing
 
-Fork, create a feature branch, make changes, and open a pull request.
+Fork, create a feature branch, make changes, and open a **draft** pull request until it is ready for review.
 
 ---
 

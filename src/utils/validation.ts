@@ -220,6 +220,18 @@ export const getTestCaseSchema = z.object({
   testCaseId: z.string().min(1, 'Test case ID is required'),
 });
 
+export const archiveTestCaseSchema = z.object({
+  testCaseKey: z.string().min(1, 'Test case key is required'),
+});
+
+export const unarchiveTestCaseSchema = z.object({
+  testCaseKey: z.string().min(1, 'Test case key is required'),
+});
+
+export const deleteTestCaseSchema = z.object({
+  testCaseKey: z.string().min(1, 'Test case key is required'),
+});
+
 export const updateTestCaseSchema = z.object({
   testCaseId: z.string().min(1, 'Test case ID or key is required'),
   name: z.string().min(1).optional(),
@@ -305,6 +317,9 @@ export type GenerateTestReportInput = z.infer<typeof generateTestReportSchema>;
 export type CreateTestCaseInput = z.infer<typeof createTestCaseSchema>;
 export type SearchTestCasesInput = z.infer<typeof searchTestCasesSchema>;
 export type GetTestCaseInput = z.infer<typeof getTestCaseSchema>;
+export type ArchiveTestCaseInput = z.infer<typeof archiveTestCaseSchema>;
+export type UnarchiveTestCaseInput = z.infer<typeof unarchiveTestCaseSchema>;
+export type DeleteTestCaseInput = z.infer<typeof deleteTestCaseSchema>;
 export type UpdateTestCaseInput = z.infer<typeof updateTestCaseSchema>;
 export type CreateMultipleTestCasesInput = z.infer<typeof createMultipleTestCasesSchema>;
 export type ListTestStepsInput = z.infer<typeof listTestStepsSchema>;

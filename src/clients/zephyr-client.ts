@@ -809,6 +809,44 @@ export class ZephyrClient {
     return response.data;
   }
 
+  /**
+   * Set test case archived flag via PUT /testcases/{key} with full body.
+   * Official docs vary; some tenants accept `archived` on the entity, others return 400.
+   */
+  async setTestCaseArchived(testCaseKey: string, archived: boolean): Promise<ZephyrTestCase> {
+    const existing = await this.getTestCase(testCaseKey);
+    const projectId = existing.project?.id ?? (existing as any).projectKey;
+    const priorityId = existing.priority?.id ?? (existing as any).priority;
+    const statusId = existing.status?.id ?? (existing as any).status;
+    const payload: Record<string, any> = {
+      id: existing.id,
+      key: existing.key,
+      name: existing.name,
+      project: { id: projectId },
+      priority: { id: priorityId },
+      status: { id: statusId },
+      objective: existing.objective,
+      precondition: existing.precondition,
+      estimatedTime: existing.estimatedTime,
+      folderId: existing.folder?.id,
+      labels: existing.labels ?? [],
+      componentId: existing.component?.id,
+      customFields: { ...(existing.customFields ?? {}) },
+      archived,
+    };
+    const response = await this.client.put(`/testcases/${testCaseKey}`, payload);
+    return response.data;
+  }
+
+  /**
+   * Permanently delete a test case (DELETE /testcases/{key}).
+   * Not all instances document or enable this; you may need to archive in the UI first.
+   */
+  async deleteTestCase(testCaseKey: string): Promise<void> {
+    const id = encodeURIComponent(testCaseKey);
+    await this.client.delete(`/testcases/${id}`);
+  }
+
   async createMultipleTestCases(testCases: Array<{
     projectKey: string;
     name: string;

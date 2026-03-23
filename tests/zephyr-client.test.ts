@@ -279,6 +279,48 @@ describe('ZephyrClient (integration, mocked)', () => {
     });
   });
 
+  describe('setTestCaseArchived', () => {
+    it('GETs test case then PUTs with archived true', async () => {
+      const body = loadFixture('testcase-get.json') as Record<string, unknown>;
+      const updated = { ...body, archived: true };
+      const getScope = nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, body);
+      const putScope = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testcases/PROJ-T1`, (reqBody: Record<string, unknown>) => reqBody.archived === true)
+        .reply(200, updated);
+
+      const result = await client.setTestCaseArchived('PROJ-T1', true);
+
+      expect(result.archived).toBe(true);
+      expect(getScope.isDone()).toBe(true);
+      expect(putScope.isDone()).toBe(true);
+    });
+
+    it('PUTs with archived false for unarchive', async () => {
+      const body = { ...loadFixture('testcase-get.json') as Record<string, unknown>, archived: true };
+      const updated = { ...body, archived: false };
+      const getScope = nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, body);
+      const putScope = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testcases/PROJ-T1`, (reqBody: Record<string, unknown>) => reqBody.archived === false)
+        .reply(200, updated);
+
+      const result = await client.setTestCaseArchived('PROJ-T1', false);
+
+      expect(result.archived).toBe(false);
+      expect(getScope.isDone()).toBe(true);
+      expect(putScope.isDone()).toBe(true);
+    });
+  });
+
+  describe('deleteTestCase', () => {
+    it('sends DELETE /v2/testcases/{key}', async () => {
+      const scope = nock(ZEPHYR_ORIGIN).delete(`${V2}/testcases/PROJ-T1`).reply(204);
+
+      await client.deleteTestCase('PROJ-T1');
+
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
   describe('createTestCase', () => {
     it('sends POST /v2/testcases with expected body and returns created case', async () => {
       const body = loadFixture('testcase-create.json');

@@ -71,9 +71,9 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 ### 10. **Test case archive / delete**
 
-- **API:** Archive and/or delete test cases (exact endpoints to be confirmed in API docs; deletion may be async or batch in UI).
-- **Gap:** No archive or delete. Only create, read, update, and link are supported.
-- **Ref:** [Deleting test cases (UI)](https://support.smartbear.com/zephyr-scale-cloud/docs/en/test-cases/deleting-test-cases.html)
+- **API (used by MCP):** `PUT /testcases/{key}` with a full body including **`archived: true|false`** (after `GET` merge, same pattern as `update_test_case`). `DELETE /testcases/{key}` for permanent removal.
+- **MCP status:** Implemented (v0.11.0): `archive_test_case`, `unarchive_test_case`, `delete_test_case`.
+- **Caveat:** SmartBear’s public reference and community threads often state that **delete/archive are UI-first** or not guaranteed on the Scale Cloud v2 surface. **`archived` on PUT** may be ignored or rejected (400) on some tenants. **`DELETE`** may return **404/405**. Prefer **`archive_test_case`** when supported; use **[Deleting test cases (UI)](https://support.smartbear.com/zephyr-scale-cloud/docs/en/test-cases/deleting-test-cases.html)** for permanent delete if the API refuses (dependencies must be removed first).
 
 ### 11. **Test steps as a separate resource**
 
@@ -119,7 +119,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 7 | List Zephyr projects | GET projects | Implemented (`list_projects`, v0.8) |
 | 8 | List priorities/statuses | GET priorities, statuses | Implemented (v0.6) |
 | 9 | List/manage environments | GET/POST/PUT environments | Implemented (`list_environments`, `get_environment`, `create_environment`, `update_environment`, v0.10.0) |
-| 10 | Archive/delete test case | Archive + delete (per docs) | Not implemented |
+| 10 | Archive/delete test case | PUT archived; DELETE testcases/{key} | Implemented (`archive_test_case`, `unarchive_test_case`, `delete_test_case`, v0.11.0); API support varies by tenant |
 | 11 | Test steps CRUD | testcases/{key}/teststeps | Implemented (v0.7) |
 | 12 | Remove test case from cycle | DELETE /testexecutions/{id} | Implemented (`remove_test_case_from_cycle`; API support varies by tenant) |
 | 13 | Update test plan / test cycle | PUT testplans, testcycles | Not implemented |
