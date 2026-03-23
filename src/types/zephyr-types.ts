@@ -107,6 +107,16 @@ export interface ZephyrTestCase {
   };
 }
 
+/** Test environment (Zephyr Scale Cloud: GET/POST/PUT `/environments`). */
+export interface ZephyrEnvironment {
+  id: number;
+  name: string;
+  description?: string | null;
+  projectKey?: string;
+  project?: { id?: number; self?: string };
+  self?: string;
+}
+
 export interface ZephyrFolder {
   id: number;
   name: string;

@@ -116,6 +116,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **create_test_cycle** / **list_test_cycles** | Create and list test cycles. |
 | **list_folders** / **create_folder** | List and create folders (for organizing test cases or test cycles). Filter by folderType (TEST_CASE / TEST_CYCLE) and parentId for subfolders. |
 | **list_priorities** / **list_statuses** | List test case priorities and statuses (id and name). Use the returned ids when creating or updating test cases. Optional projectKey. |
+| **list_environments** / **get_environment** / **create_environment** / **update_environment** | List and manage test environments per project (`GET/POST/PUT /environments`). Use returned names with **create_test_cycle** / **update_test_cycle** (`environment`) and **create_test_execution** (`environmentName`). |
 | **list_projects** | List Zephyr-visible projects (id, key, name). Optional `limit`, `startAt` for pagination. Use for projectKey discovery. |
 | **list_test_executions_in_cycle** | List test cases and executions in a cycle. |
 | **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
@@ -176,6 +177,14 @@ create_folder({ projectKey: "ABC", name: "Subfolder", parentId: 12345 });
 list_priorities({ projectKey: "ABC" });   // or omit projectKey for all
 list_statuses({ projectKey: "ABC" });     // use returned id in create_test_case / update_test_case
 create_test_case({ projectKey: "ABC", name: "...", priority: "365033" });  // priority/status sent as { id } to API
+```
+
+**Environments**
+```ts
+list_environments({ projectKey: "ABC", limit: 50, startAt: 0 });
+get_environment({ environmentId: "101" });  // or key if your API returns one
+create_environment({ projectKey: "ABC", name: "Staging", description: "Pre-prod" });
+update_environment({ environmentId: "101", name: "Staging EU" });
 ```
 
 **Test cases and script types**
@@ -266,8 +275,8 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Get single test plan / test cycle** — `get_test_plan` and `get_test_cycle` fetch one plan or cycle by key or ID.
 - [x] **Folders** — `list_folders` and `create_folder` (filter by folderType, parentId for hierarchy).
 - [x] **Priorities and statuses** — `list_priorities` and `list_statuses` (id and name for create/update test case).
-- [ ] **Zephyr projects list** — List projects from Zephyr API for projectKey discovery.
-- [ ] **Environments** — List or manage environments for cycles.
+- [x] **Zephyr projects list** — `list_projects` (id, key, name; pagination).
+- [x] **Environments** — `list_environments`, `get_environment`, `create_environment`, `update_environment` (v0.10.0).
 - [ ] **Test case archive / delete** — Archive and delete test cases (per Zephyr docs).
 - [x] **Test steps as separate resource** — `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` (v0.7). Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER.
 - [x] **Remove test case from cycle** — `remove_test_case_from_cycle` calls `DELETE /testexecutions/{id}` (resolve via `list_test_executions_in_cycle` or pass `cycleKey` + `testCaseKey`). Official docs may not advertise this; some tenants return 404/405.

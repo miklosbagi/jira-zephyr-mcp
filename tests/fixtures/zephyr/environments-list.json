@@ -1,0 +1,7 @@
+{
+  "values": [
+    { "id": 101, "name": "Production", "description": "Live", "projectKey": "PROJ", "self": "https://api.zephyrscale.smartbear.com/v2/environments/101" },
+    { "id": 102, "name": "Staging", "description": null, "projectKey": "PROJ", "self": "https://api.zephyrscale.smartbear.com/v2/environments/102" }
+  ],
+  "total": 2
+}

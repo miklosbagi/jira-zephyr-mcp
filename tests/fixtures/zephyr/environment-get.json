@@ -1,0 +1,7 @@
+{
+  "id": 101,
+  "name": "Production",
+  "description": "Live system",
+  "projectKey": "PROJ",
+  "self": "https://api.zephyrscale.smartbear.com/v2/environments/101"
+}

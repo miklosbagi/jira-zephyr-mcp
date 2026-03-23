@@ -12,16 +12,25 @@
  *   - ZEPHYR_CONTRACT_CYCLE_KEY (e.g. MYPROJ-R1)
  *
  * Run: npm run test:contract (contract only) | npm run test (all) | npm run test:integration (integration mocked only)
+ *
+ * If JIRA and Zephyr credentials are not set, the whole suite is skipped so `npm test` still passes locally.
  */
 import { config } from 'dotenv';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { ZephyrClient } from '../../src/clients/zephyr-client.js';
 
-describe('Zephyr API contract', () => {
+config();
+
+const hasContractCredentials =
+  Boolean(process.env.ZEPHYR_API_TOKEN?.trim()) &&
+  Boolean(process.env.JIRA_BASE_URL?.trim()) &&
+  Boolean(process.env.JIRA_USERNAME?.trim()) &&
+  Boolean(process.env.JIRA_API_TOKEN?.trim());
+
+describe.skipIf(!hasContractCredentials)('Zephyr API contract', () => {
   let client: ZephyrClient;
 
   beforeAll(() => {
-    config(); // reload .env so we use real credentials even if unit tests ran first
     client = new ZephyrClient();
   });
 
@@ -98,6 +107,22 @@ describe('Zephyr API contract', () => {
       // Single-cycle GET may omit executionSummary; list responses often include it.
       if ('executionSummary' in result && result.executionSummary != null) {
         expect(result.executionSummary).toHaveProperty('total');
+      }
+    }
+  );
+
+  it.skipIf(!process.env.ZEPHYR_CONTRACT_PROJECT_KEY)(
+    'GET /environments with projectKey returns list with total',
+    async () => {
+      const projectKey = process.env.ZEPHYR_CONTRACT_PROJECT_KEY!;
+      const result = await client.getEnvironments(projectKey, 20, 0);
+      expect(result).toHaveProperty('environments');
+      expect(result).toHaveProperty('total');
+      expect(Array.isArray(result.environments)).toBe(true);
+      expect(result.total).toBeGreaterThanOrEqual(0);
+      for (const env of result.environments) {
+        expect(env).toHaveProperty('id');
+        expect(env).toHaveProperty('name');
       }
     }
   );

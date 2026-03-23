@@ -29,6 +29,7 @@ The following environment variables are required:
 - `create_multiple_test_cases`: Create multiple test cases in Zephyr at once
 - `search_test_cases`: Search for test cases in a project
 - `get_test_case`: Get detailed information about a specific test case
+- `list_environments` / `get_environment` / `create_environment` / `update_environment`: List and manage Zephyr test environments per project
 
 ### Setup Instructions
 
