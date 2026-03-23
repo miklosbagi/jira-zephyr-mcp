@@ -138,7 +138,7 @@ export const createTestCaseSchema = z.object({
   folderId: z.string().optional(),
   labels: z.array(z.string()).optional(),
   componentId: z.string().optional(),
-  customFields: z.record(z.any()).optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
   testScript: z.object({
     type: z.enum(['STEP_BY_STEP', 'PLAIN_TEXT', 'CUCUMBER']).optional(),
     steps: z.array(z.object({
@@ -172,7 +172,7 @@ export const updateTestCaseSchema = z.object({
   folderId: z.string().optional(),
   labels: z.array(z.string()).optional(),
   componentId: z.string().optional(),
-  customFields: z.record(z.any()).optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
   testScript: z.object({
     type: z.enum(['STEP_BY_STEP', 'PLAIN_TEXT', 'CUCUMBER']).optional(),
     steps: z.array(z.object({

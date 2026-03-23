@@ -19,7 +19,7 @@ const validateConfig = () => {
     const result = configSchema.safeParse(process.env);
     
     if (!result.success) {
-      const errors = result.error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      const errors = result.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`);
       const errorMessage = `Configuration validation failed:\n${errors.join('\n')}`;
       console.error(errorMessage);
       console.error('Please ensure the following environment variables are set:');
