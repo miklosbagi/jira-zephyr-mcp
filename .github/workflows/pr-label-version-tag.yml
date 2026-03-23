@@ -9,9 +9,9 @@
 # If more than one label is present, precedence is: tag-major > tag-minor > tag-patch.
 # If none of these labels are on the merged PR, this workflow does nothing.
 #
-# Docker release: pushes made with the default GITHUB_TOKEN do NOT trigger other workflows
-# (see GitHub docs: triggering a workflow from a workflow). Set repo secret GH_TOKEN to a
-# PAT with contents:write so git push here starts docker-release.yml on the new tag.
+# Tag pushes using GITHUB_TOKEN do not start other workflows. After pushing we dispatch
+# Docker (release) via workflow_dispatch (allowed; needs actions:write). Optional GH_TOKEN
+# is still used for git push if you set it (e.g. stricter org rules).
 #
 # Fork PRs are skipped (no contents: write on untrusted code).
 name: Version tag from PR label
@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   tag:
@@ -62,10 +63,10 @@ jobs:
 
       - name: Compute next tag and push
         if: steps.bump.outputs.skip == 'false'
+        id: tagpush
         env:
           BUMP: ${{ steps.bump.outputs.bump }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          # PAT required for tag push to trigger docker-release.yml; GITHUB_TOKEN pushes are ignored for downstream workflows.
           PUSH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
         run: |
           set -euo pipefail
@@ -95,6 +96,8 @@ jobs:
             exit 1
           fi
 
+          echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -104,3 +107,15 @@ jobs:
           git push origin "$NEW_TAG"
 
           echo "Created and pushed $NEW_TAG"
+
+      - name: Dispatch Docker (release) workflow
+        if: steps.bump.outputs.skip == 'false' && steps.tagpush.outputs.new_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run docker-release.yml \
+            --repo "${{ github.repository }}" \
+            --ref main \
+            -f tag="${{ steps.tagpush.outputs.new_tag }}"
+          echo "Dispatched Docker (release) for ${{ steps.tagpush.outputs.new_tag }}"

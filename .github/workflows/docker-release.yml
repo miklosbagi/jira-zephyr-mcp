@@ -1,9 +1,9 @@
 # Production images: semver tag + latest (Docker Hub + GHCR), linux/amd64 + linux/arm64.
 #
 # Triggers:
-#   1) Push a semver git tag (e.g. v0.8.2) — normal release.
-#   2) workflow_dispatch — enter an existing tag to rebuild/republish (e.g. fix multi-arch
-#      or registry without re-tagging in git).
+#   1) Push a semver git tag (e.g. v0.9.0) — normal release (skips if push was via GITHUB_TOKEN only).
+#   2) workflow_dispatch — enter an existing tag to rebuild/republish.
+#   3) GitHub Release published — uses the release tag (good when you publish a release from the UI).
 #
 # Secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN; optional GH_TOKEN for GHCR (see docker-pr.yml).
 name: Docker (release)
@@ -12,6 +12,8 @@ on:
   push:
     tags:
       - 'v[0-9]*.[0-9]*.[0-9]*'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -40,12 +42,14 @@ jobs:
               echo "::error::Input 'tag' is required."
               exit 1
             fi
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
           else
             TAG="$GITHUB_REF_NAME"
           fi
 
           if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "release" ]; then
               echo "::error::Tag must match vMajor.Minor.Patch (got: $TAG)"
               exit 1
             fi
