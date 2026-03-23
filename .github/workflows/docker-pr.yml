@@ -16,6 +16,7 @@
 #
 # Draft PRs: no build (saves registry churn). When you mark the PR ready, `ready_for_review`
 # runs a build without requiring a new commit (synchronize alone does not fire on draft→ready).
+# Pushes while draft still trigger the workflow run, but the Docker job is skipped (check Actions).
 #
 # Images are built for linux/amd64 and linux/arm64 (Apple Silicon) via QEMU + buildx.
 name: Docker (PR)
