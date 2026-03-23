@@ -6,12 +6,14 @@ import {
   linkTestsToIssuesSchema,
   generateTestReportSchema,
   createTestExecutionSchema,
+  removeTestCaseFromCycleSchema,
   ExecuteTestInput,
   GetTestExecutionStatusInput,
   ListTestExecutionsInCycleInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
   CreateTestExecutionInput,
+  RemoveTestCaseFromCycleInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
@@ -21,6 +23,33 @@ const getZephyrClient = (): ZephyrClient => {
     zephyrClient = new ZephyrClient();
   }
   return zephyrClient;
+};
+
+export const removeTestCaseFromCycle = async (input: RemoveTestCaseFromCycleInput) => {
+  const validatedInput = removeTestCaseFromCycleSchema.parse(input);
+  try {
+    const client = getZephyrClient();
+    if (validatedInput.executionId?.trim()) {
+      const executionId = validatedInput.executionId.trim();
+      await client.deleteTestExecution(executionId);
+      return {
+        success: true,
+        data: { executionId, removed: true },
+      };
+    }
+    const cycleKey = validatedInput.cycleKey!.trim();
+    const testCaseKey = validatedInput.testCaseKey!.trim();
+    const { executionId } = await client.removeTestCaseFromCycle(cycleKey, testCaseKey);
+    return {
+      success: true,
+      data: { cycleKey, testCaseKey, executionId, removed: true },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
 };
 
 export const createTestExecution = async (input: CreateTestExecutionInput) => {

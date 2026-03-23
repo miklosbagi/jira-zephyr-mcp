@@ -90,8 +90,9 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 ### 12. **Remove test case from cycle**
 
-- **API:** DELETE or similar for “test case in cycle” association (if documented).
-- **Gap:** No tool to remove a test case from a cycle. Only “add to cycle” is missing; “remove from cycle” would complete the lifecycle.
+- **API (used):** `DELETE /testexecutions/{executionId}` — removing the execution removes the test case from the cycle (same net effect as the UI in typical setups).
+- **MCP status:** Implemented (`remove_test_case_from_cycle`). Pass **`executionId`** from `list_test_executions_in_cycle`, or **`cycleKey` + `testCaseKey`** to resolve a single matching execution. If more than one execution exists for the same case in the cycle, you must pass **`executionId`**.
+- **Caveat:** The public API reference does not always list this operation; some tenants return **404/405**. The Zephyr UI may use other backends for bulk removal; this tool targets the Scale Cloud v2 REST surface only.
 
 ### 13. **Update test plan / Update test cycle**
 
@@ -120,7 +121,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 9 | List/manage environments | GET (environments) | Not implemented |
 | 10 | Archive/delete test case | Archive + delete (per docs) | Not implemented |
 | 11 | Test steps CRUD | testcases/{key}/teststeps | Implemented (v0.7) |
-| 12 | Remove test case from cycle | DELETE (if exists) | Not implemented |
+| 12 | Remove test case from cycle | DELETE /testexecutions/{id} | Implemented (`remove_test_case_from_cycle`; API support varies by tenant) |
 | 13 | Update test plan / test cycle | PUT testplans, testcycles | Not implemented |
 | 14 | Bulk operations (executions, cycle) | Bulk endpoints (if any) | Not implemented |
 

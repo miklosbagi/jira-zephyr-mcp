@@ -12,6 +12,7 @@ import { createTestPlan, listTestPlans, getTestPlan } from './tools/test-plans.j
 import { createTestCycle, listTestCycles, getTestCycle, addTestCasesToCycle, updateTestCycle } from './tools/test-cycles.js';
 import {
   createTestExecution,
+  removeTestCaseFromCycle,
   executeTest,
   getTestExecutionStatus,
   listTestExecutionsInCycle,
@@ -38,6 +39,7 @@ import {
   listTestExecutionsInCycleSchema,
   addTestCasesToCycleSchema,
   createTestExecutionSchema,
+  removeTestCaseFromCycleSchema,
   listFoldersSchema,
   createFolderSchema,
   listPrioritiesSchema,
@@ -67,6 +69,7 @@ import {
   ListTestExecutionsInCycleInput,
   AddTestCasesToCycleInput,
   CreateTestExecutionInput,
+  RemoveTestCaseFromCycleInput,
   ListFoldersInput,
   CreateFolderInput,
   ListPrioritiesInput,
@@ -257,6 +260,29 @@ const TOOLS = [
         environmentName: { type: 'string', description: 'Environment name (optional)' },
       },
       required: ['projectKey', 'testCaseKey', 'testCycleKey'],
+    },
+  },
+  {
+    name: 'remove_test_case_from_cycle',
+    description:
+      'Remove a test case from a test cycle by deleting its test execution (DELETE /testexecutions/{id}). Pass executionId from list_test_executions_in_cycle, or cycleKey + testCaseKey to resolve the execution automatically. May return 404/405 if your Zephyr instance does not expose this on the public API.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        executionId: {
+          type: 'string',
+          description: 'Test execution id or key (use alone; do not combine with cycleKey/testCaseKey)',
+        },
+        cycleKey: {
+          type: 'string',
+          description: 'Test cycle key or id (required with testCaseKey if executionId is omitted)',
+        },
+        testCaseKey: {
+          type: 'string',
+          description: 'Test case key to remove from the cycle (required with cycleKey if executionId is omitted)',
+        },
+      },
+      required: [],
     },
   },
   {
@@ -761,6 +787,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await createTestExecution(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'remove_test_case_from_cycle': {
+        const validatedArgs = validateInput<RemoveTestCaseFromCycleInput>(
+          removeTestCaseFromCycleSchema,
+          args,
+          'remove_test_case_from_cycle'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await removeTestCaseFromCycle(validatedArgs), null, 2),
             },
           ],
         };

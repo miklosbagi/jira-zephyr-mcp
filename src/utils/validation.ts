@@ -79,6 +79,34 @@ export const addTestCasesToCycleSchema = z.object({
   testCaseKeys: z.array(z.string().min(1)).min(1, 'At least one test case key is required'),
 });
 
+/** Either `executionId` alone, or `cycleKey` + `testCaseKey` together (not both). */
+export const removeTestCaseFromCycleSchema = z
+  .object({
+    executionId: z.string().optional(),
+    cycleKey: z.string().optional(),
+    testCaseKey: z.string().optional(),
+  })
+  .superRefine((val, ctx) => {
+    const exec = val.executionId?.trim();
+    const cycle = val.cycleKey?.trim();
+    const tc = val.testCaseKey?.trim();
+    if (exec && (cycle || tc)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Provide only executionId, or both cycleKey and testCaseKey — not both.',
+        path: ['executionId'],
+      });
+    }
+    if (!exec && (!cycle || !tc)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Provide executionId, or both cycleKey and testCaseKey.',
+      });
+    }
+  });
+
+export type RemoveTestCaseFromCycleInput = z.infer<typeof removeTestCaseFromCycleSchema>;
+
 export const listFoldersSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),
   folderType: z.enum(['TEST_CASE', 'TEST_CYCLE']).optional(),
