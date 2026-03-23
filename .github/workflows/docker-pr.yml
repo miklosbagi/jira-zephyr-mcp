@@ -8,7 +8,10 @@
 #   DOCKERHUB_USERNAME
 #   DOCKERHUB_TOKEN      (Docker Hub access token / PAT with read & write)
 #
-# GHCR uses GITHUB_TOKEN (packages: write below).
+# GHCR: GitHub forbids *naming* a repo secret GITHUB_* (reserved prefix). Use GH_TOKEN
+# for a PAT with write:packages (classic) or "Contents: read" + "Packages: write"
+# (fine-grained), scoped to this repo. If GH_TOKEN is unset, login uses github.token
+# (same as the built-in GITHUB_TOKEN — no secret to create).
 #
 # Security: fork PRs are skipped — untrusted code must not receive registry credentials.
 name: Docker (PR)
@@ -48,7 +51,8 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          # Prefer GH_TOKEN (repo secret); never name a secret GITHUB_* — use built-in github.token if no PAT.
+          password: ${{ secrets.GH_TOKEN || github.token }}
 
       - name: Compute image tags
         id: meta
