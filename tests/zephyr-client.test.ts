@@ -178,6 +178,74 @@ describe('ZephyrClient (integration, mocked)', () => {
     });
   });
 
+  describe('getEnvironments', () => {
+    it('sends GET /v2/environments with projectKey and pagination', async () => {
+      const body = loadFixture('environments-list.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/environments`)
+        .query({ projectKey: 'PROJ', maxResults: 50, startAt: 0 })
+        .reply(200, body);
+
+      const result = await client.getEnvironments('PROJ');
+
+      expect(result.environments).toHaveLength(2);
+      expect(result.total).toBe(2);
+      expect(result.environments[0].name).toBe('Production');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getEnvironment', () => {
+    it('sends GET /v2/environments/{id}', async () => {
+      const body = loadFixture('environment-get.json');
+      const scope = nock(ZEPHYR_ORIGIN).get(`${V2}/environments/101`).reply(200, body);
+
+      const result = await client.getEnvironment('101');
+
+      expect(result.id).toBe(101);
+      expect(result.name).toBe('Production');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('createEnvironment', () => {
+    it('sends POST /v2/environments with projectKey and name', async () => {
+      const body = loadFixture('environment-create.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/environments`, (reqBody: Record<string, unknown>) => {
+          return reqBody.projectKey === 'PROJ' && reqBody.name === 'QA' && reqBody.description === 'QA stack';
+        })
+        .reply(200, body);
+
+      const result = await client.createEnvironment({
+        projectKey: 'PROJ',
+        name: 'QA',
+        description: 'QA stack',
+      });
+
+      expect(result.id).toBe(103);
+      expect(result.name).toBe('QA');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('updateEnvironment', () => {
+    it('GETs then PUTs merged environment body', async () => {
+      const existing = loadFixture('environment-get.json') as Record<string, unknown>;
+      const updated = { ...existing, name: 'Production EU' };
+      const getScope = nock(ZEPHYR_ORIGIN).get(`${V2}/environments/101`).reply(200, existing);
+      const putScope = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/environments/101`, (reqBody: Record<string, unknown>) => reqBody.name === 'Production EU')
+        .reply(200, updated);
+
+      const result = await client.updateEnvironment('101', { name: 'Production EU' });
+
+      expect(result.name).toBe('Production EU');
+      expect(getScope.isDone()).toBe(true);
+      expect(putScope.isDone()).toBe(true);
+    });
+  });
+
   describe('searchTestCases', () => {
     it('sends GET /v2/testcases/search with projectKey and maxResults', async () => {
       const body = loadFixture('testcases-search.json');

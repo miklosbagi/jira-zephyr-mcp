@@ -12,6 +12,7 @@ import {
   ZephyrStatus,
   ZephyrTestStep,
   ZephyrProject,
+  ZephyrEnvironment,
 } from '../types/zephyr-types.js';
 
 export class ZephyrClient {
@@ -217,6 +218,67 @@ export class ZephyrClient {
     const response = await this.client.get('/statuses', { params });
     const list = response.data.values ?? response.data ?? [];
     return Array.isArray(list) ? list : [];
+  }
+
+  async getEnvironments(projectKey: string, limit = 50, startAt = 0): Promise<{
+    environments: ZephyrEnvironment[];
+    total: number;
+  }> {
+    const params = {
+      projectKey,
+      maxResults: limit,
+      startAt,
+    };
+    const response = await this.client.get('/environments', { params });
+    const environments = Array.isArray(response.data.values)
+      ? response.data.values
+      : Array.isArray(response.data)
+        ? response.data
+        : [];
+    return {
+      environments: environments as ZephyrEnvironment[],
+      total: response.data.total ?? environments.length,
+    };
+  }
+
+  async getEnvironment(environmentIdOrKey: string): Promise<ZephyrEnvironment> {
+    const id = encodeURIComponent(environmentIdOrKey);
+    const response = await this.client.get(`/environments/${id}`);
+    return response.data;
+  }
+
+  async createEnvironment(data: {
+    projectKey: string;
+    name: string;
+    description?: string;
+  }): Promise<ZephyrEnvironment> {
+    const payload: Record<string, string> = {
+      projectKey: data.projectKey,
+      name: data.name,
+    };
+    if (data.description !== undefined) {
+      payload.description = data.description;
+    }
+    const response = await this.client.post('/environments', payload);
+    return response.data;
+  }
+
+  /**
+   * PUT clears unspecified fields on some tenants; we GET first and merge like update_test_case.
+   */
+  async updateEnvironment(environmentIdOrKey: string, data: {
+    name?: string;
+    description?: string | null;
+  }): Promise<ZephyrEnvironment> {
+    const id = encodeURIComponent(environmentIdOrKey);
+    const existing = (await this.client.get(`/environments/${id}`)).data as Record<string, unknown>;
+    const payload = {
+      ...existing,
+      name: data.name !== undefined ? data.name : existing.name,
+      description: data.description !== undefined ? data.description : existing.description,
+    };
+    const response = await this.client.put(`/environments/${id}`, payload);
+    return response.data;
   }
 
   async addTestCasesToCycle(cycleKey: string, testCaseKeys: string[]): Promise<void> {

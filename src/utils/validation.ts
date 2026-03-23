@@ -130,10 +130,41 @@ export const listStatusesSchema = z.object({
   projectKey: z.string().min(1).optional(),
 });
 
+export const listEnvironmentsSchema = z.object({
+  projectKey: z.string().min(1, 'Project key is required'),
+  limit: z.number().min(1).max(100).default(50),
+  startAt: z.number().min(0).default(0),
+});
+
+export const getEnvironmentSchema = z.object({
+  environmentId: z.string().min(1, 'Environment id or key is required'),
+});
+
+export const createEnvironmentSchema = z.object({
+  projectKey: z.string().min(1, 'Project key is required'),
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+});
+
+export const updateEnvironmentSchema = z
+  .object({
+    environmentId: z.string().min(1, 'Environment id or key is required'),
+    name: z.string().min(1).optional(),
+    description: z.string().nullable().optional(),
+  })
+  .refine(
+    data => data.name !== undefined || data.description !== undefined,
+    { message: 'At least one of name or description must be provided' }
+  );
+
 export type ListFoldersInput = z.infer<typeof listFoldersSchema>;
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type ListPrioritiesInput = z.infer<typeof listPrioritiesSchema>;
 export type ListStatusesInput = z.infer<typeof listStatusesSchema>;
+export type ListEnvironmentsInput = z.infer<typeof listEnvironmentsSchema>;
+export type GetEnvironmentInput = z.infer<typeof getEnvironmentSchema>;
+export type CreateEnvironmentInput = z.infer<typeof createEnvironmentSchema>;
+export type UpdateEnvironmentInput = z.infer<typeof updateEnvironmentSchema>;
 
 export const createTestExecutionSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),

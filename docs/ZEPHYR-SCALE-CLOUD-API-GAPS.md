@@ -66,8 +66,8 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 ### 9. **Environments**
 
-- **API:** Environment-related endpoints (list/create if available) for test cycles.
-- **Gap:** Cycles can be created with `environment` (string); no tool to list or manage environments. Harder to keep environment values consistent.
+- **API:** `GET /environments` (e.g. `projectKey`, pagination), `GET /environments/{id}`, `POST /environments`, `PUT /environments/{id}` ([path layout](https://support.smartbear.com/zephyr-scale-cloud/api-docs/) aligns with `environments` in Scale Cloud).
+- **MCP status:** Implemented (v0.10.0). `list_environments`, `get_environment`, `create_environment`, `update_environment`. Use returned **names** with `create_test_cycle` / `update_test_cycle` (`environment`) and `create_test_execution` (`environmentName`). **Update** loads the current environment then merges fields before PUT (some instances clear omitted fields on PUT).
 
 ### 10. **Test case archive / delete**
 
@@ -118,7 +118,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 6 | List/create folders | GET/POST folders | Implemented (v0.5) |
 | 7 | List Zephyr projects | GET projects | Implemented (`list_projects`, v0.8) |
 | 8 | List priorities/statuses | GET priorities, statuses | Implemented (v0.6) |
-| 9 | List/manage environments | GET (environments) | Not implemented |
+| 9 | List/manage environments | GET/POST/PUT environments | Implemented (`list_environments`, `get_environment`, `create_environment`, `update_environment`, v0.10.0) |
 | 10 | Archive/delete test case | Archive + delete (per docs) | Not implemented |
 | 11 | Test steps CRUD | testcases/{key}/teststeps | Implemented (v0.7) |
 | 12 | Remove test case from cycle | DELETE /testexecutions/{id} | Implemented (`remove_test_case_from_cycle`; API support varies by tenant) |

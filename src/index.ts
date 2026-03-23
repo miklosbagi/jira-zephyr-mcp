@@ -22,6 +22,7 @@ import {
 import { createTestCase, searchTestCases, getTestCase, updateTestCase, createMultipleTestCases } from './tools/test-cases.js';
 import { listTestSteps, createTestStep, updateTestStep, deleteTestStep } from './tools/test-steps.js';
 import { listFolders, createFolder } from './tools/folders.js';
+import { listEnvironments, getEnvironment, createEnvironment, updateEnvironment } from './tools/environments.js';
 import { listPriorities, listStatuses } from './tools/priorities-statuses.js';
 import { listProjects } from './tools/projects.js';
 import {
@@ -44,6 +45,10 @@ import {
   createFolderSchema,
   listPrioritiesSchema,
   listStatusesSchema,
+  listEnvironmentsSchema,
+  getEnvironmentSchema,
+  createEnvironmentSchema,
+  updateEnvironmentSchema,
   linkTestsToIssuesSchema,
   generateTestReportSchema,
   createTestCaseSchema,
@@ -74,6 +79,10 @@ import {
   CreateFolderInput,
   ListPrioritiesInput,
   ListStatusesInput,
+  ListEnvironmentsInput,
+  GetEnvironmentInput,
+  CreateEnvironmentInput,
+  UpdateEnvironmentInput,
   LinkTestsToIssuesInput,
   GenerateTestReportInput,
   CreateTestCaseInput,
@@ -90,7 +99,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.8.1',
+    version: '0.10.0',
   },
   {
     capabilities: {
@@ -381,6 +390,58 @@ const TOOLS = [
       properties: {
         projectKey: { type: 'string', description: 'JIRA project key (optional; if omitted returns all statuses)' },
       },
+    },
+  },
+  {
+    name: 'list_environments',
+    description:
+      'List test environments for a Jira project (Zephyr Scale). Use names when setting cycle environment or create_test_execution environmentName for consistency.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key' },
+        limit: { type: 'number', description: 'Max results (default: 50)' },
+        startAt: { type: 'number', description: 'Pagination offset (default: 0)' },
+      },
+      required: ['projectKey'],
+    },
+  },
+  {
+    name: 'get_environment',
+    description: 'Get a single test environment by numeric id or key (Zephyr Scale GET /environments/{id}).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        environmentId: { type: 'string', description: 'Environment id or key' },
+      },
+      required: ['environmentId'],
+    },
+  },
+  {
+    name: 'create_environment',
+    description: 'Create a test environment in a project (Zephyr Scale POST /environments).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key' },
+        name: { type: 'string', description: 'Environment name (e.g. Production, Staging)' },
+        description: { type: 'string', description: 'Optional description' },
+      },
+      required: ['projectKey', 'name'],
+    },
+  },
+  {
+    name: 'update_environment',
+    description:
+      'Update a test environment name and/or description. Fetches the current environment first then PUTs a full body (Zephyr clears omitted fields on some instances).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        environmentId: { type: 'string', description: 'Environment id or key' },
+        name: { type: 'string', description: 'New name (optional)' },
+        description: { type: 'string', description: 'New description; omit to keep, null to clear if API allows (optional)' },
+      },
+      required: ['environmentId'],
     },
   },
   {
@@ -875,6 +936,54 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await listStatuses(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_environments': {
+        const validatedArgs = validateInput<ListEnvironmentsInput>(listEnvironmentsSchema, args, 'list_environments');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listEnvironments(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'get_environment': {
+        const validatedArgs = validateInput<GetEnvironmentInput>(getEnvironmentSchema, args, 'get_environment');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await getEnvironment(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'create_environment': {
+        const validatedArgs = validateInput<CreateEnvironmentInput>(createEnvironmentSchema, args, 'create_environment');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await createEnvironment(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'update_environment': {
+        const validatedArgs = validateInput<UpdateEnvironmentInput>(updateEnvironmentSchema, args, 'update_environment');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await updateEnvironment(validatedArgs), null, 2),
             },
           ],
         };
