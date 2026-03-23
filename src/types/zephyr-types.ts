@@ -94,6 +94,8 @@ export interface ZephyrTestCase {
     self: string;
   };
   customFields?: Record<string, any>;
+  /** Present on some GET responses when the test case is archived. */
+  archived?: boolean;
   links?: {
     self: string;
     issues?: Array<{

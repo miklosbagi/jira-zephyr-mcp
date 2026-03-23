@@ -5,10 +5,16 @@ import {
   searchTestCasesSchema,
   createMultipleTestCasesSchema,
   updateTestCaseSchema,
+  archiveTestCaseSchema,
+  unarchiveTestCaseSchema,
+  deleteTestCaseSchema,
   CreateTestCaseInput,
   SearchTestCasesInput,
   CreateMultipleTestCasesInput,
   UpdateTestCaseInput,
+  ArchiveTestCaseInput,
+  UnarchiveTestCaseInput,
+  DeleteTestCaseInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
@@ -167,6 +173,64 @@ export const updateTestCase = async (input: UpdateTestCaseInput) => {
           self: `${getZephyrBaseUrl().replace(/\/$/, '')}/testcases/${testCase.key}`,
         },
       },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const archiveTestCase = async (input: ArchiveTestCaseInput) => {
+  const validatedInput = archiveTestCaseSchema.parse(input);
+  try {
+    const testCase = await getZephyrClient().setTestCaseArchived(validatedInput.testCaseKey, true);
+    return {
+      success: true,
+      data: {
+        id: testCase.id,
+        key: testCase.key,
+        name: testCase.name,
+        archived: (testCase as any).archived ?? true,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const unarchiveTestCase = async (input: UnarchiveTestCaseInput) => {
+  const validatedInput = unarchiveTestCaseSchema.parse(input);
+  try {
+    const testCase = await getZephyrClient().setTestCaseArchived(validatedInput.testCaseKey, false);
+    return {
+      success: true,
+      data: {
+        id: testCase.id,
+        key: testCase.key,
+        name: testCase.name,
+        archived: (testCase as any).archived ?? false,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const deleteTestCase = async (input: DeleteTestCaseInput) => {
+  const validatedInput = deleteTestCaseSchema.parse(input);
+  try {
+    await getZephyrClient().deleteTestCase(validatedInput.testCaseKey);
+    return {
+      success: true,
+      data: { testCaseKey: validatedInput.testCaseKey, deleted: true },
     };
   } catch (error: any) {
     return {

@@ -19,7 +19,16 @@ import {
   linkTestsToIssues,
   generateTestReport,
 } from './tools/test-execution.js';
-import { createTestCase, searchTestCases, getTestCase, updateTestCase, createMultipleTestCases } from './tools/test-cases.js';
+import {
+  createTestCase,
+  searchTestCases,
+  getTestCase,
+  updateTestCase,
+  archiveTestCase,
+  unarchiveTestCase,
+  deleteTestCase,
+  createMultipleTestCases,
+} from './tools/test-cases.js';
 import { listTestSteps, createTestStep, updateTestStep, deleteTestStep } from './tools/test-steps.js';
 import { listFolders, createFolder } from './tools/folders.js';
 import { listEnvironments, getEnvironment, createEnvironment, updateEnvironment } from './tools/environments.js';
@@ -55,6 +64,9 @@ import {
   searchTestCasesSchema,
   getTestCaseSchema,
   updateTestCaseSchema,
+  archiveTestCaseSchema,
+  unarchiveTestCaseSchema,
+  deleteTestCaseSchema,
   createMultipleTestCasesSchema,
   listTestStepsSchema,
   createTestStepSchema,
@@ -89,6 +101,9 @@ import {
   SearchTestCasesInput,
   GetTestCaseInput,
   UpdateTestCaseInput,
+  ArchiveTestCaseInput,
+  UnarchiveTestCaseInput,
+  DeleteTestCaseInput,
   CreateMultipleTestCasesInput,
   ListTestStepsInput,
   CreateTestStepInput,
@@ -99,7 +114,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.10.2',
+    version: '0.11.0',
   },
   {
     capabilities: {
@@ -608,6 +623,42 @@ const TOOLS = [
     },
   },
   {
+    name: 'archive_test_case',
+    description:
+      'Archive a test case (PUT /testcases/{key} with archived: true after GET merge). Zephyr often requires archiving before permanent delete in the UI; API support for `archived` varies by tenant — errors may mean your instance expects status changes or UI-only archive.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseKey: { type: 'string', description: 'Test case key (e.g. PROJ-T123)' },
+      },
+      required: ['testCaseKey'],
+    },
+  },
+  {
+    name: 'unarchive_test_case',
+    description:
+      'Restore an archived test case (PUT with archived: false). Same API caveats as archive_test_case.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseKey: { type: 'string', description: 'Test case key (e.g. PROJ-T123)' },
+      },
+      required: ['testCaseKey'],
+    },
+  },
+  {
+    name: 'delete_test_case',
+    description:
+      'Permanently delete a test case (DELETE /testcases/{key}). Often undocumented or disabled on public Scale API; may return 404/405. Remove from cycles and dependencies first (see Zephyr docs). Prefer archive_test_case + UI delete if API delete fails.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseKey: { type: 'string', description: 'Test case key (e.g. PROJ-T123)' },
+      },
+      required: ['testCaseKey'],
+    },
+  },
+  {
     name: 'create_multiple_test_cases',
     description: 'Create multiple test cases in Zephyr at once',
     inputSchema: {
@@ -1032,6 +1083,42 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await updateTestCase(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'archive_test_case': {
+        const validatedArgs = validateInput<ArchiveTestCaseInput>(archiveTestCaseSchema, args, 'archive_test_case');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await archiveTestCase(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'unarchive_test_case': {
+        const validatedArgs = validateInput<UnarchiveTestCaseInput>(unarchiveTestCaseSchema, args, 'unarchive_test_case');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await unarchiveTestCase(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'delete_test_case': {
+        const validatedArgs = validateInput<DeleteTestCaseInput>(deleteTestCaseSchema, args, 'delete_test_case');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await deleteTestCase(validatedArgs), null, 2),
             },
           ],
         };
