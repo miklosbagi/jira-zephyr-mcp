@@ -28,7 +28,8 @@ export interface ZephyrTestCycle {
   actualEndDate?: string;
   createdOn: string;
   updatedOn: string;
-  executionSummary: {
+  /** Present on many list/detail responses; Zephyr Scale may omit on GET /testcycles/{key}. */
+  executionSummary?: {
     total: number;
     passed: number;
     failed: number;
