@@ -293,6 +293,7 @@ Fork, create a feature branch, make changes, and open a pull request.
 
 ## Security
 
+- **Docker image:** Multi-stage build on **`node:22-bookworm-slim`**, **production dependencies only** in the final image (no dev tooling), **`apt-get upgrade`** during build for Debian security fixes, and the process runs as the **`node`** user (not root). This reduces what [Docker Scout](https://docs.docker.com/scout/) and similar scanners flag versus a single-stage `node:22` image that retained `npm ci` devDependencies.
 - Do not commit API tokens or credentials.
 - Use environment variables for all secrets.
 - Rotate tokens periodically and restrict JIRA/Zephyr access as needed.
@@ -307,5 +308,6 @@ MIT — see [LICENSE](LICENSE).
 
 ## Support
 
+- **Cursor + Docker:** The MCP log may show pull progress as `[error]` because Docker prints that to **stderr** while the UI treats stderr as errors. That is normal. A real problem is a **JSON parse** / “not valid JSON” line on startup: the MCP protocol requires a clean **stdout** stream. **v0.10.2+** loads dotenv with `quiet: true` so tip output does not break stdio, and hardens the published image for fewer reported CVEs (see [Security](#security)).
 - Open a [GitHub issue](https://github.com/miklosbagi/jira-zephyr-mcp/issues) with details and logs (no secrets).
 - Upstream: [leorosignoli/jira-zephyr-mcp](https://github.com/leorosignoli/jira-zephyr-mcp).
