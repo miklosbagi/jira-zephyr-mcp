@@ -13,6 +13,8 @@
 # (same as the built-in GITHUB_TOKEN — no secret to create).
 #
 # Security: fork PRs are skipped — untrusted code must not receive registry credentials.
+#
+# Images are built for linux/amd64 and linux/arm64 (Apple Silicon) via QEMU + buildx.
 name: Docker (PR)
 
 on:
@@ -34,6 +36,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -80,4 +85,5 @@ jobs:
         with:
           context: .
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
