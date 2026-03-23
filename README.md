@@ -56,6 +56,8 @@ Run the server using the published image. Docker will pull `miklosbagi/jira-zeph
 
 Image: [Docker Hub — miklosbagi/jira-zephyr-mcp](https://hub.docker.com/r/miklosbagi/jira-zephyr-mcp). Multi-arch: **linux/amd64**, **linux/arm64** (Apple Silicon).
 
+**GitHub Container Registry (same image):** use `ghcr.io/miklosbagi/jira-zephyr-mcp:latest` (or another tag) in place of `miklosbagi/jira-zephyr-mcp:latest` in `args` and in the CLI examples below—`command`, `-e` flags, and `env` stay the same.
+
 ---
 
 ## AI integrations (MCP hosts)
@@ -243,6 +245,8 @@ docker run --rm -i \
   -e ZEPHYR_BASE_URL=https://eu.api.zephyrscale.smartbear.com/v2 \
   miklosbagi/jira-zephyr-mcp:latest
 ```
+
+Use `ghcr.io/miklosbagi/jira-zephyr-mcp:latest` instead of the last line if you pull from GHCR.
 
 To build and run from source (contributors): `docker build -t jira-zephyr-mcp:latest .` then use your tag in the command above instead of `miklosbagi/jira-zephyr-mcp:latest`.
 
