@@ -1,5 +1,7 @@
 # Jira Zephyr MCP Server
 
+**AI agents:** See [`AGENTS.md`](AGENTS.md) for architecture, Zephyr/Jira API conventions, token discipline, and where docs live. Claude and other tools do not load it automatically unless you add it to project instructions or context.
+
 ## MCP Server Configuration
 
 This is an MCP (Model Context Protocol) server that provides integration with JIRA's Zephyr test management system.

@@ -2,6 +2,15 @@
 
 Concise context for AI coding agents. **Keep follow-up questions and edits token-efficient** (see [Token discipline](#token-discipline)).
 
+### Cursor vs Claude
+
+| Tool | `AGENTS.md` |
+|------|-------------|
+| **Cursor** | Root `AGENTS.md` is often picked up for agent/chat context (depends on version/settings; confirm in Cursor docs). |
+| **Claude (Code / Desktop / API)** | **Not** guaranteed to load `AGENTS.md` by default. Rely on **`CLAUDE.md`** for in-repo hints, add **`AGENTS.md`** to project knowledge / custom instructions, or `@`-include it when you need the full rules. |
+
+You do **not** need a separate `.cursor/agent.md` if this file exists at the repo root.
+
 ## What this repo is
 
 - **MCP server** (Model Context Protocol, stdio) integrating **Jira Cloud REST v3** and **Zephyr Scale Cloud API v2** (SmartBear).
