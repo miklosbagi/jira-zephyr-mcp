@@ -127,7 +127,10 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). |
 | **execute_test** | Update test execution status (PASS/FAIL/WIP/BLOCKED). |
 | **get_test_execution_status** | Execution progress and stats for a cycle. |
-| **link_tests_to_issues** | Link test cases to JIRA issues. |
+| **link_tests_to_issues** | Link a test case to Jira issue(s) as **coverage** ([`POST .../testcases/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/createTestCaseIssueLink)). Resolves each issue **key** to a numeric id via Jira REST, then calls Zephyr (v0.12.0; replaces the old `POST .../links` + `issueKeys` shape). |
+| **get_test_case_links** | List Jira issue links and web links for a test case ([`GET .../testcases/{key}/links`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/getTestCaseLinks)). |
+| **link_test_cycle_to_issues** | Link a test cycle to Jira issue(s) ([`POST .../testcycles/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cycles/operation/createTestCycleIssueLink)). Same Jira id resolution as test cases. |
+| **link_test_plan_to_issues** | Link a test plan to Jira issue(s) ([`POST .../testplans/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Plans/operation/createTestPlanIssueLink)). Same Jira id resolution. |
 | **generate_test_report** | Generate cycle report (JSON or HTML). |
 
 ---
@@ -215,6 +218,9 @@ delete_test_step({ testCaseKey: "ABC-T123", stepId: 2 });
 execute_test({ executionId: "12345", status: "PASS", comment: "All passed" });
 get_test_execution_status({ cycleId: "67890" });
 link_tests_to_issues({ testCaseId: "ABC-T123", issueKeys: ["ABC-456"] });
+link_test_cycle_to_issues({ cycleKey: "ABC-R1", issueKeys: ["ABC-456"] });
+link_test_plan_to_issues({ planKey: "ABC-P1", issueKeys: ["ABC-456"] });
+get_test_case_links({ testCaseId: "ABC-T123" });
 generate_test_report({ cycleId: "67890", format: "JSON" });
 ```
 
@@ -226,7 +232,7 @@ The Zephyr Scale API requires a full body for test case PUT; the server fetches 
 
 If you’re modifying the server or building the image yourself:
 
-**Prerequisites:** Node.js 18+, Docker (optional), JIRA with Zephyr Scale, JIRA and Zephyr API credentials.
+**Prerequisites:** Node.js **22+** (see `engines` in `package.json`), Docker (optional), JIRA with Zephyr Scale, JIRA and Zephyr API credentials.
 
 ```bash
 git clone https://github.com/miklosbagi/jira-zephyr-mcp.git
@@ -284,6 +290,7 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Test case archive / delete** — `archive_test_case`, `unarchive_test_case`, `delete_test_case` (v0.11.0; API caveats in gaps doc).
 - [x] **Test steps as separate resource** — `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` (v0.7). Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER.
 - [x] **Remove test case from cycle** — `remove_test_case_from_cycle` calls `DELETE /testexecutions/{id}` (resolve via `list_test_executions_in_cycle` or pass `cycleKey` + `testCaseKey`). Official docs may not advertise this; some tenants return 404/405.
+- [x] **Test case ↔ Jira issue links (coverage)** — `link_tests_to_issues` uses **`POST /testcases/{key}/links/issues`** with numeric Jira issue id (v0.12.0). `get_test_case_links` lists links (**`GET /testcases/{key}/links`**). Older `POST .../links` + `issueKeys` is not used (405 on current API).
 - [ ] **Update test plan / test cycle** — PUT for plans and cycles (rename, dates, status).
 - [ ] **Bulk operations** — Bulk execution updates or bulk add-to-cycle (beyond `create_multiple_test_cases`).
 
@@ -297,7 +304,7 @@ Fork, create a feature branch, make changes, and open a **draft** pull request u
 
 ## Security
 
-- **Docker image (v0.11.1+):** **Build** stage uses **`node:22-bookworm-slim`** with **`apt-get upgrade`** (toolchain only). **Runtime** uses Google’s **[distroless](https://github.com/GoogleContainerTools/distroless) Node 22** (`gcr.io/distroless/nodejs22-debian13:nonroot`): **no bundled `npm`**, no shell, minimal OS, **`nonroot`** user. Only **`npm prune --omit=dev`**’d **`node_modules`** plus **`dist/`** are copied in—so [Docker Scout](https://docs.docker.com/scout/) and similar tools see far fewer findings from **`npm`’s own dependency tree** (`tar`, `minimatch`, `glob`, …) that ship in official `node` images but are unused at runtime. **v0.11.0** and earlier images used `node:22-bookworm-slim` for both stages.
+- **Docker image (v0.11.1+; issue-link path fix in v0.12.0):** **Build** stage uses **`node:22-bookworm-slim`** with **`apt-get upgrade`** (toolchain only). **Runtime** uses Google’s **[distroless](https://github.com/GoogleContainerTools/distroless) Node 22** (`gcr.io/distroless/nodejs22-debian13:nonroot`): **no bundled `npm`**, no shell, minimal OS, **`nonroot`** user. Only **`npm prune --omit=dev`**’d **`node_modules`** plus **`dist/`** are copied in—so [Docker Scout](https://docs.docker.com/scout/) and similar tools see far fewer findings from **`npm`’s own dependency tree** (`tar`, `minimatch`, `glob`, …) that ship in official `node` images but are unused at runtime. **v0.11.0** and earlier images used `node:22-bookworm-slim` for both stages.
 - Do not commit API tokens or credentials.
 - Use environment variables for all secrets.
 - Rotate tokens periodically and restrict JIRA/Zephyr access as needed.
@@ -312,6 +319,6 @@ MIT — see [LICENSE](LICENSE).
 
 ## Support
 
-- **Cursor + Docker:** The MCP log may show pull progress as `[error]` because Docker prints that to **stderr** while the UI treats stderr as errors. That is normal. A real problem is a **JSON parse** / “not valid JSON” line on startup: the MCP protocol requires a clean **stdout** stream. **v0.10.2+** loads dotenv with `quiet: true` so tip output does not break stdio. **v0.11.1+** published images use a **distroless** runtime (see [Security](#security)).
+- **Cursor + Docker:** The MCP log may show pull progress as `[error]` because Docker prints that to **stderr** while the UI treats stderr as errors. That is normal. A real problem is a **JSON parse** / “not valid JSON” line on startup: the MCP protocol requires a clean **stdout** stream. **v0.10.2+** loads dotenv with `quiet: true` so tip output does not break stdio. **v0.11.1+** published images use a **distroless** runtime (see [Security](#security)). **v0.12.0** fixes **`link_tests_to_issues`** to use the documented Zephyr Scale endpoint **`POST /testcases/{key}/links/issues`** with Jira issue ids (see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md)).
 - Open a [GitHub issue](https://github.com/miklosbagi/jira-zephyr-mcp/issues) with details and logs (no secrets).
 - Upstream: [leorosignoli/jira-zephyr-mcp](https://github.com/leorosignoli/jira-zephyr-mcp).

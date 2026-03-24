@@ -10,6 +10,7 @@
  *   - ZEPHYR_CONTRACT_PROJECT_KEY (your Jira project key, e.g. MYPROJ)
  *   - ZEPHYR_CONTRACT_PLAN_KEY (e.g. MYPROJ-P1)
  *   - ZEPHYR_CONTRACT_CYCLE_KEY (e.g. MYPROJ-R1)
+ *   - ZEPHYR_CONTRACT_TEST_CASE_KEY (e.g. MYPROJ-T1) — for GET /testcases/{key}/links contract (read-only)
  *
  * Run: npm run test:contract (contract only) | npm run test (all) | npm run test:integration (integration mocked only)
  *
@@ -124,6 +125,17 @@ describe.skipIf(!hasContractCredentials)('Zephyr API contract', () => {
         expect(env).toHaveProperty('id');
         expect(env).toHaveProperty('name');
       }
+    }
+  );
+
+  it.skipIf(!process.env.ZEPHYR_CONTRACT_TEST_CASE_KEY)(
+    'GET /testcases/{key}/links returns issues and webLinks (getTestCaseLinks)',
+    async () => {
+      const testCaseKey = process.env.ZEPHYR_CONTRACT_TEST_CASE_KEY!;
+      const links = await client.getTestCaseLinks(testCaseKey);
+      expect(links).toBeDefined();
+      expect(links).not.toBeNull();
+      expect(typeof links).toBe('object');
     }
   );
 });

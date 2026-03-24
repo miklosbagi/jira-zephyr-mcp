@@ -17,12 +17,15 @@ import {
   getTestExecutionStatus,
   listTestExecutionsInCycle,
   linkTestsToIssues,
+  linkTestCycleToIssues,
+  linkTestPlanToIssues,
   generateTestReport,
 } from './tools/test-execution.js';
 import {
   createTestCase,
   searchTestCases,
   getTestCase,
+  getTestCaseLinks,
   updateTestCase,
   archiveTestCase,
   unarchiveTestCase,
@@ -59,10 +62,13 @@ import {
   createEnvironmentSchema,
   updateEnvironmentSchema,
   linkTestsToIssuesSchema,
+  linkTestCycleToIssuesSchema,
+  linkTestPlanToIssuesSchema,
   generateTestReportSchema,
   createTestCaseSchema,
   searchTestCasesSchema,
   getTestCaseSchema,
+  getTestCaseLinksSchema,
   updateTestCaseSchema,
   archiveTestCaseSchema,
   unarchiveTestCaseSchema,
@@ -96,10 +102,13 @@ import {
   CreateEnvironmentInput,
   UpdateEnvironmentInput,
   LinkTestsToIssuesInput,
+  LinkTestCycleToIssuesInput,
+  LinkTestPlanToIssuesInput,
   GenerateTestReportInput,
   CreateTestCaseInput,
   SearchTestCasesInput,
   GetTestCaseInput,
+  GetTestCaseLinksInput,
   UpdateTestCaseInput,
   ArchiveTestCaseInput,
   UnarchiveTestCaseInput,
@@ -114,7 +123,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.11.1',
+    version: '0.12.0',
   },
   {
     capabilities: {
@@ -336,14 +345,41 @@ const TOOLS = [
   },
   {
     name: 'link_tests_to_issues',
-    description: 'Associate test cases with JIRA issues',
+    description:
+      'Link a Zephyr test case to Jira issue(s) as coverage (POST /testcases/{key}/links/issues). Resolves each issue key via Jira REST API to a numeric issueId required by Zephyr.',
     inputSchema: {
       type: 'object',
       properties: {
-        testCaseId: { type: 'string', description: 'Test case ID' },
-        issueKeys: { type: 'array', items: { type: 'string' }, description: 'JIRA issue keys to link' },
+        testCaseId: { type: 'string', description: 'Test case key or ID (e.g. CP-T4362)' },
+        issueKeys: { type: 'array', items: { type: 'string' }, description: 'JIRA issue keys to link (e.g. CP-406)' },
       },
       required: ['testCaseId', 'issueKeys'],
+    },
+  },
+  {
+    name: 'link_test_cycle_to_issues',
+    description:
+      'Link a Zephyr test cycle to Jira issue(s) as coverage (POST /testcycles/{key}/links/issues). Resolves each issue key via Jira REST to a numeric issueId.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cycleKey: { type: 'string', description: 'Test cycle key or ID (e.g. CP-R41)' },
+        issueKeys: { type: 'array', items: { type: 'string' }, description: 'JIRA issue keys to link' },
+      },
+      required: ['cycleKey', 'issueKeys'],
+    },
+  },
+  {
+    name: 'link_test_plan_to_issues',
+    description:
+      'Link a Zephyr test plan to Jira issue(s) as coverage (POST /testplans/{key}/links/issues). Resolves each issue key via Jira REST to a numeric issueId.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        planKey: { type: 'string', description: 'Test plan key or ID (e.g. CP-P2)' },
+        issueKeys: { type: 'array', items: { type: 'string' }, description: 'JIRA issue keys to link' },
+      },
+      required: ['planKey', 'issueKeys'],
     },
   },
   {
@@ -576,6 +612,18 @@ const TOOLS = [
       type: 'object',
       properties: {
         testCaseId: { type: 'string', description: 'Test case ID or key' },
+      },
+      required: ['testCaseId'],
+    },
+  },
+  {
+    name: 'get_test_case_links',
+    description:
+      'List Jira issue links and web links for a test case (GET /testcases/{key}/links). Same contract as Zephyr Scale Cloud API getTestCaseLinks.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseId: { type: 'string', description: 'Test case key or ID (e.g. CP-T4362)' },
       },
       required: ['testCaseId'],
     },
@@ -932,6 +980,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case 'link_test_cycle_to_issues': {
+        const validatedArgs = validateInput<LinkTestCycleToIssuesInput>(
+          linkTestCycleToIssuesSchema,
+          args,
+          'link_test_cycle_to_issues'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await linkTestCycleToIssues(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'link_test_plan_to_issues': {
+        const validatedArgs = validateInput<LinkTestPlanToIssuesInput>(
+          linkTestPlanToIssuesSchema,
+          args,
+          'link_test_plan_to_issues'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await linkTestPlanToIssues(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
       case 'generate_test_report': {
         const validatedArgs = validateInput<GenerateTestReportInput>(generateTestReportSchema, args, 'generate_test_report');
         return {
@@ -1071,6 +1151,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await getTestCase(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'get_test_case_links': {
+        const validatedArgs = validateInput<GetTestCaseLinksInput>(
+          getTestCaseLinksSchema,
+          args,
+          'get_test_case_links'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await getTestCaseLinks(validatedArgs), null, 2),
             },
           ],
         };

@@ -8,6 +8,7 @@ import {
   archiveTestCaseSchema,
   unarchiveTestCaseSchema,
   deleteTestCaseSchema,
+  getTestCaseLinksSchema,
   CreateTestCaseInput,
   SearchTestCasesInput,
   CreateMultipleTestCasesInput,
@@ -15,6 +16,7 @@ import {
   ArchiveTestCaseInput,
   UnarchiveTestCaseInput,
   DeleteTestCaseInput,
+  GetTestCaseLinksInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
@@ -108,6 +110,22 @@ export const searchTestCases = async (input: SearchTestCasesInput) => {
         total: result.total,
         projectKey: validatedInput.projectKey,
       },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const getTestCaseLinks = async (input: GetTestCaseLinksInput) => {
+  const validatedInput = getTestCaseLinksSchema.parse(input);
+  try {
+    const links = await getZephyrClient().getTestCaseLinks(validatedInput.testCaseId);
+    return {
+      success: true,
+      data: links,
     };
   } catch (error: any) {
     return {

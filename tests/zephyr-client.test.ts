@@ -442,15 +442,59 @@ describe('ZephyrClient (integration, mocked)', () => {
     });
   });
 
-  describe('linkTestCaseToIssue', () => {
-    it('sends POST /v2/testcases/{id}/links with issueKeys array', async () => {
+  describe('createTestCaseIssueLink', () => {
+    it('sends POST /v2/testcases/{key}/links/issues with issueId', async () => {
       const scope = nock(ZEPHYR_ORIGIN)
-        .post(`${V2}/testcases/PROJ-T1/links`, (reqBody: Record<string, unknown>) => {
-          return Array.isArray(reqBody.issueKeys) && reqBody.issueKeys.includes('PROJ-123');
+        .post(`${V2}/testcases/PROJ-T1/links/issues`, (reqBody: Record<string, unknown>) => {
+          return reqBody.issueId === 10100;
         })
-        .reply(204);
+        .reply(201, { id: 1 });
 
-      await client.linkTestCaseToIssue('PROJ-T1', 'PROJ-123');
+      await client.createTestCaseIssueLink('PROJ-T1', 10100);
+
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getTestCaseLinks', () => {
+    it('sends GET /v2/testcases/{key}/links', async () => {
+      const body = { issues: [], webLinks: [] };
+      const scope = nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1/links`).reply(200, body);
+
+      await expect(client.getTestCaseLinks('PROJ-T1')).resolves.toEqual(body);
+
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('createTestCycleIssueLink / getTestCycleLinks', () => {
+    it('sends POST /v2/testcycles/{key}/links/issues with issueId', async () => {
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcycles/PROJ-R1/links/issues`, (reqBody: Record<string, unknown>) => reqBody.issueId === 10100)
+        .reply(201, { id: 1 });
+
+      await client.createTestCycleIssueLink('PROJ-R1', 10100);
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('sends GET /v2/testcycles/{key}/links', async () => {
+      const body = { issues: [], webLinks: [] };
+      const scope = nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles/PROJ-R1/links`).reply(200, body);
+
+      await expect(client.getTestCycleLinks('PROJ-R1')).resolves.toEqual(body);
+
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('createTestPlanIssueLink', () => {
+    it('sends POST /v2/testplans/{key}/links/issues with issueId', async () => {
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testplans/PROJ-P1/links/issues`, (reqBody: Record<string, unknown>) => reqBody.issueId === 10100)
+        .reply(201, { id: 1 });
+
+      await client.createTestPlanIssueLink('PROJ-P1', 10100);
 
       expect(scope.isDone()).toBe(true);
     });

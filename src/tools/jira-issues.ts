@@ -3,7 +3,7 @@ import { readJiraIssueSchema, ReadJiraIssueInput } from '../utils/validation.js'
 
 let jiraClient: JiraClient | null = null;
 
-const getJiraClient = (): JiraClient => {
+export const getJiraClient = (): JiraClient => {
   if (!jiraClient) {
     jiraClient = new JiraClient();
   }

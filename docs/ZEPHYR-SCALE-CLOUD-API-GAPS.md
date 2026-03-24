@@ -14,8 +14,10 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | **Test cases** | Get one, search, create, update, create multiple |
 | **Folders** | List (by projectKey, optional folderType, parentId), create (with optional parentId, folderType) |
 | **Priorities / statuses** | List priorities and statuses (GET /priorities, GET /statuses; optional projectKey) for test case create/update |
-| **Links** | Link test case to Jira issue(s) (POST testcases/{id}/links) |
+| **Links** | Coverage links to Jira issues: POST `testcases/{key}/links/issues`, `testcycles/{key}/links/issues`, `testplans/{key}/links/issues` (numeric `issueId`; MCP resolves keys via Jira REST). List (test case only): GET `testcases/{key}/links` (`get_test_case_links`). **v0.12.0+** — see note below. |
 | **Reporting** | Generate test report for a cycle (JSON/HTML) |
+
+**Issue links (v0.12.0):** The [OpenAPI spec](https://support.smartbear.com/zephyr-scale-cloud/api-docs/) defines **`POST .../links/issues`** with **`{ "issueId": <int64> }`** for **test cases**, **test cycles**, and **test plans** (`createTestCaseIssueLink`, `createTestCycleIssueLink`, `createTestPlanIssueLink`). **`GET /testcases/{key}/links`** lists links for a test case; the public spec does **not** expose an aggregate **`GET /testplans/{key}/links`** (plan linking uses POST under `/links/issues`, `/links/weblinks`, `/links/testcycles` only). Older MCP builds used **`POST /testcases/{key}/links`** with **`issueKeys`**, which no longer matches the documented API and often returns **405 Method Not Allowed** on GET-only `/links`. The server resolves issue keys with Jira **`GET /rest/api/3/issue/{issueIdOrKey}`** and posts **`issueId`** to **`/links/issues`**.
 
 ---
 
@@ -124,6 +126,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 12 | Remove test case from cycle | DELETE /testexecutions/{id} | Implemented (`remove_test_case_from_cycle`; API support varies by tenant) |
 | 13 | Update test plan / test cycle | PUT testplans, testcycles | Not implemented |
 | 14 | Bulk operations (executions, cycle) | Bulk endpoints (if any) | Not implemented |
+| 15 | Test case ↔ Jira issue links | GET `testcases/{key}/links`, POST `testcases/{key}/links/issues` | Implemented (`get_test_case_links`, `link_tests_to_issues`, **v0.12.0**) |
 
 ---
 
