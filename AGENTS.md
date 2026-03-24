@@ -69,7 +69,7 @@ When opening or preparing a **PR**, include:
 
 1. **Tests updated and run locally** — extend or adjust tests for every feature or behavior change; run **`npm test`** and **`npm run typecheck`** (and **`npm run build`** when relevant) on your machine **before** you open the PR. Don’t rely on CI alone to catch failures.
 2. **A proper PR description** — what changed, why, how to verify (tools touched, env if new, tests). Not a one-liner unless the change is trivial.
-3. **Release notes for the chat (Markdown)** — paste in the PR thread or assistant reply, **not** as a new tracked `.md` file unless the maintainer asks. Write for humans who **run or integrate this MCP server** (Jira, Zephyr, Docker, MCP hosts): clear, scannable, **not** dumbed down — assume technical readers, but avoid unnecessary jargon and dense identifier soup. Summarize user-visible behavior, breaking changes, and version when relevant.
+3. **Release notes (Markdown, required format)** — always deliver as **valid Markdown** the maintainer can paste into GitHub (PR description or comment) or chat: use **`##` / `###` headings**, **bullet lists**, optional **tables** for tool or API summaries, **`**bold**`** for emphasis — not unstructured prose only. Do **not** add `RELEASE_NOTES.md` (or similar) to the repo unless asked. Audience: people who **run or integrate** this MCP server (Jira, Zephyr, Docker, MCP hosts): clear and technical, not dumbed down. Include user-visible behavior, breaking changes, and version when relevant.
 
 ## Fork context (short)
 
