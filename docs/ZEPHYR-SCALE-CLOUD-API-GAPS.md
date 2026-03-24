@@ -14,8 +14,10 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | **Test cases** | Get one, search, create, update, create multiple |
 | **Folders** | List (by projectKey, optional folderType, parentId), create (with optional parentId, folderType) |
 | **Priorities / statuses** | List priorities and statuses (GET /priorities, GET /statuses; optional projectKey) for test case create/update |
-| **Links** | Link test case to Jira issue(s) (POST `testcases/{key}/links/issues` with numeric `issueId`; MCP resolves keys via Jira). List links: GET `testcases/{key}/links` (`get_test_case_links`) |
+| **Links** | Link test case to Jira issue(s) (POST `testcases/{key}/links/issues` with numeric `issueId`; MCP resolves keys via Jira REST). List links: GET `testcases/{key}/links` (`get_test_case_links`). **v0.12.0** — see note below. |
 | **Reporting** | Generate test report for a cycle (JSON/HTML) |
+
+**Issue links (v0.12.0):** The [OpenAPI spec](https://support.smartbear.com/zephyr-scale-cloud/api-docs/) defines **`POST /testcases/{testCaseKey}/links/issues`** with **`{ "issueId": <int64> }`** (Jira Cloud issue id), and **`GET /testcases/{testCaseKey}/links`** (`getTestCaseLinks`). Older MCP builds used **`POST /testcases/{key}/links`** with **`issueKeys`**, which no longer matches the documented API and often returns **405 Method Not Allowed** on GET-only `/links`. The server now resolves issue keys with Jira **`GET /rest/api/3/issue/{issueIdOrKey}`** and posts **`issueId`** to **`/links/issues`**.
 
 ---
 
@@ -124,6 +126,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 12 | Remove test case from cycle | DELETE /testexecutions/{id} | Implemented (`remove_test_case_from_cycle`; API support varies by tenant) |
 | 13 | Update test plan / test cycle | PUT testplans, testcycles | Not implemented |
 | 14 | Bulk operations (executions, cycle) | Bulk endpoints (if any) | Not implemented |
+| 15 | Test case ↔ Jira issue links | GET `testcases/{key}/links`, POST `testcases/{key}/links/issues` | Implemented (`get_test_case_links`, `link_tests_to_issues`, **v0.12.0**) |
 
 ---
 
