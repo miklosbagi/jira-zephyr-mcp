@@ -418,12 +418,24 @@ export class ZephyrClient {
     return summary;
   }
 
-  async linkTestCaseToIssue(testCaseId: string, issueKey: string): Promise<void> {
-    const payload = {
-      issueKeys: [issueKey],
-    };
+  /**
+   * GET /testcases/{key}/links — Jira issue links and web links for the test case.
+   * @see https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/getTestCaseLinks
+   */
+  async getTestCaseLinks(testCaseKeyOrId: string): Promise<unknown> {
+    const response = await this.client.get(`/testcases/${testCaseKeyOrId}/links`);
+    return response.data;
+  }
 
-    await this.client.post(`/testcases/${testCaseId}/links`, payload);
+  /**
+   * POST /testcases/{key}/links/issues — link a Jira issue by numeric Cloud issue id.
+   * @see https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/createTestCaseIssueLink
+   */
+  async createTestCaseIssueLink(testCaseKeyOrId: string, issueId: number): Promise<unknown> {
+    const response = await this.client.post(`/testcases/${testCaseKeyOrId}/links/issues`, {
+      issueId,
+    });
+    return response.data;
   }
 
   async generateTestReport(cycleId: string): Promise<ZephyrTestReport> {

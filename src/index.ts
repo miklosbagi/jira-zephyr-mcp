@@ -23,6 +23,7 @@ import {
   createTestCase,
   searchTestCases,
   getTestCase,
+  getTestCaseLinks,
   updateTestCase,
   archiveTestCase,
   unarchiveTestCase,
@@ -63,6 +64,7 @@ import {
   createTestCaseSchema,
   searchTestCasesSchema,
   getTestCaseSchema,
+  getTestCaseLinksSchema,
   updateTestCaseSchema,
   archiveTestCaseSchema,
   unarchiveTestCaseSchema,
@@ -100,6 +102,7 @@ import {
   CreateTestCaseInput,
   SearchTestCasesInput,
   GetTestCaseInput,
+  GetTestCaseLinksInput,
   UpdateTestCaseInput,
   ArchiveTestCaseInput,
   UnarchiveTestCaseInput,
@@ -336,12 +339,13 @@ const TOOLS = [
   },
   {
     name: 'link_tests_to_issues',
-    description: 'Associate test cases with JIRA issues',
+    description:
+      'Link a Zephyr test case to Jira issue(s) as coverage (POST /testcases/{key}/links/issues). Resolves each issue key via Jira REST API to a numeric issueId required by Zephyr.',
     inputSchema: {
       type: 'object',
       properties: {
-        testCaseId: { type: 'string', description: 'Test case ID' },
-        issueKeys: { type: 'array', items: { type: 'string' }, description: 'JIRA issue keys to link' },
+        testCaseId: { type: 'string', description: 'Test case key or ID (e.g. CP-T4362)' },
+        issueKeys: { type: 'array', items: { type: 'string' }, description: 'JIRA issue keys to link (e.g. CP-406)' },
       },
       required: ['testCaseId', 'issueKeys'],
     },
@@ -576,6 +580,18 @@ const TOOLS = [
       type: 'object',
       properties: {
         testCaseId: { type: 'string', description: 'Test case ID or key' },
+      },
+      required: ['testCaseId'],
+    },
+  },
+  {
+    name: 'get_test_case_links',
+    description:
+      'List Jira issue links and web links for a test case (GET /testcases/{key}/links). Same contract as Zephyr Scale Cloud API getTestCaseLinks.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        testCaseId: { type: 'string', description: 'Test case key or ID (e.g. CP-T4362)' },
       },
       required: ['testCaseId'],
     },
@@ -1071,6 +1087,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await getTestCase(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'get_test_case_links': {
+        const validatedArgs = validateInput<GetTestCaseLinksInput>(
+          getTestCaseLinksSchema,
+          args,
+          'get_test_case_links'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await getTestCaseLinks(validatedArgs), null, 2),
             },
           ],
         };

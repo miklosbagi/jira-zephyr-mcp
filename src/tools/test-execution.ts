@@ -1,4 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { getJiraClient } from './jira-issues.js';
 import {
   executeTestSchema,
   getTestExecutionStatusSchema,
@@ -192,16 +193,25 @@ export const linkTestsToIssues = async (input: LinkTestsToIssuesInput) => {
     
     for (const issueKey of validatedInput.issueKeys) {
       try {
-        await getZephyrClient().linkTestCaseToIssue(validatedInput.testCaseId, issueKey);
+        const issue = await getJiraClient().getIssue(issueKey, ['id']);
+        const issueId = Number(issue.id);
+        if (!Number.isSafeInteger(issueId) || issueId < 1) {
+          throw new Error(`Could not resolve numeric Jira issue id for ${issueKey} (got: ${issue.id})`);
+        }
+        await getZephyrClient().createTestCaseIssueLink(validatedInput.testCaseId, issueId);
         results.push({
           issueKey,
+          issueId,
           success: true,
         });
       } catch (error: any) {
+        const status = error.response?.status;
+        const bodyMsg = error.response?.data?.message;
+        const detail = [status && `HTTP ${status}`, bodyMsg || error.message].filter(Boolean).join(': ');
         results.push({
           issueKey,
           success: false,
-          error: error.response?.data?.message || error.message,
+          error: detail || String(error),
         });
       }
     }

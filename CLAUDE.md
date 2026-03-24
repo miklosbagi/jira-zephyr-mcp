@@ -23,7 +23,8 @@ The following environment variables are required:
 - `execute_test`: Update test execution results
 - `get_test_execution_status`: Get test execution progress and statistics
 - `remove_test_case_from_cycle`: Remove a test case from a cycle (delete test execution by id or cycle + case key)
-- `link_tests_to_issues`: Associate test cases with JIRA issues
+- `link_tests_to_issues`: Link a test case to Jira issue(s) via Scale API (`POST .../links/issues`); resolves issue keys to numeric ids with Jira REST
+- `get_test_case_links`: List issue and web links for a test case (`GET .../links`, getTestCaseLinks)
 - `generate_test_report`: Generate test execution report
 - `create_test_case`: Create a new test case in Zephyr
 - `create_multiple_test_cases`: Create multiple test cases in Zephyr at once

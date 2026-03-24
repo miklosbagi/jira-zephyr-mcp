@@ -14,7 +14,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | **Test cases** | Get one, search, create, update, create multiple |
 | **Folders** | List (by projectKey, optional folderType, parentId), create (with optional parentId, folderType) |
 | **Priorities / statuses** | List priorities and statuses (GET /priorities, GET /statuses; optional projectKey) for test case create/update |
-| **Links** | Link test case to Jira issue(s) (POST testcases/{id}/links) |
+| **Links** | Link test case to Jira issue(s) (POST `testcases/{key}/links/issues` with numeric `issueId`; MCP resolves keys via Jira). List links: GET `testcases/{key}/links` (`get_test_case_links`) |
 | **Reporting** | Generate test report for a cycle (JSON/HTML) |
 
 ---
