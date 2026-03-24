@@ -56,10 +56,18 @@ When working in this repo **as an agent**:
 5. **Don’t run** `npm run build` / full `npm test` unless the change touches build, tests, or you need verification; use **typecheck** or **single test file** when sufficient.
 6. **MCP / live API:** do not assume credentials; contract tests and real Zephyr calls are optional and user-driven.
 
-## Git / release
+## Git, branches, and releases
 
-- Version: **`package.json`** and MCP `version` in `src/index.ts` must stay in sync for releases.
-- Repo may use **branch protection**; pushes sometimes go via a **`feat/...`** branch and PR (see maintainer workflow).
+- **Do not push directly to `main`/`master`.** Use a **dedicated branch per topic** (feature, fix, release prep), the way you would for a versioned release — e.g. `feat/…`, `fix/…`, `release/v…`, matching the change set.
+- **Version:** keep **`package.json`** and MCP **`version`** in `src/index.ts` in sync when cutting a release.
+- **Branch protection** may require PRs (e.g. push via `feat/...` and open a PR from there).
+
+### Pull requests
+
+When opening or preparing a **PR**, include:
+
+1. **A proper PR description** — what changed, why, how to verify (tools touched, env if new, tests). Not a one-liner unless the change is trivial.
+2. **Release notes for the chat (Markdown)** — paste in the PR thread or assistant reply, **not** as a new tracked `.md` file unless the maintainer asks. Write for humans who **run or integrate this MCP server** (Jira, Zephyr, Docker, MCP hosts): clear, scannable, **not** dumbed down — assume technical readers, but avoid unnecessary jargon and dense identifier soup. Summarize user-visible behavior, breaking changes, and version when relevant.
 
 ## Fork context (short)
 
