@@ -181,6 +181,16 @@ export const linkTestsToIssuesSchema = z.object({
   issueKeys: z.array(z.string().min(1)).min(1, 'At least one issue key is required'),
 });
 
+export const linkTestCycleToIssuesSchema = z.object({
+  cycleKey: z.string().min(1, 'Test cycle key is required'),
+  issueKeys: z.array(z.string().min(1)).min(1, 'At least one issue key is required'),
+});
+
+export const linkTestPlanToIssuesSchema = z.object({
+  planKey: z.string().min(1, 'Test plan key is required'),
+  issueKeys: z.array(z.string().min(1)).min(1, 'At least one issue key is required'),
+});
+
 export const generateTestReportSchema = z.object({
   cycleId: z.string().min(1, 'Cycle ID is required'),
   format: z.enum(['JSON', 'HTML']).default('JSON'),
@@ -317,6 +327,8 @@ export type GetTestExecutionStatusInput = z.infer<typeof getTestExecutionStatusS
 export type ListTestExecutionsInCycleInput = z.infer<typeof listTestExecutionsInCycleSchema>;
 export type AddTestCasesToCycleInput = z.infer<typeof addTestCasesToCycleSchema>;
 export type LinkTestsToIssuesInput = z.infer<typeof linkTestsToIssuesSchema>;
+export type LinkTestCycleToIssuesInput = z.infer<typeof linkTestCycleToIssuesSchema>;
+export type LinkTestPlanToIssuesInput = z.infer<typeof linkTestPlanToIssuesSchema>;
 export type GenerateTestReportInput = z.infer<typeof generateTestReportSchema>;
 export type CreateTestCaseInput = z.infer<typeof createTestCaseSchema>;
 export type SearchTestCasesInput = z.infer<typeof searchTestCasesSchema>;

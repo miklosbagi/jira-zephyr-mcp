@@ -17,6 +17,8 @@ import {
   getTestExecutionStatus,
   listTestExecutionsInCycle,
   linkTestsToIssues,
+  linkTestCycleToIssues,
+  linkTestPlanToIssues,
   generateTestReport,
 } from './tools/test-execution.js';
 import {
@@ -60,6 +62,8 @@ import {
   createEnvironmentSchema,
   updateEnvironmentSchema,
   linkTestsToIssuesSchema,
+  linkTestCycleToIssuesSchema,
+  linkTestPlanToIssuesSchema,
   generateTestReportSchema,
   createTestCaseSchema,
   searchTestCasesSchema,
@@ -98,6 +102,8 @@ import {
   CreateEnvironmentInput,
   UpdateEnvironmentInput,
   LinkTestsToIssuesInput,
+  LinkTestCycleToIssuesInput,
+  LinkTestPlanToIssuesInput,
   GenerateTestReportInput,
   CreateTestCaseInput,
   SearchTestCasesInput,
@@ -348,6 +354,32 @@ const TOOLS = [
         issueKeys: { type: 'array', items: { type: 'string' }, description: 'JIRA issue keys to link (e.g. CP-406)' },
       },
       required: ['testCaseId', 'issueKeys'],
+    },
+  },
+  {
+    name: 'link_test_cycle_to_issues',
+    description:
+      'Link a Zephyr test cycle to Jira issue(s) as coverage (POST /testcycles/{key}/links/issues). Resolves each issue key via Jira REST to a numeric issueId.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cycleKey: { type: 'string', description: 'Test cycle key or ID (e.g. CP-R41)' },
+        issueKeys: { type: 'array', items: { type: 'string' }, description: 'JIRA issue keys to link' },
+      },
+      required: ['cycleKey', 'issueKeys'],
+    },
+  },
+  {
+    name: 'link_test_plan_to_issues',
+    description:
+      'Link a Zephyr test plan to Jira issue(s) as coverage (POST /testplans/{key}/links/issues). Resolves each issue key via Jira REST to a numeric issueId.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        planKey: { type: 'string', description: 'Test plan key or ID (e.g. CP-P2)' },
+        issueKeys: { type: 'array', items: { type: 'string' }, description: 'JIRA issue keys to link' },
+      },
+      required: ['planKey', 'issueKeys'],
     },
   },
   {
@@ -943,6 +975,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await linkTestsToIssues(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'link_test_cycle_to_issues': {
+        const validatedArgs = validateInput<LinkTestCycleToIssuesInput>(
+          linkTestCycleToIssuesSchema,
+          args,
+          'link_test_cycle_to_issues'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await linkTestCycleToIssues(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'link_test_plan_to_issues': {
+        const validatedArgs = validateInput<LinkTestPlanToIssuesInput>(
+          linkTestPlanToIssuesSchema,
+          args,
+          'link_test_plan_to_issues'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await linkTestPlanToIssues(validatedArgs), null, 2),
             },
           ],
         };

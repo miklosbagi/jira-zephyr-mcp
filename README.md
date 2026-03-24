@@ -129,6 +129,8 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **get_test_execution_status** | Execution progress and stats for a cycle. |
 | **link_tests_to_issues** | Link a test case to Jira issue(s) as **coverage** ([`POST .../testcases/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/createTestCaseIssueLink)). Resolves each issue **key** to a numeric id via Jira REST, then calls Zephyr (v0.12.0; replaces the old `POST .../links` + `issueKeys` shape). |
 | **get_test_case_links** | List Jira issue links and web links for a test case ([`GET .../testcases/{key}/links`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/getTestCaseLinks)). |
+| **link_test_cycle_to_issues** | Link a test cycle to Jira issue(s) ([`POST .../testcycles/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cycles/operation/createTestCycleIssueLink)). Same Jira id resolution as test cases. |
+| **link_test_plan_to_issues** | Link a test plan to Jira issue(s) ([`POST .../testplans/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Plans/operation/createTestPlanIssueLink)). Same Jira id resolution. |
 | **generate_test_report** | Generate cycle report (JSON or HTML). |
 
 ---
@@ -216,6 +218,8 @@ delete_test_step({ testCaseKey: "ABC-T123", stepId: 2 });
 execute_test({ executionId: "12345", status: "PASS", comment: "All passed" });
 get_test_execution_status({ cycleId: "67890" });
 link_tests_to_issues({ testCaseId: "ABC-T123", issueKeys: ["ABC-456"] });
+link_test_cycle_to_issues({ cycleKey: "ABC-R1", issueKeys: ["ABC-456"] });
+link_test_plan_to_issues({ planKey: "ABC-P1", issueKeys: ["ABC-456"] });
 get_test_case_links({ testCaseId: "ABC-T123" });
 generate_test_report({ cycleId: "67890", format: "JSON" });
 ```

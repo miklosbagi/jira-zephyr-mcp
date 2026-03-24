@@ -438,6 +438,37 @@ export class ZephyrClient {
     return response.data;
   }
 
+  /**
+   * GET /testcycles/{key}/links
+   * @see https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cycles/operation/getTestCycleLinks
+   */
+  async getTestCycleLinks(cycleKeyOrId: string): Promise<unknown> {
+    const response = await this.client.get(`/testcycles/${cycleKeyOrId}/links`);
+    return response.data;
+  }
+
+  /**
+   * POST /testcycles/{key}/links/issues
+   * @see https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cycles/operation/createTestCycleIssueLink
+   */
+  async createTestCycleIssueLink(cycleKeyOrId: string, issueId: number): Promise<unknown> {
+    const response = await this.client.post(`/testcycles/${cycleKeyOrId}/links/issues`, {
+      issueId,
+    });
+    return response.data;
+  }
+
+  /**
+   * POST /testplans/{key}/links/issues
+   * @see https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Plans/operation/createTestPlanIssueLink
+   */
+  async createTestPlanIssueLink(planKeyOrId: string, issueId: number): Promise<unknown> {
+    const response = await this.client.post(`/testplans/${planKeyOrId}/links/issues`, {
+      issueId,
+    });
+    return response.data;
+  }
+
   async generateTestReport(cycleId: string): Promise<ZephyrTestReport> {
     const cycleResponse = await this.client.get(`/testcycles/${cycleId}`);
     const cycle = cycleResponse.data;

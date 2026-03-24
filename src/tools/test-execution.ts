@@ -5,6 +5,8 @@ import {
   getTestExecutionStatusSchema,
   listTestExecutionsInCycleSchema,
   linkTestsToIssuesSchema,
+  linkTestCycleToIssuesSchema,
+  linkTestPlanToIssuesSchema,
   generateTestReportSchema,
   createTestExecutionSchema,
   removeTestCaseFromCycleSchema,
@@ -12,6 +14,8 @@ import {
   GetTestExecutionStatusInput,
   ListTestExecutionsInCycleInput,
   LinkTestsToIssuesInput,
+  LinkTestCycleToIssuesInput,
+  LinkTestPlanToIssuesInput,
   GenerateTestReportInput,
   CreateTestExecutionInput,
   RemoveTestCaseFromCycleInput,
@@ -185,51 +189,95 @@ export const getTestExecutionStatus = async (input: GetTestExecutionStatusInput)
   }
 };
 
+type IssueLinkRow = {
+  issueKey: string;
+  issueId?: number;
+  success: boolean;
+  error?: string;
+};
+
+/** Resolve Jira issue keys to ids and call Zephyr for each link (coverage). */
+async function linkIssueKeysToZephyr(
+  issueKeys: string[],
+  linkOne: (issueId: number) => Promise<unknown>
+): Promise<IssueLinkRow[]> {
+  const results: IssueLinkRow[] = [];
+  for (const issueKey of issueKeys) {
+    try {
+      const issue = await getJiraClient().getIssue(issueKey, ['id']);
+      const issueId = Number(issue.id);
+      if (!Number.isSafeInteger(issueId) || issueId < 1) {
+        throw new Error(`Could not resolve numeric Jira issue id for ${issueKey} (got: ${issue.id})`);
+      }
+      await linkOne(issueId);
+      results.push({ issueKey, issueId, success: true });
+    } catch (error: any) {
+      const status = error.response?.status;
+      const bodyMsg = error.response?.data?.message;
+      const detail = [status && `HTTP ${status}`, bodyMsg || error.message].filter(Boolean).join(': ');
+      results.push({ issueKey, success: false, error: detail || String(error) });
+    }
+  }
+  return results;
+}
+
 export const linkTestsToIssues = async (input: LinkTestsToIssuesInput) => {
   const validatedInput = linkTestsToIssuesSchema.parse(input);
-  
   try {
-    const results = [];
-    
-    for (const issueKey of validatedInput.issueKeys) {
-      try {
-        const issue = await getJiraClient().getIssue(issueKey, ['id']);
-        const issueId = Number(issue.id);
-        if (!Number.isSafeInteger(issueId) || issueId < 1) {
-          throw new Error(`Could not resolve numeric Jira issue id for ${issueKey} (got: ${issue.id})`);
-        }
-        await getZephyrClient().createTestCaseIssueLink(validatedInput.testCaseId, issueId);
-        results.push({
-          issueKey,
-          issueId,
-          success: true,
-        });
-      } catch (error: any) {
-        const status = error.response?.status;
-        const bodyMsg = error.response?.data?.message;
-        const detail = [status && `HTTP ${status}`, bodyMsg || error.message].filter(Boolean).join(': ');
-        results.push({
-          issueKey,
-          success: false,
-          error: detail || String(error),
-        });
-      }
-    }
-    
+    const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
+      getZephyrClient().createTestCaseIssueLink(validatedInput.testCaseId, issueId)
+    );
     return {
       success: true,
       data: {
         testCaseId: validatedInput.testCaseId,
         linkResults: results,
-        successCount: results.filter(r => r.success).length,
-        failureCount: results.filter(r => !r.success).length,
+        successCount: results.filter((r) => r.success).length,
+        failureCount: results.filter((r) => !r.success).length,
       },
     };
   } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const linkTestCycleToIssues = async (input: LinkTestCycleToIssuesInput) => {
+  const validatedInput = linkTestCycleToIssuesSchema.parse(input);
+  try {
+    const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
+      getZephyrClient().createTestCycleIssueLink(validatedInput.cycleKey, issueId)
+    );
     return {
-      success: false,
-      error: error.response?.data?.message || error.message,
+      success: true,
+      data: {
+        cycleKey: validatedInput.cycleKey,
+        linkResults: results,
+        successCount: results.filter((r) => r.success).length,
+        failureCount: results.filter((r) => !r.success).length,
+      },
     };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
+  }
+};
+
+export const linkTestPlanToIssues = async (input: LinkTestPlanToIssuesInput) => {
+  const validatedInput = linkTestPlanToIssuesSchema.parse(input);
+  try {
+    const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
+      getZephyrClient().createTestPlanIssueLink(validatedInput.planKey, issueId)
+    );
+    return {
+      success: true,
+      data: {
+        planKey: validatedInput.planKey,
+        linkResults: results,
+        successCount: results.filter((r) => r.success).length,
+        failureCount: results.filter((r) => !r.success).length,
+      },
+    };
+  } catch (error: any) {
+    return { success: false, error: error.response?.data?.message || error.message };
   }
 };
 

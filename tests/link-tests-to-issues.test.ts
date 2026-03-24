@@ -4,7 +4,7 @@
  */
 import nock from 'nock';
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
-import { linkTestsToIssues } from '../src/tools/test-execution.js';
+import { linkTestsToIssues, linkTestCycleToIssues, linkTestPlanToIssues } from '../src/tools/test-execution.js';
 
 const ZEPHYR_ORIGIN = 'https://api.zephyrscale.smartbear.com';
 const V2 = '/v2';
@@ -76,5 +76,47 @@ describe('linkTestsToIssues (integration, mocked)', () => {
     expect(result.data?.failureCount).toBe(1);
     expect(result.data?.linkResults?.[0]?.success).toBe(false);
     expect(String(result.data?.linkResults?.[0]?.error)).toMatch(/400|Invalid issue link/);
+  });
+
+  it('linkTestCycleToIssues uses POST .../testcycles/{key}/links/issues', async () => {
+    nock('https://example.atlassian.net')
+      .get('/rest/api/3/issue/PROJ-456')
+      .query({ fields: 'id' })
+      .reply(200, { id: '20200', key: 'PROJ-456', self: 'https://example.atlassian.net/rest/api/3/issue/20200' });
+
+    const scope = nock(ZEPHYR_ORIGIN)
+      .post(`${V2}/testcycles/PROJ-R9/links/issues`, (body: Record<string, unknown>) => body.issueId === 20200)
+      .reply(201, { id: 2 });
+
+    const result = await linkTestCycleToIssues({
+      cycleKey: 'PROJ-R9',
+      issueKeys: ['PROJ-456'],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.cycleKey).toBe('PROJ-R9');
+    expect(result.data?.linkResults?.[0]).toMatchObject({ issueKey: 'PROJ-456', issueId: 20200, success: true });
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('linkTestPlanToIssues uses POST .../testplans/{key}/links/issues', async () => {
+    nock('https://example.atlassian.net')
+      .get('/rest/api/3/issue/PROJ-789')
+      .query({ fields: 'id' })
+      .reply(200, { id: '30300', key: 'PROJ-789', self: 'https://example.atlassian.net/rest/api/3/issue/30300' });
+
+    const scope = nock(ZEPHYR_ORIGIN)
+      .post(`${V2}/testplans/PROJ-P3/links/issues`, (body: Record<string, unknown>) => body.issueId === 30300)
+      .reply(201, { id: 3 });
+
+    const result = await linkTestPlanToIssues({
+      planKey: 'PROJ-P3',
+      issueKeys: ['PROJ-789'],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.planKey).toBe('PROJ-P3');
+    expect(result.data?.linkResults?.[0]).toMatchObject({ issueKey: 'PROJ-789', issueId: 30300, success: true });
+    expect(scope.isDone()).toBe(true);
   });
 });
