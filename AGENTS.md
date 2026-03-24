@@ -33,6 +33,7 @@ Optional: `ZEPHYR_BASE_URL` (default US Scale API; **EU:** `https://eu.api.zephy
 
 ## Tests
 
+- **Any feature add or behavior change** should include **matching test updates** (new cases, adjusted mocks/fixtures, or contract coverage where justified). Don’t ship code-only changes without touching tests when behavior is testable.
 - **Mocked integration:** `nock` + fake env in tests (see `tests/zephyr-client.test.ts`, `tests/link-tests-to-issues.test.ts`); no real credentials required for `npm test`.
 - **Contract:** `tests/contract/` — real API; **requires** env / secrets; optional vars documented in `zephyr-contract.test.ts`. Run only when validating against live Zephyr.
 
@@ -53,7 +54,7 @@ When working in this repo **as an agent**:
 2. **Avoid re-ingesting** long docs on every turn; if `AGENTS.md` + the task are enough, skip re-reading full `README.md` unless the change is doc-heavy.
 3. **Batch independent edits** in a single pass; avoid redundant sequential tool rounds.
 4. **Keep responses short** for the user unless they ask for depth; put details in code/comments only when necessary.
-5. **Don’t run** `npm run build` / full `npm test` unless the change touches build, tests, or you need verification; use **typecheck** or **single test file** when sufficient.
+5. **While iterating**, prefer **typecheck** or a **single test file** when enough; **before opening a PR**, run **`npm test`** and **`npm run typecheck`** locally (and `npm run build` if the change affects the bundle). See also [Pull requests](#pull-requests).
 6. **MCP / live API:** do not assume credentials; contract tests and real Zephyr calls are optional and user-driven.
 
 ## Git, branches, and releases
@@ -66,8 +67,9 @@ When working in this repo **as an agent**:
 
 When opening or preparing a **PR**, include:
 
-1. **A proper PR description** — what changed, why, how to verify (tools touched, env if new, tests). Not a one-liner unless the change is trivial.
-2. **Release notes for the chat (Markdown)** — paste in the PR thread or assistant reply, **not** as a new tracked `.md` file unless the maintainer asks. Write for humans who **run or integrate this MCP server** (Jira, Zephyr, Docker, MCP hosts): clear, scannable, **not** dumbed down — assume technical readers, but avoid unnecessary jargon and dense identifier soup. Summarize user-visible behavior, breaking changes, and version when relevant.
+1. **Tests updated and run locally** — extend or adjust tests for every feature or behavior change; run **`npm test`** and **`npm run typecheck`** (and **`npm run build`** when relevant) on your machine **before** you open the PR. Don’t rely on CI alone to catch failures.
+2. **A proper PR description** — what changed, why, how to verify (tools touched, env if new, tests). Not a one-liner unless the change is trivial.
+3. **Release notes for the chat (Markdown)** — paste in the PR thread or assistant reply, **not** as a new tracked `.md` file unless the maintainer asks. Write for humans who **run or integrate this MCP server** (Jira, Zephyr, Docker, MCP hosts): clear, scannable, **not** dumbed down — assume technical readers, but avoid unnecessary jargon and dense identifier soup. Summarize user-visible behavior, breaking changes, and version when relevant.
 
 ## Fork context (short)
 
