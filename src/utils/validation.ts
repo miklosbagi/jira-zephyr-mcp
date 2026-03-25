@@ -53,7 +53,7 @@ export const updateTestPlanSchema = z
     labels: z.array(z.string()).optional(),
   })
   .superRefine((val, ctx) => {
-    const { planKey: _p, ...rest } = val;
+    const { planKey: _planKey, ...rest } = val;
     const hasUpdate = Object.values(rest).some(v => v !== undefined);
     if (!hasUpdate) {
       ctx.addIssue({
@@ -333,7 +333,7 @@ export const updateTestCaseSchema = z.object({
   }).optional(),
 }).refine(
   data => {
-    const { testCaseId, ...updates } = data;
+    const { testCaseId: _testCaseId, ...updates } = data;
     return Object.keys(updates).length >= 1;
   },
   { message: 'At least one field to update (name, objective, customFields, etc.) is required' }
@@ -365,7 +365,7 @@ export const updateTestStepSchema = z.object({
   index: z.number().min(1).optional(),
 }).refine(
   data => {
-    const { testCaseKey, stepId, ...updates } = data;
+    const { testCaseKey: _testCaseKey, stepId: _stepId, ...updates } = data;
     return Object.keys(updates).length >= 1;
   },
   { message: 'At least one field to update (description, expectedResult, testData, index) is required' }
