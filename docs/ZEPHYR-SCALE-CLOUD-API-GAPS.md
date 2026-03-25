@@ -111,6 +111,44 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 - **API (OpenAPI):** There is **no** documented endpoint that accepts **multiple test execution updates in one request**. **`GET /testcases/nextgen`** (`listTestCasesCursorPaginated`) and **`GET /testexecutions/nextgen`** (`listTestExecutionsNextgen`) are **cursor-paged list** APIs for **large read volumes** (use `nextStartAtId` / `next` for the next page). **`POST /testcycles/{key}/testcases`** with an `items` array adds several cases to a cycle in one call — already exposed as **`add_test_cases_to_cycle`** (may 404 on some regions).
 - **MCP status (v0.14.0+):** **`list_test_cases_nextgen`** and **`list_test_executions_nextgen`** call the documented nextgen GET routes. **`bulk_execute_tests`** applies the same payload as **`execute_test`** via **sequential `PUT /testexecutions/{id}`** calls (optional **`continueOnError`**, same pattern as **`create_multiple_test_cases`**). For very large batches, prefer external orchestration or rate limits to avoid throttling.
 
+### 16. Additional test execution endpoints (not wrapped as MCP tools)
+
+- **API:** `GET /testexecutions/{testExecutionIdOrKey}` (`getTestExecution`)
+- **API:** `GET /testexecutions/{testExecutionIdOrKey}/teststeps` and `POST /testexecutions/{testExecutionIdOrKey}/teststeps/sync` (execution step handling)
+- **API:** `GET /testexecutions/{testExecutionIdOrKey}/links` and `GET /testexecutions/{testExecutionIdOrKey}/links/issues` (execution link retrieval)
+- **MCP status:** `execute_test` and test-execution creation/listing are implemented; however the above “extra” execution endpoints are not exposed as MCP tools yet. (The Zephyr client has `getTestExecution`, but there is no MCP wrapper tool around it.)
+
+### 17. Web link endpoints (not wrapped as MCP tools)
+
+- **API:** `POST /testcases/{key}/links/weblinks`
+- **API:** `POST /testcycles/{key}/links/weblinks`
+- **API:** `POST /testplans/{key}/links/weblinks`
+- **MCP status:** Only coverage links for Jira issues (`.../links/issues`) and test case link retrieval (`GET /testcases/{key}/links`) are exposed.
+
+### 18. Test plan ↔ test cycle linkage endpoints (not wrapped as MCP tools)
+
+- **API:** `POST /testplans/{testPlanIdOrKey}/links/testcycles`
+- **MCP status:** Not implemented as an MCP tool yet (plan issue linking is implemented via `.../links/issues`).
+
+### 19. Test case versions endpoints (not wrapped as MCP tools)
+
+- **API:** `GET /testcases/{testCaseKey}/versions`
+- **API:** `GET /testcases/{testCaseKey}/versions/{version}`
+- **MCP status:** Not implemented as an MCP tool yet.
+
+### 20. Single-resource GETs / link retrievals not exposed (partial coverage via lists)
+
+- **Folders:** `GET /folders/{folderId}`
+- **Projects:** `GET /projects/{projectIdOrKey}`
+- **Priorities / statuses:** `GET /priorities/{priorityId}`, `GET /statuses/{statusId}`
+- **Links:** `GET /links/{linkId}`
+- **MCP status:** Current server primarily exposes list endpoints (and a few entity-specific GETs, e.g. environments + plans/cycles/cases); the above per-id “direct GET” endpoints are not wrapped as MCP tools yet.
+
+### 21. Automation-related test case endpoints (not wrapped as MCP tools)
+
+- **API (OpenAPI):** `GET/POST /automations/testcases/...` (automation operations for test cases)
+- **MCP status:** Not implemented as MCP tools yet.
+
 ---
 
 ## Summary table
@@ -133,6 +171,13 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 14 | Update test plan | PUT `testplans/{key}` (undocumented in public OpenAPI) | Implemented (**`update_test_plan`**, v0.13.0); GET-merge-PUT — may 404/405 on some tenants |
 | 15 | Bulk / high-volume reads & batch execution updates | `.../nextgen` GET; no multi-execution PUT in spec | **`list_test_cases_nextgen`**, **`list_test_executions_nextgen`**; **`bulk_execute_tests`** (sequential PUTs, v0.14.0) |
 | 16 | Test case ↔ Jira issue links | GET/POST `.../links` and `.../links/issues` | Implemented (**v0.12.0**); test case, cycle, and plan issue links |
+| 17 | Single test execution retrieval | `GET /testexecutions/{idOrKey}` | Not exposed as MCP tool yet (client has it) |
+| 18 | Execution links and execution test steps | `GET /testexecutions/{id}/links`, `.../teststeps`, `.../teststeps/sync` | Not exposed as MCP tools yet |
+| 19 | Web links on test resources | `POST .../links/weblinks` | Not exposed as MCP tools yet |
+| 20 | Plan ↔ cycle linkage | `POST /testplans/{key}/links/testcycles` | Not exposed as MCP tools yet |
+| 21 | Test case versions | `GET /testcases/{key}/versions` | Not exposed as MCP tools yet |
+| 22 | Per-id GETs and link retrieval | `GET /folders/{id}`, `GET /projects/{idOrKey}`, `GET /links/{linkId}` | Not exposed as MCP tools yet |
+| 23 | Test case automations | `/automations/testcases/...` | Not exposed as MCP tools yet |
 
 ---
 
