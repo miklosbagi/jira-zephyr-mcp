@@ -70,6 +70,10 @@ export const updateTestCycle = async (input: UpdateTestCycleInput) => {
       environment: validatedInput.environment,
       startDate: validatedInput.startDate,
       endDate: validatedInput.endDate,
+      status: validatedInput.status,
+      versionId: validatedInput.versionId,
+      ownerAccountId: validatedInput.ownerAccountId,
+      customFields: validatedInput.customFields,
     });
     return {
       success: true,

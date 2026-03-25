@@ -111,6 +111,60 @@ describe('ZephyrClient (integration, mocked)', () => {
     });
   });
 
+  describe('updateTestCycle', () => {
+    it('sends GET then PUT /v2/testcycles/{key} with merged body', async () => {
+      const getBody = {
+        ...loadFixture('testcycle-get.json'),
+        customFields: { a: 1 },
+        jiraProjectVersion: { id: 1, self: 'https://example.atlassian.net/rest/api/3/version/1' },
+      };
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles/PROJ-R1`).reply(200, getBody);
+      const put = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testcycles/PROJ-R1`, (body: Record<string, unknown>) => {
+          const cf = body.customFields as Record<string, number>;
+          const st = body.status as { id: number };
+          const jpv = body.jiraProjectVersion as { id: number };
+          return (
+            body.name === 'Renamed' &&
+            cf.a === 1 &&
+            cf.b === 2 &&
+            st.id === 99 &&
+            jpv.id === 5000
+          );
+        })
+        .reply(200, { ...getBody, name: 'Renamed' });
+
+      await client.updateTestCycle('PROJ-R1', {
+        name: 'Renamed',
+        status: '99',
+        versionId: '5000',
+        customFields: { b: 2 },
+      });
+
+      expect(put.isDone()).toBe(true);
+    });
+  });
+
+  describe('updateTestPlan', () => {
+    it('sends GET then PUT /v2/testplans/{key} with merged objective and description', async () => {
+      const body = loadFixture('testplan-get.json');
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testplans/TP-1`).reply(200, body);
+      const put = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testplans/TP-1`, (reqBody: Record<string, unknown>) => {
+          return (
+            reqBody.name === 'Updated plan' &&
+            reqBody.objective === 'New objective' &&
+            reqBody.description === 'New objective'
+          );
+        })
+        .reply(200, { ...body, name: 'Updated plan', objective: 'New objective', description: 'New objective' });
+
+      await client.updateTestPlan('TP-1', { name: 'Updated plan', description: 'New objective' });
+
+      expect(put.isDone()).toBe(true);
+    });
+  });
+
   describe('getProjects', () => {
     it('sends GET /v2/projects with maxResults and startAt, returns list', async () => {
       const body = loadFixture('projects-list.json');

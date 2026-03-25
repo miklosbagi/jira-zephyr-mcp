@@ -67,6 +67,57 @@ export class ZephyrClient {
     return response.data;
   }
 
+  /**
+   * Update a test plan: GET-merge-PUT. The published OpenAPI does not list PUT /testplans/{key};
+   * some tenants still accept it (same pattern as test cases / cycles).
+   */
+  async updateTestPlan(planKey: string, data: {
+    name?: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    folderId?: string | number | null;
+    ownerAccountId?: string;
+    customFields?: Record<string, unknown>;
+    labels?: string[];
+  }): Promise<ZephyrTestPlan> {
+    const existing = (await this.client.get(`/testplans/${planKey}`)).data as Record<string, unknown>;
+    const payload: Record<string, unknown> = { ...existing };
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.description !== undefined) {
+      payload.objective = data.description;
+      payload.description = data.description;
+    }
+    if (data.startDate !== undefined) payload.plannedStartDate = data.startDate;
+    if (data.endDate !== undefined) payload.plannedEndDate = data.endDate;
+    if (data.status !== undefined) payload.status = { id: Number(data.status) };
+    if (data.folderId !== undefined) {
+      if (data.folderId === null) {
+        payload.folder = null;
+      } else {
+        payload.folder = { id: Number(data.folderId) };
+      }
+    }
+    if (data.ownerAccountId !== undefined) {
+      const prev = existing.owner;
+      payload.owner = {
+        ...(prev && typeof prev === 'object' ? (prev as Record<string, unknown>) : {}),
+        accountId: data.ownerAccountId,
+      };
+    }
+    if (data.customFields !== undefined) {
+      const prev = existing.customFields;
+      payload.customFields = {
+        ...(typeof prev === 'object' && prev !== null ? (prev as Record<string, unknown>) : {}),
+        ...data.customFields,
+      };
+    }
+    if (data.labels !== undefined) payload.labels = data.labels;
+    const response = await this.client.put(`/testplans/${planKey}`, payload);
+    return response.data;
+  }
+
   async createTestCycle(data: {
     name: string;
     description?: string;
@@ -101,21 +152,43 @@ export class ZephyrClient {
     environment?: string;
     startDate?: string;
     endDate?: string;
+    status?: string;
+    versionId?: string;
+    ownerAccountId?: string;
+    customFields?: Record<string, unknown>;
   }): Promise<ZephyrTestCycle> {
-    const existing = (await this.client.get(`/testcycles/${cycleKey}`)).data;
-    const payload: Record<string, unknown> = {
-      ...existing,
-      id: existing.id,
-      key: existing.key,
-      name: data.name !== undefined ? data.name : existing.name,
-      description: data.description !== undefined ? data.description : existing.description,
-      status: existing.status,
-      project: existing.project ?? (existing.projectKey != null ? { id: existing.projectId ?? existing.projectKey } : undefined),
-      plannedStartDate: data.startDate !== undefined ? data.startDate : existing.plannedStartDate,
-      plannedEndDate: data.endDate !== undefined ? data.endDate : existing.plannedEndDate,
-    };
+    const existing = (await this.client.get(`/testcycles/${cycleKey}`)).data as Record<string, unknown>;
+    const payload: Record<string, unknown> = { ...existing };
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.description !== undefined) payload.description = data.description;
+    if (data.startDate !== undefined) payload.plannedStartDate = data.startDate;
+    if (data.endDate !== undefined) payload.plannedEndDate = data.endDate;
     if (data.environment !== undefined) payload.environment = data.environment;
     if (data.folderId !== undefined) payload.folderId = data.folderId;
+    if (data.status !== undefined) payload.status = { id: Number(data.status) };
+    if (data.versionId !== undefined) {
+      const vid = Number(data.versionId);
+      const jpv = existing.jiraProjectVersion;
+      payload.jiraProjectVersion = {
+        ...(jpv && typeof jpv === 'object' ? (jpv as Record<string, unknown>) : {}),
+        id: vid,
+      };
+      if (existing.versionId !== undefined) payload.versionId = data.versionId;
+    }
+    if (data.ownerAccountId !== undefined) {
+      const prev = existing.owner;
+      payload.owner = {
+        ...(prev && typeof prev === 'object' ? (prev as Record<string, unknown>) : {}),
+        accountId: data.ownerAccountId,
+      };
+    }
+    if (data.customFields !== undefined) {
+      const prev = existing.customFields;
+      payload.customFields = {
+        ...(typeof prev === 'object' && prev !== null ? (prev as Record<string, unknown>) : {}),
+        ...data.customFields,
+      };
+    }
     const response = await this.client.put(`/testcycles/${cycleKey}`, payload);
     return response.data;
   }

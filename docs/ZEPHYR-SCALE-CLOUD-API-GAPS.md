@@ -8,8 +8,8 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 | Area | Implemented |
 |------|-------------|
-| **Test plans** | Create, list (by projectKey) |
-| **Test cycles** | Create, list (by projectKey, optional versionId) |
+| **Test plans** | Create, list (by projectKey), get one, update (**`update_test_plan`**: GET-merge-PUT — **not** in public OpenAPI; see §14) |
+| **Test cycles** | Create, list (by projectKey, optional versionId), get one, **`update_test_cycle`** (PUT `testcycles/{key}`, OpenAPI `updateTestCycle`) |
 | **Test executions** | Create (add test case to cycle), get one, update status/comment/defects, list in cycle, summary by cycle |
 | **Test cases** | Get one, search, create, update, create multiple |
 | **Folders** | List (by projectKey, optional folderType, parentId), create (with optional parentId, folderType) |
@@ -96,12 +96,17 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 - **MCP status:** Implemented (`remove_test_case_from_cycle`). Pass **`executionId`** from `list_test_executions_in_cycle`, or **`cycleKey` + `testCaseKey`** to resolve a single matching execution. If more than one execution exists for the same case in the cycle, you must pass **`executionId`**.
 - **Caveat:** The public API reference does not always list this operation; some tenants return **404/405**. The Zephyr UI may use other backends for bulk removal; this tool targets the Scale Cloud v2 REST surface only.
 
-### 13. **Update test plan / Update test cycle**
+### 13. **Update test cycle**
 
-- **API:** `PUT /testplans/{key}`, `PUT /testcycles/{key}` (if supported).
-- **Gap:** Only create and list for plans and cycles. No update (e.g. rename, change dates, status) even if the API allows it.
+- **API (OpenAPI):** **`PUT /testcycles/{testCycleIdOrKey}`** — `operationId: updateTestCycle`. Request body is **`TestCycle`**; docs warn that omitted fields may be cleared and custom fields may need to be sent in full.
+- **MCP status:** Implemented (**`update_test_cycle`**, v0.6+; extended v0.13.0). Client **`GET`s** the cycle, **merges** partial fields (including **`status`** id, **`versionId`** → **`jiraProjectVersion`**, **`ownerAccountId`**, **`customFields`**), then **`PUT`s** so updates do not wipe the rest of the payload.
 
-### 14. **Bulk or batch operations**
+### 14. **Update test plan**
+
+- **API (OpenAPI, [api.cloud.stripped.yml](https://support.smartbear.com/zephyr-scale-cloud/api-docs/)):** **`GET /testplans/{testPlanIdOrKey}`** (`getTestPlan`) and **`POST /testplans`** (`createTestPlan`) are documented. The published spec does **not** list **`PUT /testplans/{key}`** for that path.
+- **MCP status (v0.13.0+):** **`update_test_plan`** uses the same **GET → merge → PUT** pattern as test cases and test cycles, calling **`PUT /testplans/{planKey}`** with the merged **`TestPlan`**-shaped body. This matches how the product UI typically persists plan edits, but **it is not guaranteed** on every region or tenant: you may see **404** or **405** if the endpoint is disabled. If so, edit the plan in the Zephyr UI or contact SmartBear.
+
+### 15. **Bulk or batch operations**
 
 - **API:** Any bulk endpoints (e.g. bulk update executions, bulk add to cycle) if present in the docs.
 - **Gap:** Only `create_multiple_test_cases` exists. No bulk execution updates or bulk cycle operations exposed.
@@ -124,9 +129,10 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 10 | Archive/delete test case | PUT archived; DELETE testcases/{key} | Implemented (`archive_test_case`, `unarchive_test_case`, `delete_test_case`, v0.11.0); API support varies by tenant |
 | 11 | Test steps CRUD | testcases/{key}/teststeps | Implemented (v0.7) |
 | 12 | Remove test case from cycle | DELETE /testexecutions/{id} | Implemented (`remove_test_case_from_cycle`; API support varies by tenant) |
-| 13 | Update test plan / test cycle | PUT testplans, testcycles | Not implemented |
-| 14 | Bulk operations (executions, cycle) | Bulk endpoints (if any) | Not implemented |
-| 15 | Test case ↔ Jira issue links | GET `testcases/{key}/links`, POST `testcases/{key}/links/issues` | Implemented (`get_test_case_links`, `link_tests_to_issues`, **v0.12.0**) |
+| 13 | Update test cycle | PUT `testcycles/{key}` | Implemented (`update_test_cycle`; GET-merge-PUT vs OpenAPI `updateTestCycle`) |
+| 14 | Update test plan | PUT `testplans/{key}` (undocumented in public OpenAPI) | Implemented (**`update_test_plan`**, v0.13.0); GET-merge-PUT — may 404/405 on some tenants |
+| 15 | Bulk operations (executions, cycle) | Bulk endpoints (if any) | Not implemented |
+| 16 | Test case ↔ Jira issue links | GET/POST `.../links` and `.../links/issues` | Implemented (**v0.12.0**); test case, cycle, and plan issue links |
 
 ---
 

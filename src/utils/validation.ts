@@ -39,6 +39,30 @@ export const getTestPlanSchema = z.object({
   planKey: z.string().min(1, 'Test plan key or ID is required'),
 });
 
+export const updateTestPlanSchema = z
+  .object({
+    planKey: z.string().min(1, 'Test plan key or ID is required'),
+    name: z.string().min(1).optional(),
+    description: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    status: z.string().optional(),
+    folderId: z.union([z.string(), z.number(), z.null()]).optional(),
+    ownerAccountId: z.string().optional(),
+    customFields: z.record(z.string(), z.any()).optional(),
+    labels: z.array(z.string()).optional(),
+  })
+  .superRefine((val, ctx) => {
+    const { planKey: _p, ...rest } = val;
+    const hasUpdate = Object.values(rest).some(v => v !== undefined);
+    if (!hasUpdate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Provide at least one field to update (name, description, dates, status, folderId, ownerAccountId, customFields, labels).',
+      });
+    }
+  });
+
 export const listTestCyclesSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),
   versionId: z.string().optional(),
@@ -57,6 +81,10 @@ export const updateTestCycleSchema = z.object({
   environment: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  status: z.string().optional(),
+  versionId: z.string().optional(),
+  ownerAccountId: z.string().optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
 });
 
 export const executeTestSchema = z.object({
@@ -319,6 +347,7 @@ export type ReadJiraIssueInput = z.infer<typeof readJiraIssueSchema>;
 export type ListProjectsInput = z.infer<typeof listProjectsSchema>;
 export type ListTestPlansInput = z.infer<typeof listTestPlansSchema>;
 export type GetTestPlanInput = z.infer<typeof getTestPlanSchema>;
+export type UpdateTestPlanInput = z.infer<typeof updateTestPlanSchema>;
 export type ListTestCyclesInput = z.infer<typeof listTestCyclesSchema>;
 export type GetTestCycleInput = z.infer<typeof getTestCycleSchema>;
 export type UpdateTestCycleInput = z.infer<typeof updateTestCycleSchema>;

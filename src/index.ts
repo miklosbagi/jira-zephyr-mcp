@@ -8,7 +8,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { readJiraIssue } from './tools/jira-issues.js';
-import { createTestPlan, listTestPlans, getTestPlan } from './tools/test-plans.js';
+import { createTestPlan, listTestPlans, getTestPlan, updateTestPlan } from './tools/test-plans.js';
 import { createTestCycle, listTestCycles, getTestCycle, addTestCasesToCycle, updateTestCycle } from './tools/test-cycles.js';
 import {
   createTestExecution,
@@ -43,6 +43,7 @@ import {
   createTestPlanSchema,
   listTestPlansSchema,
   getTestPlanSchema,
+  updateTestPlanSchema,
   createTestCycleSchema,
   listTestCyclesSchema,
   getTestCycleSchema,
@@ -83,6 +84,7 @@ import {
   CreateTestPlanInput,
   ListTestPlansInput,
   GetTestPlanInput,
+  UpdateTestPlanInput,
   CreateTestCycleInput,
   ListTestCyclesInput,
   GetTestCycleInput,
@@ -123,7 +125,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.12.0',
+    version: '0.13.0',
   },
   {
     capabilities: {
@@ -199,6 +201,27 @@ const TOOLS = [
     },
   },
   {
+    name: 'update_test_plan',
+    description:
+      'Update a test plan (GET-merge-PUT). Not listed in the public OpenAPI; may return 404/405 on some tenants. Supports name, description/objective, planned dates, status id, folderId, owner, customFields, labels.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        planKey: { type: 'string', description: 'Test plan key or ID' },
+        name: { type: 'string', description: 'New name (optional)' },
+        description: { type: 'string', description: 'New description / objective (optional)' },
+        startDate: { type: 'string', description: 'Planned start date ISO (optional)' },
+        endDate: { type: 'string', description: 'Planned end date ISO (optional)' },
+        status: { type: 'string', description: 'Zephyr status id (numeric string, optional)' },
+        folderId: { type: 'string', description: 'Folder id (optional); null to clear if supported' },
+        ownerAccountId: { type: 'string', description: 'Jira account id for owner (optional)' },
+        customFields: { type: 'object', description: 'Merged with existing custom fields (optional)' },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Test plan labels (optional)' },
+      },
+      required: ['planKey'],
+    },
+  },
+  {
     name: 'create_test_cycle',
     description: 'Create a new test execution cycle',
     inputSchema: {
@@ -218,7 +241,8 @@ const TOOLS = [
   },
   {
     name: 'update_test_cycle',
-    description: 'Update a test cycle (e.g. name, description, folderId, dates)',
+    description:
+      'Update a test cycle (PUT /testcycles/{key}; GET-merge-PUT). Name, description, folderId, environment, dates, status id, Jira version id, owner, customFields.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -229,6 +253,10 @@ const TOOLS = [
         environment: { type: 'string', description: 'Environment (optional)' },
         startDate: { type: 'string', description: 'Planned start date ISO (optional)' },
         endDate: { type: 'string', description: 'Planned end date ISO (optional)' },
+        status: { type: 'string', description: 'Zephyr cycle status id (numeric string, optional)' },
+        versionId: { type: 'string', description: 'Jira release version id (optional; maps to jiraProjectVersion)' },
+        ownerAccountId: { type: 'string', description: 'Jira account id for owner (optional)' },
+        customFields: { type: 'object', description: 'Merged with existing custom fields (optional)' },
       },
       required: ['cycleKey'],
     },
@@ -839,6 +867,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await getTestPlan(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'update_test_plan': {
+        const validatedArgs = validateInput<UpdateTestPlanInput>(updateTestPlanSchema, args, 'update_test_plan');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await updateTestPlan(validatedArgs), null, 2),
             },
           ],
         };
