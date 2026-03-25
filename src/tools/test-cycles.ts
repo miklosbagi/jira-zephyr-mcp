@@ -4,11 +4,11 @@ import {
   listTestCyclesSchema,
   addTestCasesToCycleSchema,
   updateTestCycleSchema,
-  CreateTestCycleInput,
-  ListTestCyclesInput,
-  GetTestCycleInput,
-  AddTestCasesToCycleInput,
-  UpdateTestCycleInput,
+  type CreateTestCycleInput,
+  type ListTestCyclesInput,
+  type GetTestCycleInput,
+  type AddTestCasesToCycleInput,
+  type UpdateTestCycleInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;

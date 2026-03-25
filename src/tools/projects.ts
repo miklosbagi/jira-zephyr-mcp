@@ -1,6 +1,6 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
 import type { ZephyrProject } from '../types/zephyr-types.js';
-import { listProjectsSchema, ListProjectsInput } from '../utils/validation.js';
+import { listProjectsSchema, type ListProjectsInput } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
 

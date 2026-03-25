@@ -4,10 +4,10 @@ import {
   getEnvironmentSchema,
   createEnvironmentSchema,
   updateEnvironmentSchema,
-  ListEnvironmentsInput,
-  GetEnvironmentInput,
-  CreateEnvironmentInput,
-  UpdateEnvironmentInput,
+  type ListEnvironmentsInput,
+  type GetEnvironmentInput,
+  type CreateEnvironmentInput,
+  type UpdateEnvironmentInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;

@@ -3,10 +3,10 @@ import {
   createTestPlanSchema,
   listTestPlansSchema,
   updateTestPlanSchema,
-  CreateTestPlanInput,
-  ListTestPlansInput,
-  GetTestPlanInput,
-  UpdateTestPlanInput,
+  type CreateTestPlanInput,
+  type ListTestPlansInput,
+  type GetTestPlanInput,
+  type UpdateTestPlanInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;

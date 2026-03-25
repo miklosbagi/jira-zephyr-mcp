@@ -1,5 +1,5 @@
 import { JiraClient } from '../clients/jira-client.js';
-import { readJiraIssueSchema, ReadJiraIssueInput } from '../utils/validation.js';
+import { readJiraIssueSchema, type ReadJiraIssueInput } from '../utils/validation.js';
 
 let jiraClient: JiraClient | null = null;
 

@@ -4,10 +4,10 @@ import {
   createTestStepSchema,
   updateTestStepSchema,
   deleteTestStepSchema,
-  ListTestStepsInput,
-  CreateTestStepInput,
-  UpdateTestStepInput,
-  DeleteTestStepInput,
+  type ListTestStepsInput,
+  type CreateTestStepInput,
+  type UpdateTestStepInput,
+  type DeleteTestStepInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
