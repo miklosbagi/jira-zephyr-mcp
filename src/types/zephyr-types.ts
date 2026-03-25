@@ -11,6 +11,9 @@ export interface ZephyrTestPlan {
     accountId: string;
     displayName: string;
   };
+  /** Present on some API responses (OpenAPI uses `objective`). */
+  objective?: string;
+  customFields?: Record<string, unknown>;
 }
 
 export interface ZephyrTestCycle {
@@ -28,6 +31,9 @@ export interface ZephyrTestCycle {
   actualEndDate?: string;
   createdOn: string;
   updatedOn: string;
+  customFields?: Record<string, unknown>;
+  jiraProjectVersion?: { id?: number; self?: string };
+  owner?: { accountId?: string; self?: string };
   /** Present on many list/detail responses; Zephyr Scale may omit on GET /testcycles/{key}. */
   executionSummary?: {
     total: number;

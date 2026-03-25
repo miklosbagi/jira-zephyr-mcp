@@ -20,8 +20,12 @@ The following environment variables are required:
 - `read_jira_issue`: Read JIRA issue details and metadata
 - `create_test_plan`: Create a new test plan in Zephyr
 - `list_test_plans`: List existing test plans
+- `get_test_plan`: Get one test plan by key or id
+- `update_test_plan`: Update a test plan (GET-merge-PUT; not in public OpenAPI — may 404/405 on some tenants)
 - `create_test_cycle`: Create a new test execution cycle
 - `list_test_cycles`: List existing test cycles with execution status
+- `get_test_cycle`: Get one test cycle by key or id
+- `update_test_cycle`: Update a test cycle (`PUT /testcycles/{key}`; GET-merge-PUT, including status, version, owner, custom fields)
 - `execute_test`: Update test execution results
 - `get_test_execution_status`: Get test execution progress and statistics
 - `remove_test_case_from_cycle`: Remove a test case from a cycle (delete test execution by id or cycle + case key)

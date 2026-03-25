@@ -112,8 +112,8 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | Tool | Description |
 |------|-------------|
 | **read_jira_issue** | Get JIRA issue details (optional fields). |
-| **create_test_plan** / **list_test_plans** | Create and list test plans. |
-| **create_test_cycle** / **list_test_cycles** | Create and list test cycles. |
+| **create_test_plan** / **list_test_plans** / **get_test_plan** / **update_test_plan** | Test plans: create, list, get one; **update** uses GET-merge-PUT (not in the public OpenAPI; some tenants return 404/405 — see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md)). |
+| **create_test_cycle** / **list_test_cycles** / **get_test_cycle** / **update_test_cycle** | Test cycles: create, list, get one; **update** uses **`PUT /testcycles/{key}`** with GET-merge-PUT (name, description, folder, environment, dates, status, Jira version, owner, custom fields). |
 | **list_folders** / **create_folder** | List and create folders (for organizing test cases or test cycles). Filter by folderType (TEST_CASE / TEST_CYCLE) and parentId for subfolders. |
 | **list_priorities** / **list_statuses** | List test case priorities and statuses (id and name). Use the returned ids when creating or updating test cases. Optional projectKey. |
 | **list_environments** / **get_environment** / **create_environment** / **update_environment** | List and manage test environments per project (`GET/POST/PUT /environments`). Use returned names with **create_test_cycle** / **update_test_cycle** (`environment`) and **create_test_execution** (`environmentName`). |
@@ -153,12 +153,15 @@ list_projects({ limit: 20, startAt: 0 });
 ```ts
 create_test_plan({ name: "Release 2.0", projectKey: "ABC", description: "..." });
 list_test_plans({ projectKey: "ABC", limit: 50 });
+get_test_plan({ planKey: "ABC-P1" });
+update_test_plan({ planKey: "ABC-P1", name: "Release 2.0 RC", description: "..." });
 ```
 
 **Test cycles**
 ```ts
 create_test_cycle({ name: "Sprint 10", projectKey: "ABC", versionId: "10001", environment: "Production" });
 list_test_cycles({ projectKey: "ABC", limit: 25 });
+update_test_cycle({ cycleKey: "ABC-R1", name: "Sprint 10 (final)", status: "365024", customFields: { "Team": "QA" } });
 list_test_executions_in_cycle({ cycleId: "ABC-R1" });
 add_test_cases_to_cycle({ cycleKey: "ABC-R1", testCaseKeys: ["ABC-T1", "ABC-T2"] });
 // If add_test_cases_to_cycle returns 404 (e.g. EU API), use create_test_execution per test case:
@@ -291,7 +294,8 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Test steps as separate resource** — `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` (v0.7). Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER.
 - [x] **Remove test case from cycle** — `remove_test_case_from_cycle` calls `DELETE /testexecutions/{id}` (resolve via `list_test_executions_in_cycle` or pass `cycleKey` + `testCaseKey`). Official docs may not advertise this; some tenants return 404/405.
 - [x] **Test case ↔ Jira issue links (coverage)** — `link_tests_to_issues` uses **`POST /testcases/{key}/links/issues`** with numeric Jira issue id (v0.12.0). `get_test_case_links` lists links (**`GET /testcases/{key}/links`**). Older `POST .../links` + `issueKeys` is not used (405 on current API).
-- [ ] **Update test plan / test cycle** — PUT for plans and cycles (rename, dates, status).
+- [x] **Update test cycle** — **`update_test_cycle`**: **`PUT /testcycles/{key}`** (OpenAPI `updateTestCycle`); MCP merges from GET before PUT (including status, `versionId` → `jiraProjectVersion`, owner, custom fields).
+- [x] **Update test plan** — **`update_test_plan`**: GET-merge-PUT; **not** listed in the public OpenAPI for `PUT /testplans/{key}` — see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md).
 - [ ] **Bulk operations** — Bulk execution updates or bulk add-to-cycle (beyond `create_multiple_test_cases`).
 
 ---
