@@ -3,6 +3,7 @@ import { getZephyrBaseUrl } from '../utils/config.js';
 import {
   createTestCaseSchema,
   searchTestCasesSchema,
+  listTestCasesNextgenSchema,
   createMultipleTestCasesSchema,
   updateTestCaseSchema,
   archiveTestCaseSchema,
@@ -11,6 +12,7 @@ import {
   getTestCaseLinksSchema,
   CreateTestCaseInput,
   SearchTestCasesInput,
+  ListTestCasesNextgenInput,
   CreateMultipleTestCasesInput,
   UpdateTestCaseInput,
   ArchiveTestCaseInput,
@@ -109,6 +111,46 @@ export const searchTestCases = async (input: SearchTestCasesInput) => {
         })),
         total: result.total,
         projectKey: validatedInput.projectKey,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const listTestCasesNextgen = async (input: ListTestCasesNextgenInput) => {
+  const validatedInput = listTestCasesNextgenSchema.parse(input);
+  try {
+    const page = await getZephyrClient().listTestCasesNextgen({
+      projectKey: validatedInput.projectKey,
+      folderId: validatedInput.folderId,
+      limit: validatedInput.limit,
+      startAtId: validatedInput.startAtId,
+    });
+    return {
+      success: true,
+      data: {
+        limit: page.limit,
+        nextStartAtId: page.nextStartAtId,
+        next: page.next,
+        testCases: page.values.map(testCase => ({
+          id: testCase.id,
+          key: testCase.key,
+          name: testCase.name,
+          objective: testCase.objective,
+          precondition: testCase.precondition,
+          estimatedTime: testCase.estimatedTime,
+          priority: testCase.priority?.id,
+          status: testCase.status?.id,
+          folder: testCase.folder?.id,
+          labels: testCase.labels || [],
+          component: testCase.component?.id,
+          owner: testCase.owner?.accountId,
+          createdOn: testCase.createdOn,
+        })),
       },
     };
   } catch (error: any) {

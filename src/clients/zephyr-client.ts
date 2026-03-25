@@ -13,6 +13,7 @@ import {
   ZephyrTestStep,
   ZephyrProject,
   ZephyrEnvironment,
+  ZephyrCursorPage,
 } from '../types/zephyr-types.js';
 
 export class ZephyrClient {
@@ -447,6 +448,96 @@ export class ZephyrClient {
     return response.data;
   }
 
+  /**
+   * GET /testexecutions/nextgen — cursor-paged test executions for large volumes (OpenAPI `listTestExecutionsNextgen`).
+   * Use `nextStartAtId` (or the `next` URL) for the following page.
+   */
+  async listTestExecutionsNextgen(options: {
+    projectKey?: string;
+    testCycle?: string;
+    testCase?: string;
+    actualEndDateAfter?: string;
+    actualEndDateBefore?: string;
+    includeStepLinks?: boolean;
+    jiraProjectVersionId?: number;
+    onlyLastExecutions?: boolean;
+    limit?: number;
+    startAtId?: number;
+  }): Promise<ZephyrCursorPage & { values: ZephyrTestExecution[] }> {
+    const params: Record<string, string | number | boolean> = {
+      limit: options.limit ?? 50,
+      startAtId: options.startAtId ?? 0,
+    };
+    if (options.projectKey !== undefined) params.projectKey = options.projectKey;
+    if (options.testCycle !== undefined) params.testCycle = options.testCycle;
+    if (options.testCase !== undefined) params.testCase = options.testCase;
+    if (options.actualEndDateAfter !== undefined) params.actualEndDateAfter = options.actualEndDateAfter;
+    if (options.actualEndDateBefore !== undefined) params.actualEndDateBefore = options.actualEndDateBefore;
+    if (options.includeStepLinks !== undefined) params.includeStepLinks = options.includeStepLinks;
+    if (options.jiraProjectVersionId !== undefined) params.jiraProjectVersionId = options.jiraProjectVersionId;
+    if (options.onlyLastExecutions !== undefined) params.onlyLastExecutions = options.onlyLastExecutions;
+
+    const response = await this.client.get('/testexecutions/nextgen', { params });
+    const d = response.data as Record<string, unknown>;
+    const values = (d.values as ZephyrTestExecution[]) ?? [];
+    return {
+      values: Array.isArray(values) ? values : [],
+      limit: Number(d.limit ?? 0),
+      nextStartAtId: d.nextStartAtId != null ? Number(d.nextStartAtId) : null,
+      next: d.next != null ? String(d.next) : null,
+    };
+  }
+
+  /**
+   * Sequentially PUT each test execution (same contract as `execute_test`). There is no documented single-request
+   * bulk update for executions in the public Scale Cloud API; this helper mirrors `create_multiple_test_cases`.
+   */
+  async bulkExecuteTests(
+    items: Array<{
+      executionId: string;
+      status: 'PASS' | 'FAIL' | 'WIP' | 'BLOCKED';
+      comment?: string;
+      defects?: string[];
+    }>,
+    continueOnError = true
+  ): Promise<{
+    results: Array<{
+      index: number;
+      success: boolean;
+      data?: ZephyrTestExecution;
+      error?: string;
+    }>;
+    summary: { total: number; successful: number; failed: number };
+  }> {
+    const results: Array<{
+      index: number;
+      success: boolean;
+      data?: ZephyrTestExecution;
+      error?: string;
+    }> = [];
+    let successful = 0;
+    let failed = 0;
+
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const data = await this.updateTestExecution(items[i]);
+        results.push({ index: i, success: true, data });
+        successful++;
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { message?: string } }; message?: string };
+        const errorMessage = err.response?.data?.message || err.message || String(error);
+        results.push({ index: i, success: false, error: errorMessage });
+        failed++;
+        if (!continueOnError) break;
+      }
+    }
+
+    return {
+      results,
+      summary: { total: items.length, successful, failed },
+    };
+  }
+
   async getTestExecutionsInCycle(cycleId: string): Promise<{
     executions: ZephyrTestExecution[];
     total: number;
@@ -663,6 +754,33 @@ export class ZephyrClient {
     return {
       testCases: response.data.values || response.data,
       total: response.data.total || response.data.length,
+    };
+  }
+
+  /**
+   * GET /testcases/nextgen — cursor-paged test cases for large volumes (OpenAPI `listTestCasesCursorPaginated`).
+   */
+  async listTestCasesNextgen(options: {
+    projectKey?: string;
+    folderId?: number;
+    limit?: number;
+    startAtId?: number;
+  }): Promise<ZephyrCursorPage & { values: ZephyrTestCase[] }> {
+    const params: Record<string, string | number> = {
+      limit: options.limit ?? 50,
+      startAtId: options.startAtId ?? 0,
+    };
+    if (options.projectKey !== undefined) params.projectKey = options.projectKey;
+    if (options.folderId !== undefined) params.folderId = options.folderId;
+
+    const response = await this.client.get('/testcases/nextgen', { params });
+    const d = response.data as Record<string, unknown>;
+    const values = (d.values as ZephyrTestCase[]) ?? [];
+    return {
+      values: Array.isArray(values) ? values : [],
+      limit: Number(d.limit ?? 0),
+      nextStartAtId: d.nextStartAtId != null ? Number(d.nextStartAtId) : null,
+      next: d.next != null ? String(d.next) : null,
     };
   }
 

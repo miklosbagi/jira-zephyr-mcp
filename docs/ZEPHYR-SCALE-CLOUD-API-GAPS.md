@@ -10,8 +10,8 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 |------|-------------|
 | **Test plans** | Create, list (by projectKey), get one, update (**`update_test_plan`**: GET-merge-PUT — **not** in public OpenAPI; see §14) |
 | **Test cycles** | Create, list (by projectKey, optional versionId), get one, **`update_test_cycle`** (PUT `testcycles/{key}`, OpenAPI `updateTestCycle`) |
-| **Test executions** | Create (add test case to cycle), get one, update status/comment/defects, list in cycle, summary by cycle |
-| **Test cases** | Get one, search, create, update, create multiple |
+| **Test executions** | Create (add test case to cycle), get one, update status/comment/defects, list in cycle, cursor list (**`list_test_executions_nextgen`**, v0.14.0), summary by cycle, **`bulk_execute_tests`** (sequential PUTs — not one API call) |
+| **Test cases** | Get one, search, cursor list (**`list_test_cases_nextgen`**, v0.14.0), create, update, create multiple |
 | **Folders** | List (by projectKey, optional folderType, parentId), create (with optional parentId, folderType) |
 | **Priorities / statuses** | List priorities and statuses (GET /priorities, GET /statuses; optional projectKey) for test case create/update |
 | **Links** | Coverage links to Jira issues: POST `testcases/{key}/links/issues`, `testcycles/{key}/links/issues`, `testplans/{key}/links/issues` (numeric `issueId`; MCP resolves keys via Jira REST). List (test case only): GET `testcases/{key}/links` (`get_test_case_links`). **v0.12.0+** — see note below. |
@@ -108,8 +108,8 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 ### 15. **Bulk or batch operations**
 
-- **API:** Any bulk endpoints (e.g. bulk update executions, bulk add to cycle) if present in the docs.
-- **Gap:** Only `create_multiple_test_cases` exists. No bulk execution updates or bulk cycle operations exposed.
+- **API (OpenAPI):** There is **no** documented endpoint that accepts **multiple test execution updates in one request**. **`GET /testcases/nextgen`** (`listTestCasesCursorPaginated`) and **`GET /testexecutions/nextgen`** (`listTestExecutionsNextgen`) are **cursor-paged list** APIs for **large read volumes** (use `nextStartAtId` / `next` for the next page). **`POST /testcycles/{key}/testcases`** with an `items` array adds several cases to a cycle in one call — already exposed as **`add_test_cases_to_cycle`** (may 404 on some regions).
+- **MCP status (v0.14.0+):** **`list_test_cases_nextgen`** and **`list_test_executions_nextgen`** call the documented nextgen GET routes. **`bulk_execute_tests`** applies the same payload as **`execute_test`** via **sequential `PUT /testexecutions/{id}`** calls (optional **`continueOnError`**, same pattern as **`create_multiple_test_cases`**). For very large batches, prefer external orchestration or rate limits to avoid throttling.
 
 ---
 
@@ -131,7 +131,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 12 | Remove test case from cycle | DELETE /testexecutions/{id} | Implemented (`remove_test_case_from_cycle`; API support varies by tenant) |
 | 13 | Update test cycle | PUT `testcycles/{key}` | Implemented (`update_test_cycle`; GET-merge-PUT vs OpenAPI `updateTestCycle`) |
 | 14 | Update test plan | PUT `testplans/{key}` (undocumented in public OpenAPI) | Implemented (**`update_test_plan`**, v0.13.0); GET-merge-PUT — may 404/405 on some tenants |
-| 15 | Bulk operations (executions, cycle) | Bulk endpoints (if any) | Not implemented |
+| 15 | Bulk / high-volume reads & batch execution updates | `.../nextgen` GET; no multi-execution PUT in spec | **`list_test_cases_nextgen`**, **`list_test_executions_nextgen`**; **`bulk_execute_tests`** (sequential PUTs, v0.14.0) |
 | 16 | Test case ↔ Jira issue links | GET/POST `.../links` and `.../links/issues` | Implemented (**v0.12.0**); test case, cycle, and plan issue links |
 
 ---

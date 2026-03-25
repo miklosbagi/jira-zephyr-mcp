@@ -14,8 +14,10 @@ import {
   createTestExecution,
   removeTestCaseFromCycle,
   executeTest,
+  bulkExecuteTests,
   getTestExecutionStatus,
   listTestExecutionsInCycle,
+  listTestExecutionsNextgen,
   linkTestsToIssues,
   linkTestCycleToIssues,
   linkTestPlanToIssues,
@@ -24,6 +26,7 @@ import {
 import {
   createTestCase,
   searchTestCases,
+  listTestCasesNextgen,
   getTestCase,
   getTestCaseLinks,
   updateTestCase,
@@ -51,6 +54,8 @@ import {
   executeTestSchema,
   getTestExecutionStatusSchema,
   listTestExecutionsInCycleSchema,
+  listTestExecutionsNextgenSchema,
+  bulkExecuteTestsSchema,
   addTestCasesToCycleSchema,
   createTestExecutionSchema,
   removeTestCaseFromCycleSchema,
@@ -68,6 +73,7 @@ import {
   generateTestReportSchema,
   createTestCaseSchema,
   searchTestCasesSchema,
+  listTestCasesNextgenSchema,
   getTestCaseSchema,
   getTestCaseLinksSchema,
   updateTestCaseSchema,
@@ -92,6 +98,8 @@ import {
   ExecuteTestInput,
   GetTestExecutionStatusInput,
   ListTestExecutionsInCycleInput,
+  ListTestExecutionsNextgenInput,
+  BulkExecuteTestsInput,
   AddTestCasesToCycleInput,
   CreateTestExecutionInput,
   RemoveTestCaseFromCycleInput,
@@ -109,6 +117,7 @@ import {
   GenerateTestReportInput,
   CreateTestCaseInput,
   SearchTestCasesInput,
+  ListTestCasesNextgenInput,
   GetTestCaseInput,
   GetTestCaseLinksInput,
   UpdateTestCaseInput,
@@ -125,7 +134,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.13.0',
+    version: '0.14.0',
   },
   {
     capabilities: {
@@ -297,6 +306,27 @@ const TOOLS = [
     },
   },
   {
+    name: 'list_test_executions_nextgen',
+    description:
+      'List test executions with cursor pagination (GET /testexecutions/nextgen). For large volumes; use nextStartAtId or next URL for the next page.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key filter (optional)' },
+        testCycle: { type: 'string', description: 'Test cycle key filter (optional)' },
+        testCase: { type: 'string', description: 'Test case key or id filter (optional)' },
+        actualEndDateAfter: { type: 'string', description: 'ISO date-time filter (optional)' },
+        actualEndDateBefore: { type: 'string', description: 'ISO date-time filter (optional)' },
+        includeStepLinks: { type: 'boolean', description: 'Include step issue links (optional)' },
+        jiraProjectVersionId: { type: 'number', description: 'Jira release version id (optional)' },
+        onlyLastExecutions: { type: 'boolean', description: 'Only last execution per cycle item (optional)' },
+        limit: { type: 'number', description: 'Page size 1–1000 (default 50)' },
+        startAtId: { type: 'number', description: 'Cursor / startAtId for pagination (default 0)' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'add_test_cases_to_cycle',
     description: 'Add existing test cases to a test cycle',
     inputSchema: {
@@ -358,6 +388,32 @@ const TOOLS = [
         defects: { type: 'array', items: { type: 'string' }, description: 'Linked defect keys (optional)' },
       },
       required: ['executionId', 'status'],
+    },
+  },
+  {
+    name: 'bulk_execute_tests',
+    description:
+      'Update many test executions sequentially (one PUT per item). The public API has no single bulk-update endpoint; mirrors create_multiple_test_cases. Optional continueOnError (default true).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        executions: {
+          type: 'array',
+          description: 'Each item: executionId, status (PASS|FAIL|WIP|BLOCKED), optional comment and defects',
+          items: {
+            type: 'object',
+            properties: {
+              executionId: { type: 'string' },
+              status: { type: 'string', enum: ['PASS', 'FAIL', 'WIP', 'BLOCKED'] },
+              comment: { type: 'string' },
+              defects: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['executionId', 'status'],
+          },
+        },
+        continueOnError: { type: 'boolean', description: 'If false, stop on first failure (default true)' },
+      },
+      required: ['executions'],
     },
   },
   {
@@ -631,6 +687,21 @@ const TOOLS = [
         limit: { type: 'number', description: 'Maximum number of results (default: 50)' },
       },
       required: ['projectKey'],
+    },
+  },
+  {
+    name: 'list_test_cases_nextgen',
+    description:
+      'List test cases with cursor pagination (GET /testcases/nextgen). For large volumes; use nextStartAtId or next URL for the next page.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        projectKey: { type: 'string', description: 'JIRA project key filter (optional; may be required if user has access to many projects)' },
+        folderId: { type: 'number', description: 'Folder id filter (optional)' },
+        limit: { type: 'number', description: 'Page size 1–1000 (default 50)' },
+        startAtId: { type: 'number', description: 'Cursor / startAtId for pagination (default 0)' },
+      },
+      required: [],
     },
   },
   {
@@ -944,6 +1015,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
+      case 'bulk_execute_tests': {
+        const validatedArgs = validateInput<BulkExecuteTestsInput>(bulkExecuteTestsSchema, args, 'bulk_execute_tests');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await bulkExecuteTests(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
       case 'get_test_execution_status': {
         const validatedArgs = validateInput<GetTestExecutionStatusInput>(getTestExecutionStatusSchema, args, 'get_test_execution_status');
         return {
@@ -963,6 +1046,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await listTestExecutionsInCycle(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_test_executions_nextgen': {
+        const validatedArgs = validateInput<ListTestExecutionsNextgenInput>(
+          listTestExecutionsNextgenSchema,
+          args,
+          'list_test_executions_nextgen'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listTestExecutionsNextgen(validatedArgs), null, 2),
             },
           ],
         };
@@ -1179,6 +1278,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await searchTestCases(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'list_test_cases_nextgen': {
+        const validatedArgs = validateInput<ListTestCasesNextgenInput>(
+          listTestCasesNextgenSchema,
+          args,
+          'list_test_cases_nextgen'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await listTestCasesNextgen(validatedArgs), null, 2),
             },
           ],
         };

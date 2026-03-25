@@ -27,6 +27,8 @@ The following environment variables are required:
 - `get_test_cycle`: Get one test cycle by key or id
 - `update_test_cycle`: Update a test cycle (`PUT /testcycles/{key}`; GET-merge-PUT, including status, version, owner, custom fields)
 - `execute_test`: Update test execution results
+- `bulk_execute_tests`: Update many executions sequentially (one PUT each; no single bulk API in public spec)
+- `list_test_executions_nextgen`: Cursor-paged list of executions (`GET /testexecutions/nextgen`)
 - `get_test_execution_status`: Get test execution progress and statistics
 - `remove_test_case_from_cycle`: Remove a test case from a cycle (delete test execution by id or cycle + case key)
 - `link_tests_to_issues`: Link a test case to Jira issue(s) as coverage — `POST /testcases/{key}/links/issues` with `{ issueId }` (Jira Cloud numeric id); resolves keys via Jira REST `GET /issue/{key}` (v0.12.0)
@@ -37,6 +39,7 @@ The following environment variables are required:
 - `create_test_case`: Create a new test case in Zephyr
 - `create_multiple_test_cases`: Create multiple test cases in Zephyr at once
 - `search_test_cases`: Search for test cases in a project
+- `list_test_cases_nextgen`: Cursor-paged test cases (`GET /testcases/nextgen`)
 - `get_test_case`: Get detailed information about a specific test case
 - `archive_test_case` / `unarchive_test_case` / `delete_test_case`: Archive, unarchive, or delete a test case (API support varies by tenant)
 - `list_environments` / `get_environment` / `create_environment` / `update_environment`: List and manage Zephyr test environments per project
