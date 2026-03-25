@@ -55,7 +55,7 @@ The following environment variables are required:
 - `npm run dev`: Watch mode for development
 - `npm run build`: Build the project
 - `npm run typecheck`: Check TypeScript types
-- `npm run lint`: Lint the code
+- `npm run lint`: Lint the code (**`--max-warnings=0`** — any warning fails)
 
 ### Docker releases
 
