@@ -2,8 +2,8 @@ import { ZephyrClient } from '../clients/zephyr-client.js';
 import {
   listFoldersSchema,
   createFolderSchema,
-  ListFoldersInput,
-  CreateFolderInput,
+  type ListFoldersInput,
+  type CreateFolderInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;

@@ -13,8 +13,8 @@
     "test:unit": "vitest run tests/zephyr-client.test.ts",
     "test:contract": "vitest run tests/contract",
     "test:watch": "vitest",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
+    "lint": "eslint . --ext .ts --max-warnings=0",
+    "lint:fix": "eslint . --ext .ts --fix --max-warnings=0",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [

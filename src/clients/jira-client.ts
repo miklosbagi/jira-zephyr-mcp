@@ -1,6 +1,6 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 import { getAppConfig, getJiraAuth } from '../utils/config.js';
-import { JiraIssue, JiraProject, JiraVersion } from '../types/jira-types.js';
+import { type JiraIssue, type JiraProject, type JiraVersion } from '../types/jira-types.js';
 
 export class JiraClient {
   private client: AxiosInstance;

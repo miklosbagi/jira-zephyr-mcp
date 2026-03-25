@@ -1,19 +1,19 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 import { getZephyrBaseUrl, getZephyrHeaders } from '../utils/config.js';
 import {
-  ZephyrTestPlan,
-  ZephyrTestCycle,
-  ZephyrTestExecution,
-  ZephyrTestCase,
-  ZephyrTestReport,
-  ZephyrExecutionSummary,
-  ZephyrFolder,
-  ZephyrPriority,
-  ZephyrStatus,
-  ZephyrTestStep,
-  ZephyrProject,
-  ZephyrEnvironment,
-  ZephyrCursorPage,
+  type ZephyrTestPlan,
+  type ZephyrTestCycle,
+  type ZephyrTestExecution,
+  type ZephyrTestCase,
+  type ZephyrTestReport,
+  type ZephyrExecutionSummary,
+  type ZephyrFolder,
+  type ZephyrPriority,
+  type ZephyrStatus,
+  type ZephyrTestStep,
+  type ZephyrProject,
+  type ZephyrEnvironment,
+  type ZephyrCursorPage,
 } from '../types/zephyr-types.js';
 
 export class ZephyrClient {

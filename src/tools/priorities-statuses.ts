@@ -2,8 +2,8 @@ import { ZephyrClient } from '../clients/zephyr-client.js';
 import {
   listPrioritiesSchema,
   listStatusesSchema,
-  ListPrioritiesInput,
-  ListStatusesInput,
+  type ListPrioritiesInput,
+  type ListStatusesInput,
 } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
