@@ -165,6 +165,98 @@ describe('ZephyrClient (integration, mocked)', () => {
     });
   });
 
+  describe('listTestCasesNextgen', () => {
+    it('sends GET /v2/testcases/nextgen with cursor params', async () => {
+      const body = {
+        values: [{ id: 1, key: 'PROJ-T1', name: 'TC1' }],
+        limit: 50,
+        nextStartAtId: 99,
+        next: 'https://api.zephyrscale.smartbear.com/v2/testcases/nextgen?startAtId=99',
+      };
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/nextgen`)
+        .query({ projectKey: 'PROJ', limit: 50, startAtId: 0 })
+        .reply(200, body);
+
+      const result = await client.listTestCasesNextgen({ projectKey: 'PROJ', limit: 50, startAtId: 0 });
+
+      expect(result.values).toHaveLength(1);
+      expect(result.values[0].key).toBe('PROJ-T1');
+      expect(result.nextStartAtId).toBe(99);
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('listTestExecutionsNextgen', () => {
+    it('sends GET /v2/testexecutions/nextgen with filters', async () => {
+      const body = {
+        values: [
+          {
+            id: '1',
+            key: 'PROJ-E1',
+            status: 'PASS',
+            cycleId: 'c',
+            testCaseId: 't',
+            defects: [],
+          },
+        ],
+        limit: 25,
+        nextStartAtId: null,
+        next: null,
+      };
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testexecutions/nextgen`)
+        .query({ testCycle: 'PROJ-R1', limit: 25, startAtId: 0 })
+        .reply(200, body);
+
+      const result = await client.listTestExecutionsNextgen({ testCycle: 'PROJ-R1', limit: 25 });
+
+      expect(result.values).toHaveLength(1);
+      expect(result.values[0].status).toBe('PASS');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('bulkExecuteTests', () => {
+    it('sends sequential PUTs for each execution', async () => {
+      const put1 = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testexecutions/e1`, (b: Record<string, unknown>) => b.status === 'PASS')
+        .reply(200, { id: 'e1', key: 'E1', cycleId: 'c', testCaseId: 't', status: 'PASS', defects: [] });
+      const put2 = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testexecutions/e2`, (b: Record<string, unknown>) => b.status === 'FAIL')
+        .reply(200, { id: 'e2', key: 'E2', cycleId: 'c', testCaseId: 't', status: 'FAIL', defects: [] });
+
+      const result = await client.bulkExecuteTests([
+        { executionId: 'e1', status: 'PASS' },
+        { executionId: 'e2', status: 'FAIL' },
+      ]);
+
+      expect(result.summary.successful).toBe(2);
+      expect(result.results.every(r => r.success)).toBe(true);
+      expect(put1.isDone()).toBe(true);
+      expect(put2.isDone()).toBe(true);
+    });
+
+    it('stops on first error when continueOnError is false', async () => {
+      nock(ZEPHYR_ORIGIN).put(`${V2}/testexecutions/bad-ex`, () => true).reply(400, { message: 'nope' });
+      const put2 = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testexecutions/good-ex`)
+        .reply(200, { id: 'good-ex', key: 'G', cycleId: 'c', testCaseId: 't', status: 'PASS', defects: [] });
+
+      const result = await client.bulkExecuteTests(
+        [
+          { executionId: 'bad-ex', status: 'PASS' },
+          { executionId: 'good-ex', status: 'PASS' },
+        ],
+        false
+      );
+
+      expect(result.summary.failed).toBe(1);
+      expect(result.results).toHaveLength(1);
+      expect(put2.isDone()).toBe(false);
+    });
+  });
+
   describe('getProjects', () => {
     it('sends GET /v2/projects with maxResults and startAt, returns list', async () => {
       const body = loadFixture('projects-list.json');

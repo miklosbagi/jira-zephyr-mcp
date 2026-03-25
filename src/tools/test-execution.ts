@@ -4,6 +4,8 @@ import {
   executeTestSchema,
   getTestExecutionStatusSchema,
   listTestExecutionsInCycleSchema,
+  listTestExecutionsNextgenSchema,
+  bulkExecuteTestsSchema,
   linkTestsToIssuesSchema,
   linkTestCycleToIssuesSchema,
   linkTestPlanToIssuesSchema,
@@ -13,6 +15,8 @@ import {
   ExecuteTestInput,
   GetTestExecutionStatusInput,
   ListTestExecutionsInCycleInput,
+  ListTestExecutionsNextgenInput,
+  BulkExecuteTestsInput,
   LinkTestsToIssuesInput,
   LinkTestCycleToIssuesInput,
   LinkTestPlanToIssuesInput,
@@ -143,6 +147,89 @@ export const listTestExecutionsInCycle = async (input: ListTestExecutionsInCycle
           executedBy: ex.executedBy?.displayName,
           defects: ex.defects?.map((d: any) => ({ key: d.key, summary: d.summary })) ?? [],
         })),
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const listTestExecutionsNextgen = async (input: ListTestExecutionsNextgenInput) => {
+  const validatedInput = listTestExecutionsNextgenSchema.parse(input);
+  try {
+    const page = await getZephyrClient().listTestExecutionsNextgen({
+      projectKey: validatedInput.projectKey,
+      testCycle: validatedInput.testCycle,
+      testCase: validatedInput.testCase,
+      actualEndDateAfter: validatedInput.actualEndDateAfter,
+      actualEndDateBefore: validatedInput.actualEndDateBefore,
+      includeStepLinks: validatedInput.includeStepLinks,
+      jiraProjectVersionId: validatedInput.jiraProjectVersionId,
+      onlyLastExecutions: validatedInput.onlyLastExecutions,
+      limit: validatedInput.limit,
+      startAtId: validatedInput.startAtId,
+    });
+    return {
+      success: true,
+      data: {
+        limit: page.limit,
+        nextStartAtId: page.nextStartAtId,
+        next: page.next,
+        executions: page.values.map((ex: any) => ({
+          id: ex.id,
+          key: ex.key,
+          cycleId: ex.cycleId,
+          testCaseId: ex.testCaseId ?? ex.testCase?.key,
+          testCaseKey: ex.testCase?.key ?? ex.testCaseKey,
+          status: ex.status,
+          comment: ex.comment,
+          executedOn: ex.executedOn,
+          executedBy: ex.executedBy?.displayName,
+          defects: ex.defects?.map((d: any) => ({ key: d.key, summary: d.summary })) ?? [],
+        })),
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+export const bulkExecuteTests = async (input: BulkExecuteTestsInput) => {
+  const validatedInput = bulkExecuteTestsSchema.parse(input);
+  try {
+    const result = await getZephyrClient().bulkExecuteTests(
+      validatedInput.executions,
+      validatedInput.continueOnError
+    );
+    return {
+      success: true,
+      data: {
+        results: result.results.map(r => ({
+          index: r.index,
+          success: r.success,
+          execution:
+            r.success && r.data
+              ? {
+                  id: r.data.id,
+                  key: r.data.key,
+                  cycleId: r.data.cycleId,
+                  testCaseId: r.data.testCaseId,
+                  status: r.data.status,
+                  comment: r.data.comment,
+                  executedOn: r.data.executedOn,
+                  executedBy: r.data.executedBy?.displayName,
+                  defects: r.data.defects?.map(d => ({ key: d.key, summary: d.summary })) ?? [],
+                }
+              : undefined,
+          error: r.error,
+        })),
+        summary: result.summary,
       },
     };
   } catch (error: any) {

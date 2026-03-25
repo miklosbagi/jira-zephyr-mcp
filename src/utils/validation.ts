@@ -102,6 +102,41 @@ export const listTestExecutionsInCycleSchema = z.object({
   cycleId: z.string().min(1, 'Cycle ID or key is required'),
 });
 
+/** GET /testexecutions/nextgen — cursor pagination for large result sets. */
+export const listTestExecutionsNextgenSchema = z.object({
+  projectKey: z.string().optional(),
+  testCycle: z.string().optional(),
+  testCase: z.string().optional(),
+  actualEndDateAfter: z.string().optional(),
+  actualEndDateBefore: z.string().optional(),
+  includeStepLinks: z.boolean().optional(),
+  jiraProjectVersionId: z.number().int().positive().optional(),
+  onlyLastExecutions: z.boolean().optional(),
+  limit: z.number().min(1).max(1000).default(50),
+  startAtId: z.number().min(0).default(0),
+});
+
+/** GET /testcases/nextgen — cursor pagination for large result sets. */
+export const listTestCasesNextgenSchema = z.object({
+  projectKey: z.string().optional(),
+  folderId: z.number().int().positive().optional(),
+  limit: z.number().min(1).max(1000).default(50),
+  startAtId: z.number().min(0).default(0),
+});
+
+const singleExecutionUpdateSchema = z.object({
+  executionId: z.string().min(1, 'Execution ID is required'),
+  status: z.enum(['PASS', 'FAIL', 'WIP', 'BLOCKED']),
+  comment: z.string().optional(),
+  defects: z.array(z.string()).optional(),
+});
+
+/** Sequential PUTs; no single bulk endpoint in the public API. */
+export const bulkExecuteTestsSchema = z.object({
+  executions: z.array(singleExecutionUpdateSchema).min(1, 'At least one execution update is required'),
+  continueOnError: z.boolean().default(true),
+});
+
 export const addTestCasesToCycleSchema = z.object({
   cycleKey: z.string().min(1, 'Test cycle key is required'),
   testCaseKeys: z.array(z.string().min(1)).min(1, 'At least one test case key is required'),
@@ -354,6 +389,9 @@ export type UpdateTestCycleInput = z.infer<typeof updateTestCycleSchema>;
 export type ExecuteTestInput = z.infer<typeof executeTestSchema>;
 export type GetTestExecutionStatusInput = z.infer<typeof getTestExecutionStatusSchema>;
 export type ListTestExecutionsInCycleInput = z.infer<typeof listTestExecutionsInCycleSchema>;
+export type ListTestExecutionsNextgenInput = z.infer<typeof listTestExecutionsNextgenSchema>;
+export type ListTestCasesNextgenInput = z.infer<typeof listTestCasesNextgenSchema>;
+export type BulkExecuteTestsInput = z.infer<typeof bulkExecuteTestsSchema>;
 export type AddTestCasesToCycleInput = z.infer<typeof addTestCasesToCycleSchema>;
 export type LinkTestsToIssuesInput = z.infer<typeof linkTestsToIssuesSchema>;
 export type LinkTestCycleToIssuesInput = z.infer<typeof linkTestCycleToIssuesSchema>;

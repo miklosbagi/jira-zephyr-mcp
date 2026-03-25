@@ -45,6 +45,13 @@ export interface ZephyrTestCycle {
   };
 }
 
+/** Cursor-style page metadata from GET `/testcases/nextgen` and `/testexecutions/nextgen`. */
+export interface ZephyrCursorPage {
+  limit: number;
+  nextStartAtId: number | null;
+  next: string | null;
+}
+
 export interface ZephyrTestExecution {
   id: string;
   key: string;

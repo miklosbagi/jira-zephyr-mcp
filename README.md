@@ -118,14 +118,16 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **list_priorities** / **list_statuses** | List test case priorities and statuses (id and name). Use the returned ids when creating or updating test cases. Optional projectKey. |
 | **list_environments** / **get_environment** / **create_environment** / **update_environment** | List and manage test environments per project (`GET/POST/PUT /environments`). Use returned names with **create_test_cycle** / **update_test_cycle** (`environment`) and **create_test_execution** (`environmentName`). |
 | **list_projects** | List Zephyr-visible projects (id, key, name). Optional `limit`, `startAt` for pagination. Use for projectKey discovery. |
-| **list_test_executions_in_cycle** | List test cases and executions in a cycle. |
+| **list_test_executions_in_cycle** | List test cases and executions in a cycle (`GET /testexecutions` with `testCycle`). |
+| **list_test_executions_nextgen** | Cursor-paged executions for large volumes ([`GET /testexecutions/nextgen`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/listTestExecutionsNextgen)); use `nextStartAtId` or `next` for the next page. |
 | **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
 | **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
 | **remove_test_case_from_cycle** | Remove a test case from a cycle by deleting its test execution (`DELETE /testexecutions/{id}`). Pass **`executionId`** from `list_test_executions_in_cycle`, or **`cycleKey` + `testCaseKey`** to resolve it. If the public API returns 404/405 on your instance, use the Zephyr UI or contact SmartBear. |
-| **create_test_case** / **search_test_cases** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
+| **create_test_case** / **search_test_cases** / **list_test_cases_nextgen** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, cursor list ([`GET /testcases/nextgen`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/listTestCasesCursorPaginated)), get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
 | **archive_test_case** / **unarchive_test_case** / **delete_test_case** | Archive via PUT (`archived` flag), unarchive, or DELETE. **API support varies** — some instances reject `archived` or DELETE; see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md). |
 | **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). |
-| **execute_test** | Update test execution status (PASS/FAIL/WIP/BLOCKED). |
+| **execute_test** | Update one test execution status (PASS/FAIL/WIP/BLOCKED). |
+| **bulk_execute_tests** | Update many executions **sequentially** (one `PUT /testexecutions/{id}` per item). The public API has **no** single bulk-update call; optional `continueOnError` (default true), same idea as `create_multiple_test_cases`. |
 | **get_test_execution_status** | Execution progress and stats for a cycle. |
 | **link_tests_to_issues** | Link a test case to Jira issue(s) as **coverage** ([`POST .../testcases/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/createTestCaseIssueLink)). Resolves each issue **key** to a numeric id via Jira REST, then calls Zephyr (v0.12.0; replaces the old `POST .../links` + `issueKeys` shape). |
 | **get_test_case_links** | List Jira issue links and web links for a test case ([`GET .../testcases/{key}/links`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/getTestCaseLinks)). |
@@ -163,6 +165,7 @@ create_test_cycle({ name: "Sprint 10", projectKey: "ABC", versionId: "10001", en
 list_test_cycles({ projectKey: "ABC", limit: 25 });
 update_test_cycle({ cycleKey: "ABC-R1", name: "Sprint 10 (final)", status: "365024", customFields: { "Team": "QA" } });
 list_test_executions_in_cycle({ cycleId: "ABC-R1" });
+list_test_executions_nextgen({ testCycle: "ABC-R1", limit: 100, startAtId: 0 });  // next page: pass startAtId from nextStartAtId
 add_test_cases_to_cycle({ cycleKey: "ABC-R1", testCaseKeys: ["ABC-T1", "ABC-T2"] });
 // If add_test_cases_to_cycle returns 404 (e.g. EU API), use create_test_execution per test case:
 create_test_execution({ projectKey: "ABC", testCycleKey: "ABC-R1", testCaseKey: "ABC-T1" });
@@ -200,6 +203,7 @@ create_test_case({ projectKey: "ABC", name: "Login test", objective: "...", test
 create_test_case({ projectKey: "ABC", name: "Free text test", testScript: { type: "PLAIN_TEXT", text: "Manual instructions here." } });
 create_test_case({ projectKey: "ABC", name: "BDD scenario", testScript: { type: "CUCUMBER", text: "Given ... When ... Then ..." });  // CUCUMBER if supported by instance
 search_test_cases({ projectKey: "ABC", query: "login", limit: 20 });
+list_test_cases_nextgen({ projectKey: "ABC", limit: 200, startAtId: 0 });
 get_test_case({ testCaseId: "ABC-T123" });
 update_test_case({ testCaseId: "ABC-T123", customFields: { "Created On": "2026-03-11" } });
 create_multiple_test_cases({ testCases: [...], continueOnError: true });
@@ -219,6 +223,7 @@ delete_test_step({ testCaseKey: "ABC-T123", stepId: 2 });
 **Execution and reporting**
 ```ts
 execute_test({ executionId: "12345", status: "PASS", comment: "All passed" });
+bulk_execute_tests({ executions: [{ executionId: "12345", status: "PASS" }, { executionId: "12346", status: "FAIL" }], continueOnError: true });
 get_test_execution_status({ cycleId: "67890" });
 link_tests_to_issues({ testCaseId: "ABC-T123", issueKeys: ["ABC-456"] });
 link_test_cycle_to_issues({ cycleKey: "ABC-R1", issueKeys: ["ABC-456"] });
@@ -296,7 +301,7 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Test case ↔ Jira issue links (coverage)** — `link_tests_to_issues` uses **`POST /testcases/{key}/links/issues`** with numeric Jira issue id (v0.12.0). `get_test_case_links` lists links (**`GET /testcases/{key}/links`**). Older `POST .../links` + `issueKeys` is not used (405 on current API).
 - [x] **Update test cycle** — **`update_test_cycle`**: **`PUT /testcycles/{key}`** (OpenAPI `updateTestCycle`); MCP merges from GET before PUT (including status, `versionId` → `jiraProjectVersion`, owner, custom fields).
 - [x] **Update test plan** — **`update_test_plan`**: GET-merge-PUT; **not** listed in the public OpenAPI for `PUT /testplans/{key}` — see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md).
-- [ ] **Bulk operations** — Bulk execution updates or bulk add-to-cycle (beyond `create_multiple_test_cases`).
+- [x] **Bulk / high-volume operations (v0.14.0)** — **`list_test_cases_nextgen`** / **`list_test_executions_nextgen`** (cursor pagination per OpenAPI). **`bulk_execute_tests`** (sequential PUTs; no single bulk endpoint in the public spec). See [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md).
 
 ---
 
