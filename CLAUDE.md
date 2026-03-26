@@ -1,6 +1,6 @@
 # Jira Zephyr MCP Server
 
-**AI agents:** See [`AGENTS.md`](AGENTS.md) for architecture, Zephyr/Jira API conventions, token discipline, and where docs live. Claude and other tools do not load it automatically unless you add it to project instructions or context.
+**AI agents:** See [`AGENTS.md`](AGENTS.md) for architecture, Zephyr/Jira API conventions, token discipline, and where docs live. Claude and other tools do not load it automatically unless you add it to project instructions or context. For **Claude Skills**, see [`skills/jira-zephyr-mcp/SKILL.md`](skills/jira-zephyr-mcp/SKILL.md) (optional; MCP server must still be configured in the host).
 
 ## MCP Server Configuration
 

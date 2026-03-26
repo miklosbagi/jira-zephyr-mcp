@@ -42,6 +42,7 @@ Optional: `ZEPHYR_BASE_URL` (default US Scale API; **EU:** `https://eu.api.zephy
 | Doc | Use |
 |-----|-----|
 | `README.md` | User-facing tools, Docker, config |
+| `skills/jira-zephyr-mcp/SKILL.md` | Claude / Agent Skills: workflows + API conventions (MCP still required) |
 | `CLAUDE.md` (or workspace rules) | Short tool list + env + Docker note |
 | `docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md` | Implemented vs not, API quirks, EU/404 notes |
 | `docs/TESTING-STRATEGY.md` | Test layers and layout |
