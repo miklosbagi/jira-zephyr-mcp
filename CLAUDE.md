@@ -56,6 +56,7 @@ The following environment variables are required:
 - `npm run build`: Build the project
 - `npm run typecheck`: Check TypeScript types
 - `npm run lint`: Lint the code (**`--max-warnings=0`** — any warning fails)
+- `npm run test:coverage`: Unit tests + coverage (thresholds in `vitest.config.ts`)
 
 ### Docker releases
 

@@ -645,4 +645,198 @@ describe('ZephyrClient (integration, mocked)', () => {
       expect(scope.isDone()).toBe(true);
     });
   });
+
+  describe('createTestPlan', () => {
+    it('POST /v2/testplans', async () => {
+      const body = {
+        id: 1,
+        key: 'TP-1',
+        name: 'Plan',
+        projectKey: 'CP',
+      };
+      const scope = nock(ZEPHYR_ORIGIN).post(`${V2}/testplans`).reply(201, body);
+      const r = await client.createTestPlan({
+        name: 'Plan',
+        projectKey: 'CP',
+        description: 'D',
+      });
+      expect(r.key).toBe('TP-1');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('createTestCycle', () => {
+    it('POST /v2/testcycles', async () => {
+      const body = { id: 2, key: 'TC-1', name: 'Cyc' };
+      const scope = nock(ZEPHYR_ORIGIN).post(`${V2}/testcycles`).reply(201, body);
+      const r = await client.createTestCycle({
+        name: 'Cyc',
+        projectKey: 'CP',
+        versionId: '100',
+      });
+      expect(r.key).toBe('TC-1');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('addTestCasesToCycle', () => {
+    it('POST /v2/testcycles/{key}/testcases', async () => {
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcycles/TC-1/testcases`, (b: { items: { testCaseKey: string }[] }) =>
+          b.items.every((i) => i.testCaseKey)
+        )
+        .reply(200);
+      await client.addTestCasesToCycle('TC-1', ['T-1', 'T-2']);
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getTestExecution / updateTestExecution', () => {
+    it('GET and PUT testexecutions', async () => {
+      const ex = {
+        id: 1,
+        key: 'E-1',
+        cycleId: 1,
+        testCaseId: 1,
+        status: 'PASS',
+        comment: null,
+        executedOn: null,
+        executedBy: null,
+        defects: [],
+      };
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/e1`).reply(200, ex);
+      const g = await client.getTestExecution('e1');
+      expect(g.key).toBe('E-1');
+
+      const scope = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testexecutions/e1`, (b: Record<string, unknown>) => b.status === 'PASS')
+        .reply(200, { ...ex, status: 'PASS' });
+      const u = await client.updateTestExecution({
+        executionId: 'e1',
+        status: 'PASS',
+        defects: ['BUG-1'],
+      });
+      expect(u.status).toBe('PASS');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('getTestExecutionSummary', () => {
+    it('aggregates statuses across branches', async () => {
+      const values = [
+        { status: 'PASS', testCase: { key: 'T-1' } },
+        { status: 'FAIL', testCase: { key: 'T-2' } },
+        { status: 'WIP', testCase: { key: 'T-3' } },
+        { status: 'BLOCKED', testCase: { key: 'T-4' } },
+        { status: 'OTHER', testCase: { key: 'T-5' } },
+      ];
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testexecutions`)
+        .query({ testCycle: 'CYC-1' })
+        .reply(200, { values, total: 5 });
+
+      const s = await client.getTestExecutionSummary('CYC-1');
+      expect(s.total).toBe(5);
+      expect(s.passed).toBe(1);
+      expect(s.failed).toBe(1);
+      expect(s.inProgress).toBe(1);
+      expect(s.blocked).toBe(1);
+      expect(s.notExecuted).toBe(1);
+      expect(s.passRate).toBeGreaterThan(0);
+    });
+  });
+
+  describe('generateTestReport', () => {
+    it('GET cycle, executions, summary', async () => {
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles/C1`).reply(200, {
+        name: 'Cycle',
+        projectKey: 'P',
+      });
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcycles/C1/testexecutions`)
+        .reply(200, { values: [{ key: 'E1', status: 'PASS', comment: '', defects: [] }] });
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testexecutions`)
+        .query({ testCycle: 'C1' })
+        .reply(200, { values: [{ status: 'PASS' }], total: 1 });
+
+      const r = await client.generateTestReport('C1');
+      expect(r.cycleName).toBe('Cycle');
+      expect(r.summary.total).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('getTestScript', () => {
+    it('returns body on 200', async () => {
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/T1/testscript`).reply(200, { type: 'PLAIN_TEXT', text: 'x' });
+      await expect(client.getTestScript('T1')).resolves.toEqual({ type: 'PLAIN_TEXT', text: 'x' });
+    });
+    it('returns null on error', async () => {
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/T2/testscript`).reply(404);
+      await expect(client.getTestScript('T2')).resolves.toBeNull();
+    });
+  });
+
+  describe('createTestStep / updateTestStep / deleteTestStep', () => {
+    it('POST / PUT / DELETE teststeps', async () => {
+      const step = { id: 1, description: 'd', expectedResult: 'e', orderId: 1, index: 1 };
+      nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/T1/teststeps`)
+        .reply(200, { id: 1, description: 'd', expectedResult: 'e', orderId: 1 });
+      const c = await client.createTestStep('T1', {
+        description: 'd',
+        expectedResult: 'e',
+        testData: 'td',
+        index: 1,
+      });
+      expect(c.description).toBe('d');
+
+      nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testcases/T1/teststeps/1`)
+        .reply(200, { ...step, description: 'd2' });
+      const u = await client.updateTestStep('T1', 1, { description: 'd2' });
+      expect(u.description).toBe('d2');
+
+      const del = nock(ZEPHYR_ORIGIN).delete(`${V2}/testcases/T1/teststeps/1`).reply(204);
+      await client.deleteTestStep('T1', 1);
+      expect(del.isDone()).toBe(true);
+    });
+  });
+
+  describe('updateTestCase', () => {
+    it('GETs then PUTs merged test case', async () => {
+      const existing = loadFixture('testcase-get.json') as Record<string, unknown>;
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, existing);
+      const scope = nock(ZEPHYR_ORIGIN).put(`${V2}/testcases/PROJ-T1`).reply(200, {
+        ...existing,
+        name: 'Updated',
+      });
+      const r = await client.updateTestCase('PROJ-T1', { name: 'Updated' });
+      expect(r.name).toBe('Updated');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
+  describe('createMultipleTestCases', () => {
+    it('creates two cases and stops on error when continueOnError false', async () => {
+      const created = loadFixture('testcase-create.json') as Record<string, unknown>;
+      nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases`, (b: Record<string, unknown>) => b.name === 'A')
+        .reply(201, created);
+      nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases`, (b: Record<string, unknown>) => b.name === 'B')
+        .reply(400, { message: 'bad' });
+      const r = await client.createMultipleTestCases(
+        [
+          { projectKey: 'P', name: 'A' },
+          { projectKey: 'P', name: 'B' },
+        ],
+        false
+      );
+      expect(r.summary.total).toBe(2);
+      expect(r.summary.successful).toBe(1);
+      expect(r.summary.failed).toBe(1);
+      expect(r.results[1].success).toBe(false);
+    });
+  });
 });
