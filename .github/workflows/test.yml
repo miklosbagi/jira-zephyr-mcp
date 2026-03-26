@@ -32,3 +32,10 @@ jobs:
 
       - name: Tests + coverage
         run: npm run test:coverage
+
+      # Tokenless upload on public repos. Add secret CODECOV_TOKEN if Codecov asks for it.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage/lcov.info
+          fail_ci_if_error: false
