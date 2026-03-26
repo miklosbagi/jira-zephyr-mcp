@@ -9,6 +9,11 @@ An [MCP](https://modelcontextprotocol.io/) server for JIRA and **Zephyr Scale** 
 [![Zephyr contract](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml/badge.svg)](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml) · Zephyr contract (daily 6am CET / on demand).
 
 [![Docker Pulls](https://badgen.net/docker/pulls/miklosbagi/jira-zephyr-mcp?icon=docker&label=Docker%20Pulls)](https://hub.docker.com/r/miklosbagi/jira-zephyr-mcp/)
+
+### Claude skill (optional)
+
+This repo includes an [Agent Skills](https://github.com/anthropics/skills)-style package under [`skills/jira-zephyr-mcp/`](skills/jira-zephyr-mcp/). It **does not replace** the MCP server: configure **Docker or `node dist/index.js`** in your host as usual, then install the skill folder per **Claude Code** / **Claude Desktop** / **Cursor** docs (paths differ by product). The skill teaches *when and how* to use Jira/Zephyr tools safely (issue linking, EU base URL, GET-merge-PUT updates).
+
 ---
 
 ## Why this fork?
