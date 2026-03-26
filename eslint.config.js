@@ -5,6 +5,9 @@ import tseslintPlugin from '@typescript-eslint/eslint-plugin';
  * - Uses @typescript-eslint's `flat/recommended` baseline.
  * - Adds a few "best practices" rules that typically pay off quickly without
  *   enforcing heavy type-aware constraints.
+ *
+ * Run via `npm run lint` / `lint:fix` so the CLI uses `--max-warnings=0`
+ * (any warning fails). Prefer that over raw `eslint` so CI and local match.
  */
 export default [
   {
@@ -37,9 +40,9 @@ export default [
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
 
-      // Encourage `import type` usage for type-only imports.
+      // Encourage `import type` usage for type-only imports (error: no warnings).
       '@typescript-eslint/consistent-type-imports': [
-        'warn',
+        'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
       ],
 

@@ -67,7 +67,7 @@ When working in this repo **as an agent**:
 
 When opening or preparing a **PR**, include:
 
-1. **Tests updated and run locally** — extend or adjust tests for every feature or behavior change; run **`npm test`** and **`npm run typecheck`** (and **`npm run build`** when relevant) on your machine **before** you open the PR. Don’t rely on CI alone to catch failures.
+1. **Tests updated and run locally** — extend or adjust tests for every feature or behavior change; run **`npm run lint`** (uses **`--max-warnings=0`**), **`npm test`**, and **`npm run typecheck`** (and **`npm run build`** when relevant) on your machine **before** you open the PR. Don’t rely on CI alone to catch failures.
 2. **A proper PR description** — what changed, why, how to verify (tools touched, env if new, tests). Not a one-liner unless the change is trivial.
 3. **Release notes (Markdown, required format)** — deliver **only the description body** (what you’d put under a release title elsewhere). **Do not** include a top-level **`#` title** (e.g. no `# jira-zephyr-mcp v0.12.0`); the PR or tag already names the version. Structure sections with **`##`** headings, e.g. **`## Summary`**, **`## Fixes`**, **`## New MCP tools`**, **`## Tests`**, **`## Upgrade notes`** — use **`###`** for subsections if needed. **Bullet lists**, optional **tables**, **`**bold**`** as usual. Do **not** add `RELEASE_NOTES.md` to the repo unless asked. Audience: people who **run or integrate** this MCP server: clear and technical. Include user-visible behavior, breaking changes, and version **inside the sections** (e.g. under Summary or Upgrade) when relevant.
 

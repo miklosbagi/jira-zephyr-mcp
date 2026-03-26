@@ -253,7 +253,7 @@ npm run build
 |--------|---------|
 | `npm run build` | Compile TypeScript (server + optional script). |
 | `npm run dev` | Build and watch. |
-| `npm run lint` | ESLint. |
+| `npm run lint` | ESLint (`--max-warnings=0`). |
 | `npm run typecheck` | TypeScript check. |
 | `npm start` | Run `dist/index.js`. |
 
