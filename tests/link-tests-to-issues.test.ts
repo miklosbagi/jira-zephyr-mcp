@@ -56,6 +56,23 @@ describe('linkTestsToIssues (integration, mocked)', () => {
     expect(zephyrScope.isDone()).toBe(true);
   });
 
+  it('fails when Jira issue id is not a positive safe integer', async () => {
+    nock('https://example.atlassian.net')
+      .get('/rest/api/3/issue/PROJ-BAD')
+      .query({ fields: 'id' })
+      .reply(200, { id: 'not-a-number', key: 'PROJ-BAD', self: 'https://example.atlassian.net/rest/api/3/issue/x' });
+
+    const result = await linkTestsToIssues({
+      testCaseId: 'PROJ-T1',
+      issueKeys: ['PROJ-BAD'],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.failureCount).toBe(1);
+    expect(result.data?.linkResults?.[0]?.success).toBe(false);
+    expect(String(result.data?.linkResults?.[0]?.error)).toMatch(/numeric Jira issue id|not-a-number/);
+  });
+
   it('records per-issue failure when Zephyr returns an error', async () => {
     nock('https://example.atlassian.net')
       .get('/rest/api/3/issue/PROJ-999')

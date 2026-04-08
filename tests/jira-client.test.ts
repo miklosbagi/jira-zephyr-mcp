@@ -4,6 +4,7 @@
 import nock from 'nock';
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { JiraClient } from '../src/clients/jira-client.js';
+import { resetAppConfigCacheForTests } from '../src/utils/config.js';
 
 const JIRA = 'https://example.atlassian.net';
 const API = '/rest/api/3';
@@ -20,6 +21,7 @@ describe('JiraClient (mocked)', () => {
   let client: JiraClient;
 
   beforeAll(() => {
+    resetAppConfigCacheForTests();
     Object.assign(process.env, ENV);
     client = new JiraClient();
   });

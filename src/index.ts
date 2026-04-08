@@ -134,7 +134,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.14.0',
+    version: '0.14.1',
   },
   {
     capabilities: {
@@ -296,7 +296,8 @@ const TOOLS = [
   },
   {
     name: 'list_test_executions_in_cycle',
-    description: 'List test cases and executions in a test cycle',
+    description:
+      'List test executions in a test cycle. Each row includes testCaseKey and testCaseId when the API provides them; if the list omits keys but includes test case ids, the server resolves keys via GET /testcases/{id} so you can match removals and audits.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -356,7 +357,7 @@ const TOOLS = [
   {
     name: 'remove_test_case_from_cycle',
     description:
-      'Remove a test case from a test cycle by deleting its test execution (DELETE /testexecutions/{id}). Pass executionId from list_test_executions_in_cycle, or cycleKey + testCaseKey to resolve the execution automatically. May return 404/405 if your Zephyr instance does not expose this on the public API.',
+      'Remove a test case from a test cycle by deleting its test execution (DELETE /testexecutions/{id}). Pass executionId from list_test_executions_in_cycle, or cycleKey + testCaseKey (test case key or numeric test case id string) to resolve the execution. Matching is case-insensitive on keys. May return 404/405 if your Zephyr instance does not expose this on the public API.',
     inputSchema: {
       type: 'object',
       properties: {

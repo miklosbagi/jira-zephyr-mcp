@@ -1,4 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { formatZephyrApiError } from '../utils/zephyr-api-error.js';
 import { getZephyrBaseUrl } from '../utils/config.js';
 import {
   createTestCaseSchema,
@@ -209,10 +210,10 @@ export const getTestCase = async (input: { testCaseId: string }) => {
         testScript,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: error.response?.data?.message || error.message,
+      error: formatZephyrApiError(error),
     };
   }
 };
@@ -234,10 +235,10 @@ export const updateTestCase = async (input: UpdateTestCaseInput) => {
         },
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: error.response?.data?.message || error.message,
+      error: formatZephyrApiError(error),
     };
   }
 };

@@ -1,6 +1,11 @@
 import axios, { type AxiosInstance } from 'axios';
 import { getZephyrBaseUrl, getZephyrHeaders } from '../utils/config.js';
 import {
+  executionMatchesTestCaseFilter,
+  getExecutionTestCaseEntityId,
+  getExecutionTestCaseKey,
+} from '../utils/test-execution-identity.js';
+import {
   type ZephyrTestPlan,
   type ZephyrTestCycle,
   type ZephyrTestExecution,
@@ -18,6 +23,21 @@ import {
 
 export class ZephyrClient {
   private client: AxiosInstance;
+
+  /** Trim, drop empties, dedupe case-insensitively (reduces Zephyr "duplicate option" style errors). */
+  private static dedupeLabelStrings(labels: string[]): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const raw of labels) {
+      const t = typeof raw === 'string' ? raw.trim() : '';
+      if (!t) continue;
+      const lower = t.toLowerCase();
+      if (seen.has(lower)) continue;
+      seen.add(lower);
+      out.push(t);
+    }
+    return out;
+  }
 
   constructor() {
     this.client = axios.create({
@@ -405,13 +425,13 @@ export class ZephyrClient {
    * the test case from the cycle in the UI when one execution exists per case).
    */
   async removeTestCaseFromCycle(cycleKey: string, testCaseKey: string): Promise<{ executionId: string }> {
-    const { executions } = await this.getTestExecutionsInCycle(cycleKey);
-    type ExRow = ZephyrTestExecution & { testCase?: { key?: string }; testCaseKey?: string };
-    const rows = executions as ExRow[];
-    const matches = rows.filter(ex => {
-      const key = ex.testCase?.key ?? ex.testCaseKey;
-      return key === testCaseKey;
-    });
+    let { executions } = await this.getTestExecutionsInCycle(cycleKey);
+    const enriched = await this.enrichExecutionsWithTestCaseKeys(
+      executions as unknown as Record<string, unknown>[]
+    );
+    executions = enriched as unknown as ZephyrTestExecution[];
+    const rows = enriched;
+    const matches = rows.filter(ex => executionMatchesTestCaseFilter(ex, testCaseKey));
     if (matches.length === 0) {
       throw new Error(
         `No test execution in cycle "${cycleKey}" for test case "${testCaseKey}". Use list_test_executions_in_cycle to list executions.`
@@ -549,6 +569,40 @@ export class ZephyrClient {
     const executions = response.data.values || response.data || [];
     const total = response.data.total ?? (Array.isArray(executions) ? executions.length : 0);
     return { executions: Array.isArray(executions) ? executions : [], total };
+  }
+
+  /**
+   * When GET /testexecutions omits `testCase.key`, resolve keys via GET /testcases/{id}
+   * so callers can match removals and display keys (issue #67).
+   */
+  async enrichExecutionsWithTestCaseKeys(
+    executions: Record<string, unknown>[]
+  ): Promise<Record<string, unknown>[]> {
+    const missing = executions.filter(
+      ex => !getExecutionTestCaseKey(ex) && getExecutionTestCaseEntityId(ex) != null
+    );
+    if (missing.length === 0) return executions;
+    const uniqueIds = [...new Set(missing.map(ex => String(getExecutionTestCaseEntityId(ex)!)))];
+    const keyById = new Map<string, string>();
+    await Promise.all(
+      uniqueIds.map(async id => {
+        try {
+          const tc = await this.getTestCase(id);
+          if (tc?.key) keyById.set(id, tc.key);
+        } catch {
+          /* resolution optional */
+        }
+      })
+    );
+    return executions.map(ex => {
+      if (getExecutionTestCaseKey(ex)) return ex;
+      const id = getExecutionTestCaseEntityId(ex);
+      if (id == null) return ex;
+      const resolved = keyById.get(String(id));
+      if (!resolved) return ex;
+      const tc = (ex.testCase as Record<string, unknown> | undefined) ?? {};
+      return { ...ex, testCase: { ...tc, key: resolved } };
+    });
   }
 
   async getTestExecutionSummary(cycleId: string): Promise<ZephyrExecutionSummary> {
@@ -1030,7 +1084,10 @@ export class ZephyrClient {
       precondition: data.precondition !== undefined ? data.precondition : existing.precondition,
       estimatedTime: data.estimatedTime !== undefined ? data.estimatedTime : existing.estimatedTime,
       folderId: data.folderId !== undefined ? data.folderId : existing.folder?.id,
-      labels: data.labels !== undefined ? data.labels : existing.labels ?? [],
+      labels:
+        data.labels !== undefined
+          ? ZephyrClient.dedupeLabelStrings(data.labels)
+          : existing.labels ?? [],
       componentId: data.componentId !== undefined ? data.componentId : existing.component?.id,
       customFields: {
         ...(existing.customFields ?? {}),

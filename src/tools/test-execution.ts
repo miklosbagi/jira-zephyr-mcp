@@ -1,4 +1,6 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { getExecutionTestCaseEntityId, getExecutionTestCaseKey } from '../utils/test-execution-identity.js';
+import { formatZephyrApiError } from '../utils/zephyr-api-error.js';
 import { getJiraClient } from './jira-issues.js';
 import {
   executeTestSchema,
@@ -53,10 +55,10 @@ export const removeTestCaseFromCycle = async (input: RemoveTestCaseFromCycleInpu
       success: true,
       data: { cycleKey, testCaseKey, executionId, removed: true },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: error.response?.data?.message || error.message,
+      error: formatZephyrApiError(error),
     };
   }
 };
@@ -130,29 +132,37 @@ export const executeTest = async (input: ExecuteTestInput) => {
 export const listTestExecutionsInCycle = async (input: ListTestExecutionsInCycleInput) => {
   const validatedInput = listTestExecutionsInCycleSchema.parse(input);
   try {
-    const { executions, total } = await getZephyrClient().getTestExecutionsInCycle(validatedInput.cycleId);
+    const client = getZephyrClient();
+    const { executions: raw, total } = await client.getTestExecutionsInCycle(validatedInput.cycleId);
+    const executions = await client.enrichExecutionsWithTestCaseKeys(
+      raw as unknown as Record<string, unknown>[]
+    );
     return {
       success: true,
       data: {
         cycleId: validatedInput.cycleId,
         total,
-        executions: executions.map((ex: any) => ({
+        executions: executions.map((ex: Record<string, unknown>) => ({
           id: ex.id,
           key: ex.key,
-          testCaseId: ex.testCaseId ?? ex.testCase?.key,
-          testCaseKey: ex.testCase?.key ?? ex.testCaseKey,
+          testCaseId: getExecutionTestCaseEntityId(ex),
+          testCaseKey: getExecutionTestCaseKey(ex),
           status: ex.status,
           comment: ex.comment,
           executedOn: ex.executedOn,
-          executedBy: ex.executedBy?.displayName,
-          defects: ex.defects?.map((d: any) => ({ key: d.key, summary: d.summary })) ?? [],
+          executedBy: (ex.executedBy as { displayName?: string } | undefined)?.displayName,
+          defects:
+            (ex.defects as Array<{ key: string; summary?: string }> | undefined)?.map(d => ({
+              key: d.key,
+              summary: d.summary,
+            })) ?? [],
         })),
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
-      error: error.response?.data?.message || error.message,
+      error: formatZephyrApiError(error),
     };
   }
 };
@@ -178,18 +188,25 @@ export const listTestExecutionsNextgen = async (input: ListTestExecutionsNextgen
         limit: page.limit,
         nextStartAtId: page.nextStartAtId,
         next: page.next,
-        executions: page.values.map((ex: any) => ({
-          id: ex.id,
-          key: ex.key,
-          cycleId: ex.cycleId,
-          testCaseId: ex.testCaseId ?? ex.testCase?.key,
-          testCaseKey: ex.testCase?.key ?? ex.testCaseKey,
-          status: ex.status,
-          comment: ex.comment,
-          executedOn: ex.executedOn,
-          executedBy: ex.executedBy?.displayName,
-          defects: ex.defects?.map((d: any) => ({ key: d.key, summary: d.summary })) ?? [],
-        })),
+        executions: page.values.map(ex => {
+          const row = ex as unknown as Record<string, unknown>;
+          return {
+            id: row.id,
+            key: row.key,
+            cycleId: row.cycleId,
+            testCaseId: getExecutionTestCaseEntityId(row),
+            testCaseKey: getExecutionTestCaseKey(row),
+            status: row.status,
+            comment: row.comment,
+            executedOn: row.executedOn,
+            executedBy: (row.executedBy as { displayName?: string } | undefined)?.displayName,
+            defects:
+              (row.defects as Array<{ key: string; summary?: string }> | undefined)?.map(d => ({
+                key: d.key,
+                summary: d.summary,
+              })) ?? [],
+          };
+        }),
       },
     };
   } catch (error: any) {
