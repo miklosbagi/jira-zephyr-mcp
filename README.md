@@ -39,13 +39,26 @@ If this MCP server is useful to you, consider sponsoring via the links in the re
 
 Run the server using the published image. Docker will pull `miklosbagi/jira-zephyr-mcp:latest` when needed; no clone or build. Add the block below to your MCP host config (see [AI integrations](#ai-integrations-mcp-hosts) for Cursor, Claude, Gemini, Windsurf) and replace the env values with your own.
 
+Use an **absolute path** to the `docker` binary and a **`PATH` in `env`** so MCP hosts (especially **Cursor** after recent updates) resolve Docker the same way as your shell. On macOS with Docker Desktop, `/usr/local/bin/docker` is typical; on Linux try `/usr/bin/docker`. More detail, local-dev and **GitHub MCP** notes: **[docs/MCP-CURSOR-DOCKER.md](docs/MCP-CURSOR-DOCKER.md)**.
+
 ```json
 {
   "mcpServers": {
     "jira-zephyr": {
-      "command": "docker",
-      "args": ["run", "--rm", "-i", "-e", "JIRA_BASE_URL", "-e", "JIRA_USERNAME", "-e", "JIRA_API_TOKEN", "-e", "ZEPHYR_API_TOKEN", "-e", "ZEPHYR_BASE_URL", "miklosbagi/jira-zephyr-mcp:latest"],
+      "command": "/usr/local/bin/docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e", "JIRA_BASE_URL",
+        "-e", "JIRA_USERNAME",
+        "-e", "JIRA_API_TOKEN",
+        "-e", "ZEPHYR_API_TOKEN",
+        "-e", "ZEPHYR_BASE_URL",
+        "miklosbagi/jira-zephyr-mcp:latest"
+      ],
       "env": {
+        "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin",
         "JIRA_BASE_URL": "https://your-domain.atlassian.net",
         "JIRA_USERNAME": "your-email@company.com",
         "JIRA_API_TOKEN": "your-jira-api-token",
@@ -59,6 +72,7 @@ Run the server using the published image. Docker will pull `miklosbagi/jira-zeph
 
 - **US Zephyr:** omit `ZEPHYR_BASE_URL` from both `args` and `env`.
 - **EU Zephyr:** keep `ZEPHYR_BASE_URL` as above (or your Zephyr base URL).
+- **Pin a version:** replace `miklosbagi/jira-zephyr-mcp:latest` with e.g. `miklosbagi/jira-zephyr-mcp:v0.12.0` in `args` if you want a fixed tag.
 
 Image: [Docker Hub — miklosbagi/jira-zephyr-mcp](https://hub.docker.com/r/miklosbagi/jira-zephyr-mcp). Multi-arch: **linux/amd64**, **linux/arm64** (Apple Silicon).
 
@@ -77,7 +91,7 @@ The same server config (Quick start JSON above) works in any MCP-capable client.
 | **Gemini CLI** | `settings.json` (see [Gemini CLI MCP docs](https://google-gemini.github.io/gemini-cli/docs/tools/mcp-server.html)) | Configure MCP servers in your Gemini CLI settings |
 | **Windsurf** | `~/.codeium/windsurf/mcp_config.json` (macOS/Linux)<br>`%USERPROFILE%\.codeium\windsurf\mcp_config.json` (Windows) | Cascade panel → MCPs → Configure (enable MCP in Advanced Settings if needed) |
 
-After editing, restart the app so it picks up the new server. Other MCP hosts (e.g. VS Code with MCP extension, or custom clients) use the same JSON structure: `command` + `args` + `env` for the Docker image.
+After editing, **restart the app** (or reload MCP in Cursor) so it picks up the new server. Other MCP hosts (e.g. VS Code with MCP extension, or custom clients) use the same JSON structure: **`command`** (prefer an absolute path to `docker`) + **`args`** + **`env`** (include `PATH` when using Docker). Do not put the whole `docker run …` string in **`command`** with an empty **`args`** array—see [docs/MCP-CURSOR-DOCKER.md](docs/MCP-CURSOR-DOCKER.md).
 
 ---
 
@@ -334,6 +348,6 @@ MIT — see [LICENSE](LICENSE).
 
 ## Support
 
-- **Cursor + Docker:** The MCP log may show pull progress as `[error]` because Docker prints that to **stderr** while the UI treats stderr as errors. That is normal. A real problem is a **JSON parse** / “not valid JSON” line on startup: the MCP protocol requires a clean **stdout** stream. **v0.10.2+** loads dotenv with `quiet: true` so tip output does not break stdio. **v0.11.1+** published images use a **distroless** runtime (see [Security](#security)). **v0.12.0** fixes **`link_tests_to_issues`** to use the documented Zephyr Scale endpoint **`POST /testcases/{key}/links/issues`** with Jira issue ids (see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md)).
+- **Cursor + Docker:** Ensure **Docker Desktop** is running. Use an absolute **`docker`** path and **`PATH` in `env`** in `mcp.json` if the server fails to start after a Cursor update—see [docs/MCP-CURSOR-DOCKER.md](docs/MCP-CURSOR-DOCKER.md). The MCP log may show pull progress as `[error]` because Docker prints that to **stderr** while the UI treats stderr as errors. That is normal. A real problem is a **JSON parse** / “not valid JSON” line on startup: the MCP protocol requires a clean **stdout** stream. **v0.10.2+** loads dotenv with `quiet: true` so tip output does not break stdio. **v0.11.1+** published images use a **distroless** runtime (see [Security](#security)). **v0.12.0** fixes **`link_tests_to_issues`** to use the documented Zephyr Scale endpoint **`POST /testcases/{key}/links/issues`** with Jira issue ids (see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md)).
 - Open a [GitHub issue](https://github.com/miklosbagi/jira-zephyr-mcp/issues) with details and logs (no secrets).
 - Upstream: [leorosignoli/jira-zephyr-mcp](https://github.com/leorosignoli/jira-zephyr-mcp).

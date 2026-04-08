@@ -6,6 +6,8 @@
 
 This is an MCP (Model Context Protocol) server that provides integration with JIRA's Zephyr test management system.
 
+**Cursor / Docker MCP hosts:** use an **absolute path** to the `docker` binary and set **`PATH` in `env`** (hosts may not inherit your shell `PATH`). Do not put a full `docker run …` string in **`command`** with empty **`args`**. See [`docs/MCP-CURSOR-DOCKER.md`](docs/MCP-CURSOR-DOCKER.md). Docker Hub blurb for maintainers: [`docs/DOCKER-HUB-MCP.md`](docs/DOCKER-HUB-MCP.md).
+
 ### Environment Variables
 
 The following environment variables are required:
