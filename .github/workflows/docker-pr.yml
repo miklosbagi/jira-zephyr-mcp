@@ -29,6 +29,9 @@
 # Pushes while draft still trigger the workflow run, but the Docker job is skipped (check Actions).
 #
 # Images are built for linux/amd64 and linux/arm64 (Apple Silicon) via QEMU + buildx.
+#
+# PR comment: marocchino/sticky-pull-request-comment@v3 with number_force + github.token so the
+# same comment is updated on synchronize (not only on opened). secrets.GITHUB_TOKEN is invalid.
 name: Docker (PR)
 
 on:
@@ -164,21 +167,23 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
 
       - name: Comment PR with dev image links
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: dev-docker-image
-          number: ${{ steps.head.outputs.pr_number }}
+          # Use number_force so the same sticky comment is updated on every push (synchronize),
+          # not only on opened. Do not use step outputs here (string vs number confused updates).
+          number_force: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
           message: |
             ### Dev Docker image
 
-            New **multi-arch** image published for this PR (`linux/amd64`, `linux/arm64`):
+            **Multi-arch** image (`linux/amd64`, `linux/arm64`) for commit [`${{ steps.head.outputs.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.head.outputs.sha }}):
 
             | Registry | Pull |
             |----------|------|
             | **Docker Hub** | [`docker.io/${{ steps.meta.outputs.repo_lc }}:${{ steps.meta.outputs.dev_tag }}`](${{ steps.meta.outputs.link_dockerhub }}) |
             | **GHCR** | [`ghcr.io/${{ steps.meta.outputs.repo_lc }}:${{ steps.meta.outputs.dev_tag }}`](${{ steps.meta.outputs.link_ghcr }}) |
 
-            **Unique tag:** `${{ steps.meta.outputs.dev_tag }}` — **rolling dev tags** (same digest as this build): **`dev`** on both registries — `docker.io/${{ steps.meta.outputs.repo_lc }}:dev` and `ghcr.io/${{ steps.meta.outputs.repo_lc }}:dev`.
+            **Unique tag:** `${{ steps.meta.outputs.dev_tag }}` — **rolling `dev`** (same digest as this build): `docker.io/${{ steps.meta.outputs.repo_lc }}:dev` and `ghcr.io/${{ steps.meta.outputs.repo_lc }}:dev`.
 
-            Each push to this branch triggers **`synchronize`** — you get a new unique `dev-v*` tag and **`dev`** moves to that build.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) · each push updates this comment.
+          GITHUB_TOKEN: ${{ github.token }}
