@@ -284,7 +284,7 @@ To test adding a test case to a cycle via Create Test Execution (e.g. when on EU
 
 **Project layout:** `src/index.ts` (MCP server), `src/clients/` (JIRA and Zephyr API clients), `src/tools/` (tool handlers), `src/types/`, `src/utils/` (config, validation). To publish new image versions, see `scripts/push-multi-arch.sh`.
 
-**PR preview images:** Non-draft PRs to `main` (same repo) run [`.github/workflows/docker-pr.yml`](.github/workflows/docker-pr.yml). Each push to the PR branch triggers a new multi-arch build (`synchronize`). Images are tagged `dev-v<version>-<sha>` on **Docker Hub** and **GHCR**, and a rolling **`dev`** on both registries (latest successful run of that workflow). To rebuild without a new commit: **Actions** → **Docker (PR)** → **Run workflow**, enter the PR number.
+**PR preview images:** Non-draft PRs to `main` (same repo) run [`.github/workflows/docker-pr.yml`](.github/workflows/docker-pr.yml). Each successful build is **queued** per PR (`cancel-in-progress` is off so intermediate pushes still publish), tags `dev-v<version>-<sha>` on **Docker Hub** and **GHCR**, rolling **`dev`** on both, and adds a **new PR comment** with that commit’s pull commands. **Draft PRs** skip Docker only; **CI** ([`test.yml`](.github/workflows/test.yml)) still runs on drafts. To rebuild without a new commit: **Actions** → **Docker (PR)** → **Run workflow**, enter the PR number.
 
 ---
 

@@ -24,14 +24,14 @@
 #
 # Security: fork PRs are skipped — untrusted code must not receive registry credentials.
 #
-# Draft PRs: no build (saves registry churn). When you mark the PR ready, `ready_for_review`
-# runs a build without requiring a new commit (synchronize alone does not fire on draft→ready).
-# Pushes while draft still trigger the workflow run, but the Docker job is skipped (check Actions).
+# Draft PRs: the Docker **job** is skipped (`draft == true`). CI (`test.yml`) still runs on drafts.
+# When you mark the PR ready, `ready_for_review` can run a Docker build without a new commit.
+#
+# Concurrency: `cancel-in-progress: false` so runs **queue** per PR. Each push gets a full build + a
+# **new** PR comment with that commit’s tags. If `cancel-in-progress` were true, older runs would be
+# cancelled before commenting (you would only see the latest).
 #
 # Images are built for linux/amd64 and linux/arm64 (Apple Silicon) via QEMU + buildx.
-#
-# PR comment: marocchino/sticky-pull-request-comment@v3 with number_force + github.token so the
-# same comment is updated on synchronize (not only on opened). secrets.GITHUB_TOKEN is invalid.
 name: Docker (PR)
 
 on:
@@ -53,11 +53,13 @@ permissions:
   contents: read
   packages: write
   pull-requests: write
+  issues: write
 
-# One active build per PR; newest push wins (avoids stacked runs finishing out of order).
+# Queue one run at a time per PR so each push finishes (image + comment). Do not cancel in-flight
+# runs — otherwise only the last push would post a comment / publish intermediate dev-* tags.
 concurrency:
   group: docker-pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-push:
@@ -166,24 +168,50 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
 
-      - name: Comment PR with dev image links
-        uses: marocchino/sticky-pull-request-comment@v3
+      - name: Post PR comment (new comment per successful build)
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          HEAD_SHA: ${{ steps.head.outputs.sha }}
+          DEV_TAG: ${{ steps.meta.outputs.dev_tag }}
+          REPO_LC: ${{ steps.meta.outputs.repo_lc }}
+          LINK_DH: ${{ steps.meta.outputs.link_dockerhub }}
+          LINK_GHCR: ${{ steps.meta.outputs.link_ghcr }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.head.outputs.sha }}
         with:
-          header: dev-docker-image
-          # Use number_force so the same sticky comment is updated on every push (synchronize),
-          # not only on opened. Do not use step outputs here (string vs number confused updates).
-          number_force: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
-          message: |
-            ### Dev Docker image
-
-            **Multi-arch** image (`linux/amd64`, `linux/arm64`) for commit [`${{ steps.head.outputs.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ steps.head.outputs.sha }}):
-
-            | Registry | Pull |
-            |----------|------|
-            | **Docker Hub** | [`docker.io/${{ steps.meta.outputs.repo_lc }}:${{ steps.meta.outputs.dev_tag }}`](${{ steps.meta.outputs.link_dockerhub }}) |
-            | **GHCR** | [`ghcr.io/${{ steps.meta.outputs.repo_lc }}:${{ steps.meta.outputs.dev_tag }}`](${{ steps.meta.outputs.link_ghcr }}) |
-
-            **Unique tag:** `${{ steps.meta.outputs.dev_tag }}` — **rolling `dev`** (same digest as this build): `docker.io/${{ steps.meta.outputs.repo_lc }}:dev` and `ghcr.io/${{ steps.meta.outputs.repo_lc }}:dev`.
-
-            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) · each push updates this comment.
-          GITHUB_TOKEN: ${{ github.token }}
+          github-token: ${{ github.token }}
+          script: |
+            const n = parseInt(process.env.PR_NUMBER, 10);
+            if (!Number.isFinite(n)) {
+              throw new Error('PR_NUMBER missing');
+            }
+            const sha = process.env.HEAD_SHA;
+            const devTag = process.env.DEV_TAG;
+            const repoLc = process.env.REPO_LC;
+            const linkDh = process.env.LINK_DH;
+            const linkGhcr = process.env.LINK_GHCR;
+            const runUrl = process.env.RUN_URL;
+            const commitUrl = process.env.COMMIT_URL;
+            const { owner, repo } = context.repo;
+            const short = sha.slice(0, 7);
+            const body = [
+              '### Dev Docker image',
+              '',
+              `**Multi-arch** (\`linux/amd64\`, \`linux/arm64\`) for commit [\`${short}\`](${commitUrl})`,
+              '',
+              '| Registry | Pull |',
+              '|----------|------|',
+              `| **Docker Hub** | [\`docker.io/${repoLc}:${devTag}\`](${linkDh}) |`,
+              `| **GHCR** | [\`ghcr.io/${repoLc}:${devTag}\`](${linkGhcr}) |`,
+              '',
+              `**Unique tag:** \`${devTag}\` — **rolling \`dev\`** (same digest as this build): \`docker.io/${repoLc}:dev\` and \`ghcr.io/${repoLc}:dev\`.`,
+              '',
+              `[Workflow run](${runUrl})`,
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: n,
+              body,
+            });
