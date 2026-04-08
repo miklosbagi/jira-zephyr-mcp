@@ -1,4 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { zephyrToolFailure } from '../utils/zephyr-error-info.js';
 import {
   listTestStepsSchema,
   createTestStepSchema,
@@ -37,11 +38,8 @@ export const listTestSteps = async (input: ListTestStepsInput) => {
         total: steps.length,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message ?? error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -67,11 +65,8 @@ export const createTestStep = async (input: CreateTestStepInput) => {
         },
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message ?? error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['create'] });
   }
 };
 
@@ -94,11 +89,8 @@ export const updateTestStep = async (input: UpdateTestStepInput) => {
         },
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message ?? error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
   }
 };
 
@@ -110,10 +102,7 @@ export const deleteTestStep = async (input: DeleteTestStepInput) => {
       success: true,
       data: { testCaseKey: validated.testCaseKey, stepId: validated.stepId, deleted: true },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message ?? error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['delete'] });
   }
 };

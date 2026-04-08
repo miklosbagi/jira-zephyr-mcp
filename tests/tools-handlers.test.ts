@@ -520,6 +520,20 @@ describe('tool handlers (smoke, mocked)', () => {
     expect(r.success).toBe(false);
     if (!r.success) {
       expect(String(r.error)).toMatch(/Service unavailable|503/);
+      expect(r.errorInfo?.httpStatus).toBe(503);
+      expect(r.errorInfo?.kind).toBe('server_error');
+    }
+  });
+
+  it('listProjects failure includes errorInfo for permission-style responses', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/projects`).query(true).reply(403, { message: 'Forbidden' });
+    const r = await listProjects({ limit: 10 });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.errorInfo?.httpStatus).toBe(403);
+      expect(r.errorInfo?.kind).toBe('permission_denied');
+      expect(r.errorInfo?.permissionIssueLikely).toBe(true);
+      expect(r.error).toBe(r.errorInfo?.message);
     }
   });
 

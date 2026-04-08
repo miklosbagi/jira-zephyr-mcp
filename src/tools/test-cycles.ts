@@ -1,4 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { zephyrToolFailure } from '../utils/zephyr-error-info.js';
 import {
   createTestCycleSchema,
   listTestCyclesSchema,
@@ -52,11 +53,8 @@ export const createTestCycle = async (input: CreateTestCycleInput) => {
         executionSummary: testCycle.executionSummary,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['create', 'create_versions'] });
   }
 };
 
@@ -87,11 +85,8 @@ export const updateTestCycle = async (input: UpdateTestCycleInput) => {
         plannedEndDate: testCycle.plannedEndDate,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['edit', 'create_versions'] });
   }
 };
 
@@ -141,11 +136,8 @@ export const listTestCycles = async (input: ListTestCyclesInput) => {
         }),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -161,11 +153,8 @@ export const addTestCasesToCycle = async (input: AddTestCasesToCycleInput) => {
         testCaseKeys: validatedInput.testCaseKeys,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['create', 'edit'] });
   }
 };
 
@@ -192,10 +181,7 @@ export const getTestCycle = async (input: GetTestCycleInput) => {
         executionSummary: testCycle.executionSummary,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
