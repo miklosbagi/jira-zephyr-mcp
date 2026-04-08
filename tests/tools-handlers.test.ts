@@ -3,7 +3,7 @@
  * Covers success branches; some error paths via HTTP 500.
  */
 import nock from 'nock';
-import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -658,6 +658,13 @@ describe('tool handlers (smoke, mocked)', () => {
     }
   });
 
+  it('get_test_execution returns error when GET execution fails', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/missing-ex`).reply(404, { message: 'gone' });
+    const r = await getTestExecution({ executionId: 'missing-ex' });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.errorInfo?.kind).toBe('not_found');
+  });
+
   it('get_test_execution enriches testCaseKey when API omits key', async () => {
     nock(ZEPHYR_ORIGIN)
       .get(`${V2}/testexecutions/99`)
@@ -696,5 +703,118 @@ describe('tool handlers (smoke, mocked)', () => {
     expect(row.testCaseId).toBe(1001);
     expect(tcScope.isDone()).toBe(true);
     expect(row.testCaseKey).toBe('CP-T55');
+  });
+
+  it('removeTestCaseFromCycle deletes by executionId when provided', async () => {
+    nock(ZEPHYR_ORIGIN).delete(`${V2}/testexecutions/exec-direct-1`).reply(204);
+    const r = await removeTestCaseFromCycle({ executionId: 'exec-direct-1' });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data?.executionId).toBe('exec-direct-1');
+  });
+
+  it('listTestExecutionsInCycle maps defects when present', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query((qs: Record<string, string>) => qs.testCycle === 'C-DEF')
+      .reply(200, {
+        values: [
+          {
+            id: 'ex1',
+            key: 'K1',
+            testCase: { key: 'T1' },
+            status: 'FAIL',
+            defects: [
+              { key: 'BUG-A', summary: 's1' },
+              { key: 'BUG-B', summary: 's2' },
+            ],
+          },
+        ],
+        total: 1,
+      });
+    const r = await listTestExecutionsInCycle({ cycleId: 'C-DEF' });
+    expect(r.success).toBe(true);
+    if (r.success && r.data.executions[0]) {
+      expect(r.data.executions[0].defects).toEqual([
+        { key: 'BUG-A', summary: 's1' },
+        { key: 'BUG-B', summary: 's2' },
+      ]);
+    }
+  });
+
+  it('get_test_execution maps defects when present', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/e-def`).reply(200, {
+      id: 1,
+      key: 'E1',
+      cycleId: 1,
+      testCaseId: 1,
+      testCase: { key: 'CP-T1' },
+      status: 'FAIL',
+      comment: null,
+      executedOn: null,
+      executedBy: null,
+      defects: [
+        { key: 'D1', summary: 'first' },
+        { key: 'D2', summary: 'second' },
+      ],
+    });
+    const r = await getTestExecution({ executionId: 'e-def' });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data?.defects).toEqual([
+        { key: 'D1', summary: 'first' },
+        { key: 'D2', summary: 'second' },
+      ]);
+    }
+  });
+
+  it('getTestExecutionStatus returns error when Zephyr returns 5xx', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query((qs: Record<string, string>) => qs.testCycle === 'BAD-SUM')
+      .reply(502, { message: 'bad gateway' });
+    const r = await getTestExecutionStatus({ cycleId: 'BAD-SUM' });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.errorInfo?.kind).toBe('server_error');
+      expect(r.errorInfo?.httpStatus).toBe(502);
+    }
+  });
+
+  it('bulkExecuteTests returns error when client bulk helper throws', async () => {
+    const spy = vi
+      .spyOn(ZephyrClient.prototype, 'bulkExecuteTests')
+      .mockRejectedValueOnce(new Error('bulk boom'));
+    const r = await bulkExecuteTests({ executions: [{ executionId: 'x', status: 'PASS' }] });
+    spy.mockRestore();
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error).toMatch(/bulk boom/);
+  });
+
+  it('generateTestReport returns HTML when format is HTML', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles/C-HTML`).reply(200, { name: 'Cyc', projectKey: 'P' });
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testcycles/C-HTML/testexecutions`)
+      .reply(200, {
+        values: [
+          {
+            key: 'E1',
+            status: 'PASS',
+            comment: '',
+            defects: [],
+          },
+        ],
+      });
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query((qs: Record<string, string>) => qs.testCycle === 'C-HTML')
+      .reply(200, {
+        values: [{ status: 'PASS' }],
+        total: 1,
+      });
+    const r = await generateTestReport({ cycleId: 'C-HTML', format: 'HTML' });
+    expect(r.success).toBe(true);
+    if (r.success && r.data?.format === 'HTML') {
+      expect(String(r.data.content)).toMatch(/<!DOCTYPE html>/);
+    }
   });
 });

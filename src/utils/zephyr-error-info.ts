@@ -68,12 +68,10 @@ function classifyKind(
   return 'unknown';
 }
 
-function permissionLikely(kind: ZephyrErrorKind, status: number | undefined, apiMessage: string, axiosMessage: string): boolean {
+function permissionLikely(kind: ZephyrErrorKind, apiMessage: string, axiosMessage: string): boolean {
   if (kind === 'authentication' || kind === 'permission_denied') return true;
   const text = `${apiMessage} ${axiosMessage}`;
-  if (PERMISSIONish.test(text)) return true;
-  if (status === 403 || status === 401) return true;
-  return false;
+  return PERMISSIONish.test(text);
 }
 
 /** Parse common REST error body shapes (Zephyr Scale, Jira Cloud). */
@@ -161,7 +159,7 @@ export function buildZephyrErrorInfo(error: unknown, options: BuildZephyrErrorIn
   const integration = options.integration ?? 'zephyr';
   const { status, apiMessage, axiosMessage } = extractZephyrMessages(error);
   const kind = classifyKind(status, apiMessage ?? '', axiosMessage);
-  const perm = permissionLikely(kind, status, apiMessage ?? '', axiosMessage);
+  const perm = permissionLikely(kind, apiMessage ?? '', axiosMessage);
   const categories =
     perm && kind !== 'authentication'
       ? [...options.permissionCategories]

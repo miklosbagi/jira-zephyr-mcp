@@ -353,62 +353,50 @@ async function linkIssueKeysToZephyr(
 
 export const linkTestsToIssues = async (input: LinkTestsToIssuesInput) => {
   const validatedInput = linkTestsToIssuesSchema.parse(input);
-  try {
-    const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
-      getZephyrClient().createTestCaseIssueLink(validatedInput.testCaseId, issueId)
-    );
-    return {
-      success: true,
-      data: {
-        testCaseId: validatedInput.testCaseId,
-        linkResults: results,
-        successCount: results.filter((r) => r.success).length,
-        failureCount: results.filter((r) => !r.success).length,
-      },
-    };
-  } catch (error: unknown) {
-    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
-  }
+  const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
+    getZephyrClient().createTestCaseIssueLink(validatedInput.testCaseId, issueId)
+  );
+  return {
+    success: true,
+    data: {
+      testCaseId: validatedInput.testCaseId,
+      linkResults: results,
+      successCount: results.filter((r) => r.success).length,
+      failureCount: results.filter((r) => !r.success).length,
+    },
+  };
 };
 
 export const linkTestCycleToIssues = async (input: LinkTestCycleToIssuesInput) => {
   const validatedInput = linkTestCycleToIssuesSchema.parse(input);
-  try {
-    const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
-      getZephyrClient().createTestCycleIssueLink(validatedInput.cycleKey, issueId)
-    );
-    return {
-      success: true,
-      data: {
-        cycleKey: validatedInput.cycleKey,
-        linkResults: results,
-        successCount: results.filter((r) => r.success).length,
-        failureCount: results.filter((r) => !r.success).length,
-      },
-    };
-  } catch (error: unknown) {
-    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
-  }
+  const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
+    getZephyrClient().createTestCycleIssueLink(validatedInput.cycleKey, issueId)
+  );
+  return {
+    success: true,
+    data: {
+      cycleKey: validatedInput.cycleKey,
+      linkResults: results,
+      successCount: results.filter((r) => r.success).length,
+      failureCount: results.filter((r) => !r.success).length,
+    },
+  };
 };
 
 export const linkTestPlanToIssues = async (input: LinkTestPlanToIssuesInput) => {
   const validatedInput = linkTestPlanToIssuesSchema.parse(input);
-  try {
-    const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
-      getZephyrClient().createTestPlanIssueLink(validatedInput.planKey, issueId)
-    );
-    return {
-      success: true,
-      data: {
-        planKey: validatedInput.planKey,
-        linkResults: results,
-        successCount: results.filter((r) => r.success).length,
-        failureCount: results.filter((r) => !r.success).length,
-      },
-    };
-  } catch (error: unknown) {
-    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
-  }
+  const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
+    getZephyrClient().createTestPlanIssueLink(validatedInput.planKey, issueId)
+  );
+  return {
+    success: true,
+    data: {
+      planKey: validatedInput.planKey,
+      linkResults: results,
+      successCount: results.filter((r) => r.success).length,
+      failureCount: results.filter((r) => !r.success).length,
+    },
+  };
 };
 
 export const generateTestReport = async (input: GenerateTestReportInput) => {

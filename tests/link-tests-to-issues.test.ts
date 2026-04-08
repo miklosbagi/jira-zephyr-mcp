@@ -73,6 +73,27 @@ describe('linkTestsToIssues (integration, mocked)', () => {
     expect(String(result.data?.linkResults?.[0]?.error)).toMatch(/numeric Jira issue id|not-a-number/);
   });
 
+  it('records Jira failure when GET issue returns an error', async () => {
+    nock('https://example.atlassian.net')
+      .get('/rest/api/3/issue/PROJ-MISS')
+      .query({ fields: 'id' })
+      .reply(404, {
+        errorMessages: ['Issue Does Not Exist'],
+      });
+
+    const result = await linkTestsToIssues({
+      testCaseId: 'PROJ-T1',
+      issueKeys: ['PROJ-MISS'],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.failureCount).toBe(1);
+    const row = result.data?.linkResults?.[0];
+    expect(row?.success).toBe(false);
+    expect(String(row?.error)).toMatch(/404|Issue Does Not Exist/);
+    expect(row?.errorInfo?.integration).toBe('jira');
+  });
+
   it('records per-issue failure when Zephyr returns an error', async () => {
     nock('https://example.atlassian.net')
       .get('/rest/api/3/issue/PROJ-999')
