@@ -11,6 +11,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { ZephyrClient } from '../src/clients/zephyr-client.js';
+import { resetAppConfigCacheForTests } from '../src/utils/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = resolve(__dirname, 'fixtures/zephyr');
@@ -36,6 +37,7 @@ describe('ZephyrClient (integration, mocked)', () => {
   let client: ZephyrClient;
 
   beforeAll(() => {
+    resetAppConfigCacheForTests();
     Object.assign(process.env, INTEGRATION_DUMMY_ENV);
     client = new ZephyrClient();
   });
@@ -549,6 +551,21 @@ describe('ZephyrClient (integration, mocked)', () => {
     });
   });
 
+  describe('enrichExecutionsWithTestCaseKeys', () => {
+    it('GETs /testcases/{id} when execution has testCase.id but no key', async () => {
+      const executions = [{ id: 1, key: 'E1', testCase: { id: 1001 }, status: 'PASS' }];
+      const getTc = nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/1001`).reply(200, {
+        id: 1001,
+        key: 'PROJ-T9',
+        name: 'n',
+        project: { id: 1 },
+      });
+      const out = await client.enrichExecutionsWithTestCaseKeys(executions);
+      expect((out[0].testCase as { key?: string }).key).toBe('PROJ-T9');
+      expect(getTc.isDone()).toBe(true);
+    });
+  });
+
   describe('deleteTestExecution', () => {
     it('sends DELETE /v2/testexecutions/{id}', async () => {
       const scope = nock(ZEPHYR_ORIGIN).delete(`${V2}/testexecutions/5001`).reply(204);
@@ -585,6 +602,37 @@ describe('ZephyrClient (integration, mocked)', () => {
       await expect(client.removeTestCaseFromCycle('PROJ-R1', 'PROJ-T99')).rejects.toThrow(
         'No test execution in cycle'
       );
+    });
+
+    it('resolves test case key via GET /testcases/{id} when list omits testCase.key', async () => {
+      const listBody = {
+        values: [{ id: 5002, key: 'PROJ-E2', testCase: { id: 1001 }, status: 'PASS' }],
+        total: 1,
+      };
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions`).query({ testCycle: 'PROJ-R1' }).reply(200, listBody);
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/1001`)
+        .reply(200, { id: 1001, key: 'PROJ-T2', name: 'n', project: { id: 1 } });
+      const delScope = nock(ZEPHYR_ORIGIN).delete(`${V2}/testexecutions/5002`).reply(204);
+
+      const result = await client.removeTestCaseFromCycle('PROJ-R1', 'PROJ-T2');
+
+      expect(result.executionId).toBe('5002');
+      expect(delScope.isDone()).toBe(true);
+    });
+
+    it('matches by numeric test case id when user passes id string', async () => {
+      const listBody = {
+        values: [{ id: 5002, key: 'PROJ-E2', testCase: { id: 1001 }, status: 'PASS' }],
+        total: 1,
+      };
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions`).query({ testCycle: 'PROJ-R1' }).reply(200, listBody);
+      const delScope = nock(ZEPHYR_ORIGIN).delete(`${V2}/testexecutions/5002`).reply(204);
+
+      const result = await client.removeTestCaseFromCycle('PROJ-R1', '1001');
+
+      expect(result.executionId).toBe('5002');
+      expect(delScope.isDone()).toBe(true);
     });
   });
 
@@ -813,6 +861,24 @@ describe('ZephyrClient (integration, mocked)', () => {
       });
       const r = await client.updateTestCase('PROJ-T1', { name: 'Updated' });
       expect(r.name).toBe('Updated');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('dedupes labels case-insensitively in PUT body', async () => {
+      const existing = loadFixture('testcase-get.json') as Record<string, unknown>;
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, existing);
+      const scope = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testcases/PROJ-T1`, (body: Record<string, unknown>) => {
+          const labels = body.labels as string[];
+          return (
+            Array.isArray(labels) &&
+            labels.length === 2 &&
+            labels.includes('Alpha') &&
+            labels.includes('beta')
+          );
+        })
+        .reply(200, { ...existing, labels: ['Alpha', 'beta'] });
+      await client.updateTestCase('PROJ-T1', { labels: ['Alpha', 'alpha', 'beta', 'Beta'] });
       expect(scope.isDone()).toBe(true);
     });
   });

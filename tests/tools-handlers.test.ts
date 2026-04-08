@@ -53,6 +53,7 @@ import {
   updateEnvironment,
 } from '../src/tools/environments.js';
 import { listPriorities, listStatuses } from '../src/tools/priorities-statuses.js';
+import { resetAppConfigCacheForTests } from '../src/utils/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIX = resolve(__dirname, 'fixtures/zephyr');
@@ -73,6 +74,7 @@ const ENV = {
 
 describe('tool handlers (smoke, mocked)', () => {
   beforeAll(() => {
+    resetAppConfigCacheForTests();
     Object.assign(process.env, ENV);
   });
 
@@ -429,5 +431,27 @@ describe('tool handlers (smoke, mocked)', () => {
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/statuses`).query(true).reply(200, load('statuses-list.json'));
     expect((await listStatuses({ projectKey: 'CP' })).success).toBe(true);
+  });
+
+  it('listTestExecutionsInCycle enriches testCaseKey when API omits key', async () => {
+    const listScope = nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query((qs: Record<string, string>) => qs.testCycle === 'C1')
+      .reply(200, {
+        values: [{ id: 1, key: 'E1', testCase: { id: 1001 }, status: 'PASS' }],
+        total: 1,
+      });
+    const tcScope = nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testcases/1001`)
+      .reply(200, { id: 1001, key: 'CP-T55', name: 'n', project: { id: 1 } });
+    const r = await listTestExecutionsInCycle({ cycleId: 'C1' });
+    expect(r.success).toBe(true);
+    expect(listScope.isDone()).toBe(true);
+    expect(r.data && 'executions' in r.data && r.data.executions).toHaveLength(1);
+    const row = (r as { success: true; data: { executions: Array<{ testCaseKey?: string; testCaseId?: number }> } })
+      .data.executions[0];
+    expect(row.testCaseId).toBe(1001);
+    expect(tcScope.isDone()).toBe(true);
+    expect(row.testCaseKey).toBe('CP-T55');
   });
 });

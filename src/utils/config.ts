@@ -46,6 +46,11 @@ export const getAppConfig = () => {
   return cachedConfig;
 };
 
+/** Test-only: clear cached env parse so `beforeAll` can set `process.env` before first client (vitest). */
+export const resetAppConfigCacheForTests = (): void => {
+  cachedConfig = null;
+};
+
 export const getJiraAuth = () => {
   const config = getAppConfig();
   return {
