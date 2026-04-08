@@ -5,6 +5,7 @@ import { getJiraClient } from './jira-issues.js';
 import {
   executeTestSchema,
   getTestExecutionStatusSchema,
+  getTestExecutionSchema,
   listTestExecutionsInCycleSchema,
   listTestExecutionsNextgenSchema,
   bulkExecuteTestsSchema,
@@ -16,6 +17,7 @@ import {
   removeTestCaseFromCycleSchema,
   type ExecuteTestInput,
   type GetTestExecutionStatusInput,
+  type GetTestExecutionInput,
   type ListTestExecutionsInCycleInput,
   type ListTestExecutionsNextgenInput,
   type BulkExecuteTestsInput,
@@ -213,6 +215,41 @@ export const listTestExecutionsNextgen = async (input: ListTestExecutionsNextgen
     return {
       success: false,
       error: error.response?.data?.message || error.message,
+    };
+  }
+};
+
+/** GET /testexecutions/{idOrKey} — same row shape as list_test_executions_in_cycle; enriches testCaseKey when API omits key (issue #67). */
+export const getTestExecution = async (input: GetTestExecutionInput) => {
+  const validatedInput = getTestExecutionSchema.parse(input);
+  try {
+    const client = getZephyrClient();
+    const raw = await client.getTestExecution(validatedInput.executionId.trim());
+    const [ex] = await client.enrichExecutionsWithTestCaseKeys([raw as unknown as Record<string, unknown>]);
+    const row = ex as Record<string, unknown>;
+    return {
+      success: true,
+      data: {
+        id: row.id,
+        key: row.key,
+        testCaseId: getExecutionTestCaseEntityId(row),
+        testCaseKey: getExecutionTestCaseKey(row),
+        cycleId: row.cycleId,
+        status: row.status,
+        comment: row.comment,
+        executedOn: row.executedOn,
+        executedBy: (row.executedBy as { displayName?: string } | undefined)?.displayName,
+        defects:
+          (row.defects as Array<{ key: string; summary?: string }> | undefined)?.map(d => ({
+            key: d.key,
+            summary: d.summary,
+          })) ?? [],
+      },
+    };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: formatZephyrApiError(error),
     };
   }
 };

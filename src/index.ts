@@ -18,6 +18,7 @@ import {
   getTestExecutionStatus,
   listTestExecutionsInCycle,
   listTestExecutionsNextgen,
+  getTestExecution,
   linkTestsToIssues,
   linkTestCycleToIssues,
   linkTestPlanToIssues,
@@ -53,6 +54,7 @@ import {
   updateTestCycleSchema,
   executeTestSchema,
   getTestExecutionStatusSchema,
+  getTestExecutionSchema,
   listTestExecutionsInCycleSchema,
   listTestExecutionsNextgenSchema,
   bulkExecuteTestsSchema,
@@ -97,6 +99,7 @@ import {
   type UpdateTestCycleInput,
   type ExecuteTestInput,
   type GetTestExecutionStatusInput,
+  type GetTestExecutionInput,
   type ListTestExecutionsInCycleInput,
   type ListTestExecutionsNextgenInput,
   type BulkExecuteTestsInput,
@@ -134,7 +137,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.14.1',
+    version: '0.15.0',
   },
   {
     capabilities: {
@@ -325,6 +328,21 @@ const TOOLS = [
         startAtId: { type: 'number', description: 'Cursor / startAtId for pagination (default 0)' },
       },
       required: [],
+    },
+  },
+  {
+    name: 'get_test_execution',
+    description:
+      'Get a single test execution by id or key (GET /testexecutions/{testExecutionIdOrKey}, OpenAPI getTestExecution). Returns the same row shape as list_test_executions_in_cycle; resolves testCaseKey via GET /testcases/{id} when the API omits the key.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        executionId: {
+          type: 'string',
+          description: 'Test execution id or key (e.g. numeric id or execution key from list_test_executions_in_cycle)',
+        },
+      },
+      required: ['executionId'],
     },
   },
   {
@@ -1063,6 +1081,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await listTestExecutionsNextgen(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'get_test_execution': {
+        const validatedArgs = validateInput<GetTestExecutionInput>(getTestExecutionSchema, args, 'get_test_execution');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await getTestExecution(validatedArgs), null, 2),
             },
           ],
         };

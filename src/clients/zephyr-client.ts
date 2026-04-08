@@ -405,8 +405,9 @@ export class ZephyrClient {
     return response.data;
   }
 
-  async getTestExecution(executionId: string): Promise<ZephyrTestExecution> {
-    const response = await this.client.get(`/testexecutions/${executionId}`);
+  async getTestExecution(executionIdOrKey: string): Promise<ZephyrTestExecution> {
+    const id = encodeURIComponent(executionIdOrKey);
+    const response = await this.client.get(`/testexecutions/${id}`);
     return response.data;
   }
 

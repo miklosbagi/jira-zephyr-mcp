@@ -98,6 +98,11 @@ export const getTestExecutionStatusSchema = z.object({
   cycleId: z.string().min(1, 'Cycle ID is required'),
 });
 
+/** GET /testexecutions/{idOrKey} — OpenAPI `getTestExecution`. */
+export const getTestExecutionSchema = z.object({
+  executionId: z.string().min(1, 'Test execution id or key is required'),
+});
+
 export const listTestExecutionsInCycleSchema = z.object({
   cycleId: z.string().min(1, 'Cycle ID or key is required'),
 });
@@ -388,6 +393,7 @@ export type GetTestCycleInput = z.infer<typeof getTestCycleSchema>;
 export type UpdateTestCycleInput = z.infer<typeof updateTestCycleSchema>;
 export type ExecuteTestInput = z.infer<typeof executeTestSchema>;
 export type GetTestExecutionStatusInput = z.infer<typeof getTestExecutionStatusSchema>;
+export type GetTestExecutionInput = z.infer<typeof getTestExecutionSchema>;
 export type ListTestExecutionsInCycleInput = z.infer<typeof listTestExecutionsInCycleSchema>;
 export type ListTestExecutionsNextgenInput = z.infer<typeof listTestExecutionsNextgenSchema>;
 export type ListTestCasesNextgenInput = z.infer<typeof listTestCasesNextgenSchema>;
