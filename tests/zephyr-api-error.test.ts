@@ -22,4 +22,10 @@ describe('formatZephyrApiError', () => {
   it('stringifies object data without message', () => {
     expect(formatZephyrApiError({ response: { data: { code: 1 } } })).toBe('{"code":1}');
   });
+
+  it('falls back when response data is not JSON-serializable', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(formatZephyrApiError({ message: 'outer', response: { data: circular } })).toBe('outer');
+  });
 });

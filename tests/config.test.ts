@@ -50,4 +50,17 @@ describe('config helpers', () => {
     expect(getTm4jBackendBaseUrl()).toBe('https://app.tm4j.smartbear.com/backend/rest/tests/2.0');
   });
 
+  it('getAppConfig throws with validation message when env fails schema', async () => {
+    vi.resetModules();
+    for (const k of Object.keys(process.env)) {
+      if (k.startsWith('JIRA_') || k.startsWith('ZEPHYR')) delete process.env[k];
+    }
+    Object.assign(process.env, {
+      ...base,
+      JIRA_BASE_URL: 'not-a-valid-url',
+    });
+    const { getAppConfig } = await import('../src/utils/config.js');
+    expect(() => getAppConfig()).toThrow(/Configuration validation failed/);
+  });
+
 });

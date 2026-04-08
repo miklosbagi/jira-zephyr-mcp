@@ -21,5 +21,6 @@ describe('test-execution-identity', () => {
     expect(executionMatchesTestCaseFilter({ testCase: { key: 'cp-t1' } }, 'CP-T1')).toBe(true);
     expect(executionMatchesTestCaseFilter({ testCase: { id: 1001 } }, '1001')).toBe(true);
     expect(executionMatchesTestCaseFilter({ testCase: { key: 'A' } }, 'B')).toBe(false);
+    expect(executionMatchesTestCaseFilter({ testCase: { key: 'Z' } }, '   ')).toBe(false);
   });
 });

@@ -38,6 +38,7 @@ import {
   searchTestCases,
   listTestCasesNextgen,
   getTestCase,
+  getTestCaseLinks,
   updateTestCase,
   archiveTestCase,
   unarchiveTestCase,
@@ -54,6 +55,7 @@ import {
 } from '../src/tools/environments.js';
 import { listPriorities, listStatuses } from '../src/tools/priorities-statuses.js';
 import { resetAppConfigCacheForTests } from '../src/utils/config.js';
+import { ZephyrClient } from '../src/clients/zephyr-client.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIX = resolve(__dirname, 'fixtures/zephyr');
@@ -92,14 +94,35 @@ describe('tool handlers (smoke, mocked)', () => {
           summary: 'S',
           issuetype: { name: 'Bug' },
           project: { key: 'P', name: 'P' },
-          labels: [],
-          components: [],
-          fixVersions: [],
+          labels: ['l1'],
+          components: [{ name: 'Comp A' }],
+          fixVersions: [{ name: '1.0.0' }],
         },
       });
     const r = await readJiraIssue({ issueKey: 'P-1' });
     expect(r.success).toBe(true);
     expect(r.data?.key).toBe('P-1');
+  });
+
+  it('readJiraIssue maps customfield_* into customFields', async () => {
+    nock(JIRA)
+      .get(`${JIRA_API}/issue/P-99`)
+      .query(true)
+      .reply(200, {
+        key: 'P-99',
+        fields: {
+          summary: 'S',
+          customfield_10000: { value: 'custom' },
+        },
+      });
+    const r = await readJiraIssue({
+      issueKey: 'P-99',
+      fields: ['summary', 'customfield_10000'],
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.customFields).toEqual({ customfield_10000: { value: 'custom' } });
+    }
   });
 
   it('searchJiraIssues', async () => {
@@ -204,17 +227,17 @@ describe('tool handlers (smoke, mocked)', () => {
       comment: null,
       executedOn: null,
       executedBy: null,
-      defects: [],
+      defects: [{ key: 'BUG-1', summary: 'Defect summary' }],
     };
     nock(ZEPHYR_ORIGIN).put(`${V2}/testexecutions/e1`).reply(200, ex);
-    expect(
-      (
-        await executeTest({
-          executionId: 'e1',
-          status: 'PASS',
-        })
-      ).success
-    ).toBe(true);
+    const execOut = await executeTest({
+      executionId: 'e1',
+      status: 'PASS',
+    });
+    expect(execOut.success).toBe(true);
+    if (execOut.success) {
+      expect(execOut.data?.defects).toEqual([{ key: 'BUG-1', summary: 'Defect summary' }]);
+    }
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions`).query({ testCycle: 'C1' }).reply(200, {
       values: [{ status: 'PASS' }],
@@ -236,7 +259,10 @@ describe('tool handlers (smoke, mocked)', () => {
     });
     expect((await listTestExecutionsNextgen({ projectKey: 'P' })).success).toBe(true);
 
-    nock(ZEPHYR_ORIGIN).put(`${V2}/testexecutions/a`).reply(200, ex);
+    nock(ZEPHYR_ORIGIN).put(`${V2}/testexecutions/a`).reply(200, {
+      ...ex,
+      defects: [],
+    });
     expect(
       (
         await bulkExecuteTests({
@@ -244,6 +270,27 @@ describe('tool handlers (smoke, mocked)', () => {
         })
       ).success
     ).toBe(true);
+
+    nock(ZEPHYR_ORIGIN).put(`${V2}/testexecutions/ok1`).reply(200, ex);
+    nock(ZEPHYR_ORIGIN)
+      .put(`${V2}/testexecutions/bad1`)
+      .reply(400, { message: 'cannot update' });
+    const bulk = await bulkExecuteTests({
+      executions: [
+        { executionId: 'ok1', status: 'PASS' },
+        { executionId: 'bad1', status: 'PASS' },
+      ],
+      continueOnError: true,
+    });
+    expect(bulk.success).toBe(true);
+    if (bulk.success && bulk.data) {
+      expect(bulk.data.results).toHaveLength(2);
+      expect(bulk.data.results[0]?.success).toBe(true);
+      expect(bulk.data.results[0]?.execution?.id).toBe(1);
+      expect(bulk.data.results[1]?.success).toBe(false);
+      expect(bulk.data.results[1]?.execution).toBeUndefined();
+      expect(String(bulk.data.results[1]?.error)).toMatch(/cannot update/);
+    }
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles/C1`).reply(200, { name: 'n', projectKey: 'P' });
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles/C1/testexecutions`).reply(200, { values: [] });
@@ -308,20 +355,50 @@ describe('tool handlers (smoke, mocked)', () => {
     expect((await searchTestCases({ projectKey: 'CP' })).success).toBe(true);
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/nextgen`).query(true).reply(200, {
-      values: [],
+      values: [load('testcase-get.json')],
       limit: 50,
       nextStartAtId: null,
       next: null,
     });
     expect((await listTestCasesNextgen({ projectKey: 'CP' })).success).toBe(true);
 
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testcases/PROJ-T1/links`)
+      .reply(200, { issueLinks: [], webLinks: [] });
+    expect((await getTestCaseLinks({ testCaseId: 'PROJ-T1' })).success).toBe(true);
+
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, load('testcase-get.json'));
     expect((await getTestCase({ testCaseId: 'PROJ-T1' })).success).toBe(true);
+
+    const withScript = {
+      ...load('testcase-get.json'),
+      testScript: { self: `${ZEPHYR_ORIGIN}${V2}/testcases/PROJ-T1/testscript`, type: 'PLAIN_TEXT' },
+    };
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, withScript);
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testcases/PROJ-T1/testscript`)
+      .reply(200, { type: 'PLAIN_TEXT', plainScript: { text: 'merged' } });
+    const withMerged = await getTestCase({ testCaseId: 'PROJ-T1' });
+    expect(withMerged.success).toBe(true);
+    if (withMerged.success && withMerged.data?.testScript && typeof withMerged.data.testScript === 'object') {
+      expect(withMerged.data.testScript).toMatchObject({
+        plainScript: { text: 'merged' },
+        self: `${ZEPHYR_ORIGIN}${V2}/testcases/PROJ-T1/testscript`,
+      });
+    }
 
     const tc = load('testcase-get.json');
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, tc);
     nock(ZEPHYR_ORIGIN).put(`${V2}/testcases/PROJ-T1`).reply(200, { ...tc, name: 'U' });
     expect((await updateTestCase({ testCaseId: 'PROJ-T1', name: 'U' })).success).toBe(true);
+
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, tc);
+    nock(ZEPHYR_ORIGIN)
+      .put(`${V2}/testcases/PROJ-T1`)
+      .reply(400, { message: 'Zephyr rejected update' });
+    const updErr = await updateTestCase({ testCaseId: 'PROJ-T1', name: 'Bad' });
+    expect(updErr.success).toBe(false);
+    expect(String(updErr.error)).toMatch(/Zephyr rejected/);
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, tc);
     nock(ZEPHYR_ORIGIN).put(`${V2}/testcases/PROJ-T1`).reply(200, tc);
@@ -431,6 +508,117 @@ describe('tool handlers (smoke, mocked)', () => {
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/statuses`).query(true).reply(200, load('statuses-list.json'));
     expect((await listStatuses({ projectKey: 'CP' })).success).toBe(true);
+  });
+
+  it('listTestExecutionsInCycle returns error when Zephyr fails', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query((qs: Record<string, string>) => qs.testCycle === 'C-ERR')
+      .reply(503, { message: 'Service unavailable' });
+    const r = await listTestExecutionsInCycle({ cycleId: 'C-ERR' });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(String(r.error)).toMatch(/Service unavailable|503/);
+    }
+  });
+
+  it('listTestExecutionsNextgen maps execution rows including defects', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/nextgen`).query(true).reply(200, {
+      values: [
+        {
+          id: 10,
+          key: 'EX-10',
+          cycleId: 1,
+          testCaseId: 100,
+          testCase: { key: 'CP-T9' },
+          status: 'PASS',
+          comment: 'done',
+          executedOn: '2025-01-01',
+          executedBy: { displayName: 'QA' },
+          defects: [{ key: 'BUG-9', summary: 'S9' }],
+        },
+      ],
+      limit: 50,
+      nextStartAtId: null,
+      next: null,
+    });
+    const r = await listTestExecutionsNextgen({ projectKey: 'CP' });
+    expect(r.success).toBe(true);
+    if (r.success && r.data?.executions?.[0]) {
+      const row = r.data.executions[0];
+      expect(row.testCaseKey).toBe('CP-T9');
+      expect(row.testCaseId).toBe(100);
+      expect(row.executedBy).toBe('QA');
+      expect(row.defects).toEqual([{ key: 'BUG-9', summary: 'S9' }]);
+    }
+  });
+
+  it('removeTestCaseFromCycle deletes via cycle and test case key', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query((qs: Record<string, string>) => qs.testCycle === 'TC-RM')
+      .reply(200, {
+        values: [
+          {
+            id: 'exec-rm-1',
+            key: 'ERM-1',
+            testCase: { key: 'CP-TARGET' },
+            status: 'PASS',
+          },
+        ],
+        total: 1,
+      });
+    nock(ZEPHYR_ORIGIN).delete(`${V2}/testexecutions/exec-rm-1`).reply(204);
+    const r = await removeTestCaseFromCycle({
+      cycleKey: 'TC-RM',
+      testCaseKey: 'CP-TARGET',
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data).toMatchObject({
+        cycleKey: 'TC-RM',
+        testCaseKey: 'CP-TARGET',
+        executionId: 'exec-rm-1',
+        removed: true,
+      });
+    }
+  });
+
+  it('getTestCaseLinks returns error when Zephyr fails', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/MISS-T1/links`).reply(404, { message: 'No links' });
+    const r = await getTestCaseLinks({ testCaseId: 'MISS-T1' });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(String(r.error)).toMatch(/No links|404/);
+    }
+  });
+
+  it('createTestCase exposes count of linked Jira issues', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .post(`${V2}/testcases`)
+      .reply(201, {
+        ...load('testcase-create.json'),
+        links: { issues: [{ issueId: 1 }, { issueId: 2 }] },
+      });
+    const r = await createTestCase({ projectKey: 'CP', name: 'With links' });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data?.links?.issues).toBe(2);
+    }
+  });
+
+  it('createMultipleTestCases surfaces error when client throws unexpectedly', async () => {
+    const spy = vi
+      .spyOn(ZephyrClient.prototype, 'createMultipleTestCases')
+      .mockRejectedValueOnce(new Error('unexpected bulk failure'));
+    const r = await createMultipleTestCases({
+      testCases: [{ projectKey: 'CP', name: 'One' }],
+    });
+    spy.mockRestore();
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error).toBe('unexpected bulk failure');
+    }
   });
 
   it('listTestExecutionsInCycle enriches testCaseKey when API omits key', async () => {
