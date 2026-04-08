@@ -140,6 +140,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **list_projects** | List Zephyr-visible projects (id, key, name). Optional `limit`, `startAt` for pagination. Use for projectKey discovery. |
 | **list_test_executions_in_cycle** | List test cases and executions in a cycle (`GET /testexecutions` with `testCycle`). |
 | **list_test_executions_nextgen** | Cursor-paged executions for large volumes ([`GET /testexecutions/nextgen`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/listTestExecutionsNextgen)); use `nextStartAtId` or `next` for the next page. |
+| **get_test_execution** | Get one execution by id or key ([`GET /testexecutions/{testExecutionIdOrKey}`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecution), OpenAPI `getTestExecution`). Same row shape as **list_test_executions_in_cycle**; resolves **testCaseKey** when the API omits it (v0.15.0). |
 | **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
 | **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
 | **remove_test_case_from_cycle** | Remove a test case from a cycle by deleting its test execution (`DELETE /testexecutions/{id}`). Pass **`executionId`** from `list_test_executions_in_cycle`, or **`cycleKey` + `testCaseKey`** to resolve it. If the public API returns 404/405 on your instance, use the Zephyr UI or contact SmartBear. |
@@ -186,6 +187,7 @@ list_test_cycles({ projectKey: "ABC", limit: 25 });
 update_test_cycle({ cycleKey: "ABC-R1", name: "Sprint 10 (final)", status: "365024", customFields: { "Team": "QA" } });
 list_test_executions_in_cycle({ cycleId: "ABC-R1" });
 list_test_executions_nextgen({ testCycle: "ABC-R1", limit: 100, startAtId: 0 });  // next page: pass startAtId from nextStartAtId
+get_test_execution({ executionId: "12345" });  // or execution key from list_test_executions_in_cycle
 add_test_cases_to_cycle({ cycleKey: "ABC-R1", testCaseKeys: ["ABC-T1", "ABC-T2"] });
 // If add_test_cases_to_cycle returns 404 (e.g. EU API), use create_test_execution per test case:
 create_test_execution({ projectKey: "ABC", testCycleKey: "ABC-R1", testCaseKey: "ABC-T1" });
@@ -242,6 +244,7 @@ delete_test_step({ testCaseKey: "ABC-T123", stepId: 2 });
 
 **Execution and reporting**
 ```ts
+get_test_execution({ executionId: "12345" });
 execute_test({ executionId: "12345", status: "PASS", comment: "All passed" });
 bulk_execute_tests({ executions: [{ executionId: "12345", status: "PASS" }, { executionId: "12346", status: "FAIL" }], continueOnError: true });
 get_test_execution_status({ cycleId: "67890" });
@@ -280,6 +283,8 @@ npm run build
 To test adding a test case to a cycle via Create Test Execution (e.g. when on EU and `add_test_cases_to_cycle` returns 404): set env (or use `.env`), then `node dist/scripts/test-create-execution.js [projectKey] [testCycleKey] [testCaseKey]` (defaults: CP, CP-R31, CP-T4305).
 
 **Project layout:** `src/index.ts` (MCP server), `src/clients/` (JIRA and Zephyr API clients), `src/tools/` (tool handlers), `src/types/`, `src/utils/` (config, validation). To publish new image versions, see `scripts/push-multi-arch.sh`.
+
+**PR preview images:** Non-draft PRs to `main` (same repo) run [`.github/workflows/docker-pr.yml`](.github/workflows/docker-pr.yml). Each successful build is **queued** per PR (`cancel-in-progress` is off so intermediate pushes still publish), tags `dev-v<version>-<sha>` on **Docker Hub** and **GHCR**, rolling **`dev`** on both, and adds a **new PR comment** with that commit’s pull commands. **Draft PRs** skip Docker only; **CI** ([`test.yml`](.github/workflows/test.yml)) still runs on drafts. To rebuild without a new commit: **Actions** → **Docker (PR)** → **Run workflow**, enter the PR number.
 
 ---
 
@@ -322,6 +327,7 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Update test cycle** — **`update_test_cycle`**: **`PUT /testcycles/{key}`** (OpenAPI `updateTestCycle`); MCP merges from GET before PUT (including status, `versionId` → `jiraProjectVersion`, owner, custom fields).
 - [x] **Update test plan** — **`update_test_plan`**: GET-merge-PUT; **not** listed in the public OpenAPI for `PUT /testplans/{key}` — see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md).
 - [x] **Bulk / high-volume operations (v0.14.0)** — **`list_test_cases_nextgen`** / **`list_test_executions_nextgen`** (cursor pagination per OpenAPI). **`bulk_execute_tests`** (sequential PUTs; no single bulk endpoint in the public spec). See [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md).
+- [x] **Get single test execution (v0.15.0)** — **`get_test_execution`**: [`GET /testexecutions/{testExecutionIdOrKey}`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecution) (OpenAPI `getTestExecution`); aligns with **list_test_executions_in_cycle** row shape and test case key enrichment ([issue #67](https://github.com/miklosbagi/jira-zephyr-mcp/issues/67)).
 
 ---
 

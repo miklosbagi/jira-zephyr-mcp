@@ -1,5 +1,8 @@
 # Required checks for `main`: enable branch protection → require status check **Quality gate**
 # (lint + typecheck + tests with coverage thresholds). One job = one gate to tick in repo settings.
+#
+# Pull requests: runs for **draft and ready** PRs to `main` (every push / synchronize). Preview Docker
+# images are skipped for drafts — see `.github/workflows/docker-pr.yml`.
 name: CI
 
 on:
@@ -7,6 +10,7 @@ on:
     branches: [main, feat/**]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   quality-gate:

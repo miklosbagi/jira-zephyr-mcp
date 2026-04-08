@@ -28,6 +28,7 @@ import {
   getTestExecutionStatus,
   listTestExecutionsInCycle,
   listTestExecutionsNextgen,
+  getTestExecution,
   bulkExecuteTests,
   generateTestReport,
   createTestExecution,
@@ -619,6 +620,46 @@ describe('tool handlers (smoke, mocked)', () => {
     if (!r.success) {
       expect(r.error).toBe('unexpected bulk failure');
     }
+  });
+
+  it('get_test_execution returns a single execution row', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/e1`).reply(200, {
+      id: 1,
+      key: 'E1',
+      cycleId: 1,
+      testCaseId: 1,
+      testCase: { key: 'CP-T1' },
+      status: 'PASS',
+      comment: null,
+      executedOn: null,
+      executedBy: null,
+      defects: [],
+    });
+    const r = await getTestExecution({ executionId: 'e1' });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data?.testCaseKey).toBe('CP-T1');
+      expect(r.data?.testCaseId).toBe(1);
+      expect(r.data?.status).toBe('PASS');
+    }
+  });
+
+  it('get_test_execution enriches testCaseKey when API omits key', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions/99`)
+      .reply(200, {
+        id: 99,
+        key: 'E99',
+        testCase: { id: 1001 },
+        status: 'PASS',
+        defects: [],
+      });
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testcases/1001`)
+      .reply(200, { id: 1001, key: 'CP-T55', name: 'n', project: { id: 1 } });
+    const r = await getTestExecution({ executionId: '99' });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data?.testCaseKey).toBe('CP-T55');
   });
 
   it('listTestExecutionsInCycle enriches testCaseKey when API omits key', async () => {
