@@ -1,6 +1,16 @@
 # Dev / preview images for PRs to main (same-repo only).
 #
-# Tags (Docker Hub + GHCR): dev-v<package.json version>-<7-char-sha> (e.g. dev-v0.10.0-a1b2c3d).
+# Tags (Docker Hub + GHCR):
+#   - dev-v<package.json version>-<7-char-sha> — unique per commit (e.g. dev-v0.10.0-a1b2c3d)
+#   - dev — rolling tag; always points at the **last successful** build from this workflow
+#     (same digest as that run’s unique tag). Last PR build wins if several PRs run close together.
+#
+# Triggers:
+#   - pull_request (opened, synchronize, reopened, ready_for_review): **synchronize** runs on
+#     every new commit pushed to the PR branch (including force-push), so each update gets a new image.
+#   - workflow_dispatch: rebuild for a PR number without a new commit (same checks: targets main,
+#     same repo, not draft).
+#
 # Production v* and :latest are pushed by docker-release.yml when you push a semver tag after merge.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
@@ -29,6 +39,12 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number (must target main, same repo, not draft). Rebuilds image without a new commit.'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -37,18 +53,54 @@ permissions:
 
 # One active build per PR; newest push wins (avoids stacked runs finishing out of order).
 concurrency:
-  group: docker-pr-${{ github.event.pull_request.number }}
+  group: docker-pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
   cancel-in-progress: true
 
 jobs:
   build-push:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.draft == false
+    if: |
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.draft == false) ||
+      (github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve PR head SHA
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          PR="${{ github.event.inputs.pr_number }}"
+          API="repos/${{ github.repository }}/pulls/${PR}"
+          BASE=$(gh api "$API" --jq .base.ref)
+          DRAFT=$(gh api "$API" --jq .draft)
+          FORK=$(gh api "$API" --jq .head.repo.full_name)
+          SHA=$(gh api "$API" --jq .head.sha)
+          if [ "$BASE" != "main" ]; then
+            echo "::error::PR #$PR must target main (got base: $BASE)"
+            exit 1
+          fi
+          if [ "$DRAFT" = "true" ]; then
+            echo "::error::PR #$PR is still a draft — mark ready for review first."
+            exit 1
+          fi
+          if [ "$FORK" != "${{ github.repository }}" ]; then
+            echo "::error::Fork PRs are not built (head repo: $FORK)"
+            exit 1
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR" >> "$GITHUB_OUTPUT"
+
       - name: Checkout PR head
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ steps.head.outputs.sha }}
           fetch-depth: 1
 
       - name: Set up QEMU
@@ -74,7 +126,7 @@ jobs:
       - name: Compute dev image tags
         id: meta
         env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_SHA: ${{ steps.head.outputs.sha }}
         run: |
           set -euo pipefail
           SHORT=$(echo "$HEAD_SHA" | cut -c1-7)
@@ -86,6 +138,8 @@ jobs:
           GHCR_IMG="ghcr.io/${REPO_LC}"
 
           TAGS="${DOCKERHUB_IMG}:${DEV_TAG}"$'\n'"${GHCR_IMG}:${DEV_TAG}"
+          TAGS+=$'\n'"${DOCKERHUB_IMG}:dev"
+          TAGS+=$'\n'"${GHCR_IMG}:dev"
 
           REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
           LINK_DH="https://hub.docker.com/r/${REPO_LC}/tags?name=${DEV_TAG}"
@@ -113,7 +167,7 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: dev-docker-image
-          number: ${{ github.event.pull_request.number }}
+          number: ${{ steps.head.outputs.pr_number }}
           message: |
             ### Dev Docker image
 
@@ -124,5 +178,7 @@ jobs:
             | **Docker Hub** | [`docker.io/${{ steps.meta.outputs.repo_lc }}:${{ steps.meta.outputs.dev_tag }}`](${{ steps.meta.outputs.link_dockerhub }}) |
             | **GHCR** | [`ghcr.io/${{ steps.meta.outputs.repo_lc }}:${{ steps.meta.outputs.dev_tag }}`](${{ steps.meta.outputs.link_ghcr }}) |
 
-            Same tag on both registries. Tag is `package.json` version + short commit SHA.
+            **Unique tag:** `${{ steps.meta.outputs.dev_tag }}` — **rolling dev tags** (same digest as this build): **`dev`** on both registries — `docker.io/${{ steps.meta.outputs.repo_lc }}:dev` and `ghcr.io/${{ steps.meta.outputs.repo_lc }}:dev`.
+
+            Each push to this branch triggers **`synchronize`** — you get a new unique `dev-v*` tag and **`dev`** moves to that build.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

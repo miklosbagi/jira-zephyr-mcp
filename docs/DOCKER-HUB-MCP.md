@@ -2,6 +2,8 @@
 
 Copy the sections below into the [Docker Hub](https://hub.docker.com/r/miklosbagi/jira-zephyr-mcp) **Full description** when you refresh the page. Keep it aligned with [`README.md`](../README.md) **Quick start** and [`MCP-CURSOR-DOCKER.md`](MCP-CURSOR-DOCKER.md).
 
+**CI note:** [`.github/workflows/docker-pr.yml`](../.github/workflows/docker-pr.yml) publishes PR preview tags `dev-v*-<sha>` plus **`dev`** on Docker Hub and GHCR (`ghcr.io/...`). **`dev`** always points at the last successful PR build from that workflow.
+
 ---
 
 ## MCP quick start (Cursor & other hosts)
