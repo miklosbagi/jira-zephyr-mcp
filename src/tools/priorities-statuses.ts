@@ -1,4 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { zephyrToolFailure } from '../utils/zephyr-error-info.js';
 import {
   listPrioritiesSchema,
   listStatusesSchema,
@@ -29,11 +30,8 @@ export const listPriorities = async (input: ListPrioritiesInput) => {
         })),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -51,10 +49,7 @@ export const listStatuses = async (input: ListStatusesInput) => {
         })),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };

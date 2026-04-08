@@ -1,5 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
-import { formatZephyrApiError } from '../utils/zephyr-api-error.js';
+import { zephyrToolFailure } from '../utils/zephyr-error-info.js';
 import { getZephyrBaseUrl } from '../utils/config.js';
 import {
   createTestCaseSchema,
@@ -73,11 +73,8 @@ export const createTestCase = async (input: CreateTestCaseInput) => {
         },
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['create'] });
   }
 };
 
@@ -114,11 +111,8 @@ export const searchTestCases = async (input: SearchTestCasesInput) => {
         projectKey: validatedInput.projectKey,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -154,11 +148,8 @@ export const listTestCasesNextgen = async (input: ListTestCasesNextgenInput) => 
         })),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -170,11 +161,8 @@ export const getTestCaseLinks = async (input: GetTestCaseLinksInput) => {
       success: true,
       data: links,
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -211,10 +199,7 @@ export const getTestCase = async (input: { testCaseId: string }) => {
       },
     };
   } catch (error: unknown) {
-    return {
-      success: false,
-      error: formatZephyrApiError(error),
-    };
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -236,10 +221,7 @@ export const updateTestCase = async (input: UpdateTestCaseInput) => {
       },
     };
   } catch (error: unknown) {
-    return {
-      success: false,
-      error: formatZephyrApiError(error),
-    };
+    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
   }
 };
 
@@ -256,11 +238,8 @@ export const archiveTestCase = async (input: ArchiveTestCaseInput) => {
         archived: (testCase as any).archived ?? true,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['archive'] });
   }
 };
 
@@ -277,11 +256,8 @@ export const unarchiveTestCase = async (input: UnarchiveTestCaseInput) => {
         archived: (testCase as any).archived ?? false,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['archive'] });
   }
 };
 
@@ -293,11 +269,8 @@ export const deleteTestCase = async (input: DeleteTestCaseInput) => {
       success: true,
       data: { testCaseKey: validatedInput.testCaseKey, deleted: true },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['delete'] });
   }
 };
 
@@ -340,10 +313,7 @@ export const createMultipleTestCases = async (input: CreateMultipleTestCasesInpu
         summary: result.summary,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['create'] });
   }
 };

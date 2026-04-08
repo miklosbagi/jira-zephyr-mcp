@@ -1,5 +1,6 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
 import type { ZephyrProject } from '../types/zephyr-types.js';
+import { zephyrToolFailure } from '../utils/zephyr-error-info.js';
 import { listProjectsSchema, type ListProjectsInput } from '../utils/validation.js';
 
 let zephyrClient: ZephyrClient | null = null;
@@ -30,10 +31,7 @@ export const listProjects = async (input: ListProjectsInput) => {
         })),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };

@@ -1,6 +1,10 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
 import { getExecutionTestCaseEntityId, getExecutionTestCaseKey } from '../utils/test-execution-identity.js';
-import { formatZephyrApiError } from '../utils/zephyr-api-error.js';
+import {
+  buildZephyrErrorInfo,
+  type ZephyrErrorInfo,
+  zephyrToolFailure,
+} from '../utils/zephyr-error-info.js';
 import { getJiraClient } from './jira-issues.js';
 import {
   executeTestSchema,
@@ -58,10 +62,7 @@ export const removeTestCaseFromCycle = async (input: RemoveTestCaseFromCycleInpu
       data: { cycleKey, testCaseKey, executionId, removed: true },
     };
   } catch (error: unknown) {
-    return {
-      success: false,
-      error: formatZephyrApiError(error),
-    };
+    return zephyrToolFailure(error, { permissionCategories: ['delete'] });
   }
 };
 
@@ -87,11 +88,8 @@ export const createTestExecution = async (input: CreateTestExecutionInput) => {
         executedBy: execution.executedBy?.displayName,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['create'] });
   }
 };
 
@@ -123,11 +121,8 @@ export const executeTest = async (input: ExecuteTestInput) => {
         })),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
   }
 };
 
@@ -162,10 +157,7 @@ export const listTestExecutionsInCycle = async (input: ListTestExecutionsInCycle
       },
     };
   } catch (error: unknown) {
-    return {
-      success: false,
-      error: formatZephyrApiError(error),
-    };
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -211,11 +203,8 @@ export const listTestExecutionsNextgen = async (input: ListTestExecutionsNextgen
         }),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -247,10 +236,7 @@ export const getTestExecution = async (input: GetTestExecutionInput) => {
       },
     };
   } catch (error: unknown) {
-    return {
-      success: false,
-      error: formatZephyrApiError(error),
-    };
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -286,11 +272,8 @@ export const bulkExecuteTests = async (input: BulkExecuteTestsInput) => {
         summary: result.summary,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
   }
 };
 
@@ -322,11 +305,8 @@ export const getTestExecutionStatus = async (input: GetTestExecutionStatusInput)
         },
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -335,6 +315,7 @@ type IssueLinkRow = {
   issueId?: number;
   success: boolean;
   error?: string;
+  errorInfo?: ZephyrErrorInfo;
 };
 
 /** Resolve Jira issue keys to ids and call Zephyr for each link (coverage). */
@@ -344,19 +325,27 @@ async function linkIssueKeysToZephyr(
 ): Promise<IssueLinkRow[]> {
   const results: IssueLinkRow[] = [];
   for (const issueKey of issueKeys) {
+    let issueId: number | undefined;
     try {
       const issue = await getJiraClient().getIssue(issueKey, ['id']);
-      const issueId = Number(issue.id);
+      issueId = Number(issue.id);
       if (!Number.isSafeInteger(issueId) || issueId < 1) {
-        throw new Error(`Could not resolve numeric Jira issue id for ${issueKey} (got: ${issue.id})`);
+        const err = new Error(`Could not resolve numeric Jira issue id for ${issueKey} (got: ${issue.id})`);
+        const info = buildZephyrErrorInfo(err, { permissionCategories: [], integration: 'jira' });
+        results.push({ issueKey, success: false, error: info.message, errorInfo: info });
+        continue;
       }
+    } catch (error: unknown) {
+      const info = buildZephyrErrorInfo(error, { permissionCategories: [], integration: 'jira' });
+      results.push({ issueKey, success: false, error: info.message, errorInfo: info });
+      continue;
+    }
+    try {
       await linkOne(issueId);
       results.push({ issueKey, issueId, success: true });
-    } catch (error: any) {
-      const status = error.response?.status;
-      const bodyMsg = error.response?.data?.message;
-      const detail = [status && `HTTP ${status}`, bodyMsg || error.message].filter(Boolean).join(': ');
-      results.push({ issueKey, success: false, error: detail || String(error) });
+    } catch (error: unknown) {
+      const info = buildZephyrErrorInfo(error, { permissionCategories: ['edit'], integration: 'zephyr' });
+      results.push({ issueKey, issueId, success: false, error: info.message, errorInfo: info });
     }
   }
   return results;
@@ -364,62 +353,50 @@ async function linkIssueKeysToZephyr(
 
 export const linkTestsToIssues = async (input: LinkTestsToIssuesInput) => {
   const validatedInput = linkTestsToIssuesSchema.parse(input);
-  try {
-    const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
-      getZephyrClient().createTestCaseIssueLink(validatedInput.testCaseId, issueId)
-    );
-    return {
-      success: true,
-      data: {
-        testCaseId: validatedInput.testCaseId,
-        linkResults: results,
-        successCount: results.filter((r) => r.success).length,
-        failureCount: results.filter((r) => !r.success).length,
-      },
-    };
-  } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
-  }
+  const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
+    getZephyrClient().createTestCaseIssueLink(validatedInput.testCaseId, issueId)
+  );
+  return {
+    success: true,
+    data: {
+      testCaseId: validatedInput.testCaseId,
+      linkResults: results,
+      successCount: results.filter((r) => r.success).length,
+      failureCount: results.filter((r) => !r.success).length,
+    },
+  };
 };
 
 export const linkTestCycleToIssues = async (input: LinkTestCycleToIssuesInput) => {
   const validatedInput = linkTestCycleToIssuesSchema.parse(input);
-  try {
-    const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
-      getZephyrClient().createTestCycleIssueLink(validatedInput.cycleKey, issueId)
-    );
-    return {
-      success: true,
-      data: {
-        cycleKey: validatedInput.cycleKey,
-        linkResults: results,
-        successCount: results.filter((r) => r.success).length,
-        failureCount: results.filter((r) => !r.success).length,
-      },
-    };
-  } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
-  }
+  const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
+    getZephyrClient().createTestCycleIssueLink(validatedInput.cycleKey, issueId)
+  );
+  return {
+    success: true,
+    data: {
+      cycleKey: validatedInput.cycleKey,
+      linkResults: results,
+      successCount: results.filter((r) => r.success).length,
+      failureCount: results.filter((r) => !r.success).length,
+    },
+  };
 };
 
 export const linkTestPlanToIssues = async (input: LinkTestPlanToIssuesInput) => {
   const validatedInput = linkTestPlanToIssuesSchema.parse(input);
-  try {
-    const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
-      getZephyrClient().createTestPlanIssueLink(validatedInput.planKey, issueId)
-    );
-    return {
-      success: true,
-      data: {
-        planKey: validatedInput.planKey,
-        linkResults: results,
-        successCount: results.filter((r) => r.success).length,
-        failureCount: results.filter((r) => !r.success).length,
-      },
-    };
-  } catch (error: any) {
-    return { success: false, error: error.response?.data?.message || error.message };
-  }
+  const results = await linkIssueKeysToZephyr(validatedInput.issueKeys, (issueId) =>
+    getZephyrClient().createTestPlanIssueLink(validatedInput.planKey, issueId)
+  );
+  return {
+    success: true,
+    data: {
+      planKey: validatedInput.planKey,
+      linkResults: results,
+      successCount: results.filter((r) => r.success).length,
+      failureCount: results.filter((r) => !r.success).length,
+    },
+  };
 };
 
 export const generateTestReport = async (input: GenerateTestReportInput) => {
@@ -448,11 +425,8 @@ export const generateTestReport = async (input: GenerateTestReportInput) => {
         generatedOn: report.generatedOn,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 

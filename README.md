@@ -156,6 +156,8 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **link_test_plan_to_issues** | Link a test plan to Jira issue(s) ([`POST .../testplans/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Plans/operation/createTestPlanIssueLink)). Same Jira id resolution. |
 | **generate_test_report** | Generate cycle report (JSON or HTML). |
 
+**Zephyr tool failures (v0.15.1+):** When a Zephyr-backed tool returns `success: false`, the JSON includes **`errorInfo`**: `httpStatus`, **`kind`** (e.g. `permission_denied`, `validation`, `not_found`), **`permissionIssueLikely`**, **`relevantPermissionCategories`** (aligned with Zephyr UI buckets: Create, Edit, Archive, Manage Folders, Create Versions, Delete), optional **`hint`**, and **`integration`** (`zephyr` vs `jira` on issue-link steps). The top-level **`error`** string matches **`errorInfo.message`** (typically `HTTP <status>: …` when the API returned a status).
+
 ---
 
 ## Tool usage examples

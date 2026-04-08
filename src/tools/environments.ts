@@ -1,4 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { zephyrToolFailure } from '../utils/zephyr-error-info.js';
 import {
   listEnvironmentsSchema,
   getEnvironmentSchema,
@@ -40,11 +41,8 @@ export const listEnvironments = async (input: ListEnvironmentsInput) => {
         })),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -62,11 +60,8 @@ export const getEnvironment = async (input: GetEnvironmentInput) => {
         self: e.self,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -88,11 +83,8 @@ export const createEnvironment = async (input: CreateEnvironmentInput) => {
         self: e.self,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['create'] });
   }
 };
 
@@ -113,10 +105,7 @@ export const updateEnvironment = async (input: UpdateEnvironmentInput) => {
         self: e.self,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
   }
 };

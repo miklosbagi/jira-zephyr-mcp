@@ -1,4 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { zephyrToolFailure } from '../utils/zephyr-error-info.js';
 import {
   createTestPlanSchema,
   listTestPlansSchema,
@@ -43,11 +44,8 @@ export const createTestPlan = async (input: CreateTestPlanInput) => {
         createdBy: testPlan.createdBy.displayName,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['create'] });
   }
 };
 
@@ -77,11 +75,8 @@ export const listTestPlans = async (input: ListTestPlansInput) => {
         })),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -102,11 +97,8 @@ export const getTestPlan = async (input: GetTestPlanInput) => {
         createdBy: testPlan.createdBy?.displayName,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
   }
 };
 
@@ -138,10 +130,7 @@ export const updateTestPlan = async (input: UpdateTestPlanInput) => {
         createdBy: testPlan.createdBy?.displayName,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
   }
 };

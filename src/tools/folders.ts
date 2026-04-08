@@ -1,4 +1,5 @@
 import { ZephyrClient } from '../clients/zephyr-client.js';
+import { zephyrToolFailure } from '../utils/zephyr-error-info.js';
 import {
   listFoldersSchema,
   createFolderSchema,
@@ -39,11 +40,8 @@ export const listFolders = async (input: ListFoldersInput) => {
         })),
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['manage_folders'] });
   }
 };
 
@@ -67,10 +65,7 @@ export const createFolder = async (input: CreateFolderInput) => {
         self: folder.self,
       },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.response?.data?.message || error.message,
-    };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['manage_folders'] });
   }
 };
