@@ -29,6 +29,10 @@ import {
   listTestExecutionsInCycle,
   listTestExecutionsNextgen,
   getTestExecution,
+  getTestExecutionLinks,
+  getTestExecutionIssueLinks,
+  getTestExecutionTestSteps,
+  syncTestExecutionTestSteps,
   bulkExecuteTests,
   generateTestReport,
   createTestExecution,
@@ -634,6 +638,69 @@ describe('tool handlers (smoke, mocked)', () => {
     if (!r.success) {
       expect(r.error).toBe('unexpected bulk failure');
     }
+  });
+
+  it('get_test_execution_links returns raw links payload', async () => {
+    const payload = { issueLinks: [], webLinks: [] };
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/e-links/links`).reply(200, payload);
+    const r = await getTestExecutionLinks({ executionId: 'e-links' });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toEqual(payload);
+  });
+
+  it('get_test_execution_issue_links returns issue links payload', async () => {
+    const payload = { issues: [{ issueId: 42 }] };
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/e-iss/links/issues`).reply(200, payload);
+    const r = await getTestExecutionIssueLinks({ executionId: 'e-iss' });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toEqual(payload);
+  });
+
+  it('get_test_execution_issue_links returns error when Zephyr fails', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/missing/links/issues`).reply(404, { message: 'nope' });
+    const r = await getTestExecutionIssueLinks({ executionId: 'missing' });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.errorInfo?.kind).toBe('not_found');
+  });
+
+  it('get_test_execution_links returns error when Zephyr fails', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/bad-ex/links`).reply(500, { message: 'server' });
+    const r = await getTestExecutionLinks({ executionId: 'bad-ex' });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.errorInfo?.kind).toBe('server_error');
+  });
+
+  it('get_test_execution_test_steps returns error when Zephyr fails', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/x/teststeps`).reply(403, { message: 'forbidden' });
+    const r = await getTestExecutionTestSteps({ executionId: 'x' });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.errorInfo?.kind).toBe('permission_denied');
+  });
+
+  it('sync_test_execution_test_steps returns error when Zephyr fails', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .post(`${V2}/testexecutions/bad-sync/teststeps/sync`, () => true)
+      .reply(400, { message: 'bad request' });
+    const r = await syncTestExecutionTestSteps({ executionId: 'bad-sync' });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.errorInfo?.kind).toBe('validation');
+  });
+
+  it('get_test_execution_test_steps returns execution steps', async () => {
+    const payload = { values: [{ index: 1 }] };
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/ex-1/teststeps`).reply(200, payload);
+    const r = await getTestExecutionTestSteps({ executionId: 'ex-1' });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toEqual(payload);
+  });
+
+  it('sync_test_execution_test_steps posts sync', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .post(`${V2}/testexecutions/ex-sync/teststeps/sync`, (b: Record<string, unknown>) => Object.keys(b).length === 0)
+      .reply(200, { done: true });
+    const r = await syncTestExecutionTestSteps({ executionId: 'ex-sync' });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toEqual({ done: true });
   });
 
   it('get_test_execution returns a single execution row', async () => {

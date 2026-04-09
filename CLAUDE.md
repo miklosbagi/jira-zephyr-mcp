@@ -32,6 +32,10 @@ The following environment variables are required:
 - `bulk_execute_tests`: Update many executions sequentially (one PUT each; no single bulk API in public spec)
 - `list_test_executions_nextgen`: Cursor-paged list of executions (`GET /testexecutions/nextgen`)
 - `get_test_execution`: Get one execution by id or key (`GET /testexecutions/{idOrKey}`, OpenAPI `getTestExecution`)
+- `get_test_execution_links`: List web links for an execution (`GET /testexecutions/{id}/links`, OpenAPI `getTestExecutionLinks`)
+- `get_test_execution_issue_links`: List Jira issue links for an execution (`GET .../links/issues`, OpenAPI `getTestExecutionIssueLinks`)
+- `get_test_execution_test_steps`: Get execution test steps (`GET .../teststeps`, OpenAPI `getTestExecutionTestSteps`)
+- `sync_test_execution_test_steps`: Sync execution steps with the test case script (`POST .../teststeps/sync`, OpenAPI `syncTestExecutionTestSteps`; optional `body`, default `{}`)
 - `get_test_execution_status`: Get test execution progress and statistics
 - `remove_test_case_from_cycle`: Remove a test case from a cycle (delete test execution by id or cycle + case key)
 - `link_tests_to_issues`: Link a test case to Jira issue(s) as coverage — `POST /testcases/{key}/links/issues` with `{ issueId }` (Jira Cloud numeric id); resolves keys via Jira REST `GET /issue/{key}` (v0.12.0)

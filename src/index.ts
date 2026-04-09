@@ -19,6 +19,10 @@ import {
   listTestExecutionsInCycle,
   listTestExecutionsNextgen,
   getTestExecution,
+  getTestExecutionLinks,
+  getTestExecutionIssueLinks,
+  getTestExecutionTestSteps,
+  syncTestExecutionTestSteps,
   linkTestsToIssues,
   linkTestCycleToIssues,
   linkTestPlanToIssues,
@@ -55,6 +59,10 @@ import {
   executeTestSchema,
   getTestExecutionStatusSchema,
   getTestExecutionSchema,
+  getTestExecutionLinksSchema,
+  getTestExecutionIssueLinksSchema,
+  getTestExecutionTestStepsSchema,
+  syncTestExecutionTestStepsSchema,
   listTestExecutionsInCycleSchema,
   listTestExecutionsNextgenSchema,
   bulkExecuteTestsSchema,
@@ -100,6 +108,10 @@ import {
   type ExecuteTestInput,
   type GetTestExecutionStatusInput,
   type GetTestExecutionInput,
+  type GetTestExecutionLinksInput,
+  type GetTestExecutionIssueLinksInput,
+  type GetTestExecutionTestStepsInput,
+  type SyncTestExecutionTestStepsInput,
   type ListTestExecutionsInCycleInput,
   type ListTestExecutionsNextgenInput,
   type BulkExecuteTestsInput,
@@ -137,7 +149,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.15.2',
+    version: '0.16.0',
   },
   {
     capabilities: {
@@ -340,6 +352,70 @@ const TOOLS = [
         executionId: {
           type: 'string',
           description: 'Test execution id or key (e.g. numeric id or execution key from list_test_executions_in_cycle)',
+        },
+      },
+      required: ['executionId'],
+    },
+  },
+  {
+    name: 'get_test_execution_links',
+    description:
+      'List web links and related link metadata for a test execution (GET /testexecutions/{testExecutionIdOrKey}/links, OpenAPI getTestExecutionLinks).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        executionId: {
+          type: 'string',
+          description: 'Test execution id or key (from list_test_executions_in_cycle or get_test_execution)',
+        },
+      },
+      required: ['executionId'],
+    },
+  },
+  {
+    name: 'get_test_execution_issue_links',
+    description:
+      'List Jira issue links for a test execution (GET /testexecutions/{testExecutionIdOrKey}/links/issues, OpenAPI getTestExecutionIssueLinks).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        executionId: {
+          type: 'string',
+          description: 'Test execution id or key (from list_test_executions_in_cycle or get_test_execution)',
+        },
+      },
+      required: ['executionId'],
+    },
+  },
+  {
+    name: 'get_test_execution_test_steps',
+    description:
+      'Get execution test steps with per-step results (GET /testexecutions/{testExecutionIdOrKey}/teststeps, OpenAPI getTestExecutionTestSteps).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        executionId: {
+          type: 'string',
+          description: 'Test execution id or key (from list_test_executions_in_cycle or get_test_execution)',
+        },
+      },
+      required: ['executionId'],
+    },
+  },
+  {
+    name: 'sync_test_execution_test_steps',
+    description:
+      'Sync execution test steps with the current test case script (POST /testexecutions/{testExecutionIdOrKey}/teststeps/sync, OpenAPI syncTestExecutionTestSteps). Sends an empty JSON body when omitted; pass body when your tenant requires a specific payload.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        executionId: {
+          type: 'string',
+          description: 'Test execution id or key (from list_test_executions_in_cycle or get_test_execution)',
+        },
+        body: {
+          type: 'object',
+          description: 'Optional JSON body for the sync request (see Zephyr Scale API docs; defaults to {})',
         },
       },
       required: ['executionId'],
@@ -1093,6 +1169,70 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await getTestExecution(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'get_test_execution_links': {
+        const validatedArgs = validateInput<GetTestExecutionLinksInput>(
+          getTestExecutionLinksSchema,
+          args,
+          'get_test_execution_links'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await getTestExecutionLinks(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'get_test_execution_issue_links': {
+        const validatedArgs = validateInput<GetTestExecutionIssueLinksInput>(
+          getTestExecutionIssueLinksSchema,
+          args,
+          'get_test_execution_issue_links'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await getTestExecutionIssueLinks(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'get_test_execution_test_steps': {
+        const validatedArgs = validateInput<GetTestExecutionTestStepsInput>(
+          getTestExecutionTestStepsSchema,
+          args,
+          'get_test_execution_test_steps'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await getTestExecutionTestSteps(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'sync_test_execution_test_steps': {
+        const validatedArgs = validateInput<SyncTestExecutionTestStepsInput>(
+          syncTestExecutionTestStepsSchema,
+          args,
+          'sync_test_execution_test_steps'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await syncTestExecutionTestSteps(validatedArgs), null, 2),
             },
           ],
         };

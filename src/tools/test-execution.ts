@@ -10,6 +10,10 @@ import {
   executeTestSchema,
   getTestExecutionStatusSchema,
   getTestExecutionSchema,
+  getTestExecutionLinksSchema,
+  getTestExecutionIssueLinksSchema,
+  getTestExecutionTestStepsSchema,
+  syncTestExecutionTestStepsSchema,
   listTestExecutionsInCycleSchema,
   listTestExecutionsNextgenSchema,
   bulkExecuteTestsSchema,
@@ -22,6 +26,10 @@ import {
   type ExecuteTestInput,
   type GetTestExecutionStatusInput,
   type GetTestExecutionInput,
+  type GetTestExecutionLinksInput,
+  type GetTestExecutionIssueLinksInput,
+  type GetTestExecutionTestStepsInput,
+  type SyncTestExecutionTestStepsInput,
   type ListTestExecutionsInCycleInput,
   type ListTestExecutionsNextgenInput,
   type BulkExecuteTestsInput,
@@ -237,6 +245,49 @@ export const getTestExecution = async (input: GetTestExecutionInput) => {
     };
   } catch (error: unknown) {
     return zephyrToolFailure(error, { permissionCategories: [] });
+  }
+};
+
+export const getTestExecutionLinks = async (input: GetTestExecutionLinksInput) => {
+  const validatedInput = getTestExecutionLinksSchema.parse(input);
+  try {
+    const data = await getZephyrClient().getTestExecutionLinks(validatedInput.executionId.trim());
+    return { success: true, data };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
+  }
+};
+
+export const getTestExecutionIssueLinks = async (input: GetTestExecutionIssueLinksInput) => {
+  const validatedInput = getTestExecutionIssueLinksSchema.parse(input);
+  try {
+    const data = await getZephyrClient().getTestExecutionIssueLinks(validatedInput.executionId.trim());
+    return { success: true, data };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
+  }
+};
+
+export const getTestExecutionTestSteps = async (input: GetTestExecutionTestStepsInput) => {
+  const validatedInput = getTestExecutionTestStepsSchema.parse(input);
+  try {
+    const data = await getZephyrClient().getTestExecutionTestSteps(validatedInput.executionId.trim());
+    return { success: true, data };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: [] });
+  }
+};
+
+export const syncTestExecutionTestSteps = async (input: SyncTestExecutionTestStepsInput) => {
+  const validatedInput = syncTestExecutionTestStepsSchema.parse(input);
+  try {
+    const data = await getZephyrClient().syncTestExecutionTestSteps(
+      validatedInput.executionId.trim(),
+      validatedInput.body
+    );
+    return { success: true, data };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
   }
 };
 

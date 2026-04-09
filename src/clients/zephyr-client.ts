@@ -412,6 +412,49 @@ export class ZephyrClient {
   }
 
   /**
+   * GET /testexecutions/{id}/links — web links and related link metadata for the execution.
+   * @see https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecutionLinks
+   */
+  async getTestExecutionLinks(executionIdOrKey: string): Promise<unknown> {
+    const id = encodeURIComponent(executionIdOrKey);
+    const response = await this.client.get(`/testexecutions/${id}/links`);
+    return response.data;
+  }
+
+  /**
+   * GET /testexecutions/{id}/links/issues — Jira issue links for the test execution.
+   * @see https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecutionIssueLinks
+   */
+  async getTestExecutionIssueLinks(executionIdOrKey: string): Promise<unknown> {
+    const id = encodeURIComponent(executionIdOrKey);
+    const response = await this.client.get(`/testexecutions/${id}/links/issues`);
+    return response.data;
+  }
+
+  /**
+   * GET /testexecutions/{id}/teststeps — execution test steps (per-step results).
+   * @see https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecutionTestSteps
+   */
+  async getTestExecutionTestSteps(executionIdOrKey: string): Promise<unknown> {
+    const id = encodeURIComponent(executionIdOrKey);
+    const response = await this.client.get(`/testexecutions/${id}/teststeps`);
+    return response.data;
+  }
+
+  /**
+   * POST /testexecutions/{id}/teststeps/sync — sync execution steps with the test case script (OpenAPI `syncTestExecutionTestSteps`).
+   * Pass an optional JSON body when your tenant requires fields beyond `{}` (see Scale API docs).
+   */
+  async syncTestExecutionTestSteps(
+    executionIdOrKey: string,
+    body?: Record<string, unknown>
+  ): Promise<unknown> {
+    const id = encodeURIComponent(executionIdOrKey);
+    const response = await this.client.post(`/testexecutions/${id}/teststeps/sync`, body ?? {});
+    return response.data;
+  }
+
+  /**
    * Remove a test case from a cycle by deleting its test execution (Scale Cloud v2:
    * DELETE /testexecutions/{id}). Some instances document this poorly; if the API returns
    * 404/405, removal may not be enabled for your tenant.

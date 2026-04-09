@@ -103,6 +103,27 @@ export const getTestExecutionSchema = z.object({
   executionId: z.string().min(1, 'Test execution id or key is required'),
 });
 
+/** GET /testexecutions/{idOrKey}/links — OpenAPI `getTestExecutionLinks`. */
+export const getTestExecutionLinksSchema = z.object({
+  executionId: z.string().min(1, 'Test execution id or key is required'),
+});
+
+/** GET /testexecutions/{idOrKey}/links/issues — OpenAPI `getTestExecutionIssueLinks`. */
+export const getTestExecutionIssueLinksSchema = z.object({
+  executionId: z.string().min(1, 'Test execution id or key is required'),
+});
+
+/** GET /testexecutions/{idOrKey}/teststeps — OpenAPI `getTestExecutionTestSteps`. */
+export const getTestExecutionTestStepsSchema = z.object({
+  executionId: z.string().min(1, 'Test execution id or key is required'),
+});
+
+/** POST /testexecutions/{idOrKey}/teststeps/sync — OpenAPI `syncTestExecutionTestSteps`. */
+export const syncTestExecutionTestStepsSchema = z.object({
+  executionId: z.string().min(1, 'Test execution id or key is required'),
+  body: z.record(z.string(), z.any()).optional(),
+});
+
 export const listTestExecutionsInCycleSchema = z.object({
   cycleId: z.string().min(1, 'Cycle ID or key is required'),
 });
@@ -394,6 +415,10 @@ export type UpdateTestCycleInput = z.infer<typeof updateTestCycleSchema>;
 export type ExecuteTestInput = z.infer<typeof executeTestSchema>;
 export type GetTestExecutionStatusInput = z.infer<typeof getTestExecutionStatusSchema>;
 export type GetTestExecutionInput = z.infer<typeof getTestExecutionSchema>;
+export type GetTestExecutionLinksInput = z.infer<typeof getTestExecutionLinksSchema>;
+export type GetTestExecutionIssueLinksInput = z.infer<typeof getTestExecutionIssueLinksSchema>;
+export type GetTestExecutionTestStepsInput = z.infer<typeof getTestExecutionTestStepsSchema>;
+export type SyncTestExecutionTestStepsInput = z.infer<typeof syncTestExecutionTestStepsSchema>;
 export type ListTestExecutionsInCycleInput = z.infer<typeof listTestExecutionsInCycleSchema>;
 export type ListTestExecutionsNextgenInput = z.infer<typeof listTestExecutionsNextgenSchema>;
 export type ListTestCasesNextgenInput = z.infer<typeof listTestCasesNextgenSchema>;

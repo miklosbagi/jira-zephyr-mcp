@@ -769,6 +769,54 @@ describe('ZephyrClient (integration, mocked)', () => {
     });
   });
 
+  describe('getTestExecutionLinks / getTestExecutionIssueLinks / getTestExecutionTestSteps / syncTestExecutionTestSteps', () => {
+    it('sends GET /v2/testexecutions/{id}/links', async () => {
+      const body = { issueLinks: [], webLinks: [] };
+      const scope = nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/e-1/links`).reply(200, body);
+      await expect(client.getTestExecutionLinks('e-1')).resolves.toEqual(body);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('sends GET /v2/testexecutions/{id}/links/issues', async () => {
+      const body = { issues: [{ issueId: 1 }] };
+      const scope = nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/e-2/links/issues`).reply(200, body);
+      await expect(client.getTestExecutionIssueLinks('e-2')).resolves.toEqual(body);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('sends GET /v2/testexecutions/{id}/teststeps', async () => {
+      const body = { values: [{ index: 1, status: 'PASS' }] };
+      const scope = nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/99/teststeps`).reply(200, body);
+      await expect(client.getTestExecutionTestSteps('99')).resolves.toEqual(body);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('sends POST /v2/testexecutions/{id}/teststeps/sync with empty body by default', async () => {
+      const body = { synced: true };
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testexecutions/e-sync/teststeps/sync`, (b: Record<string, unknown>) => Object.keys(b).length === 0)
+        .reply(200, body);
+      await expect(client.syncTestExecutionTestSteps('e-sync')).resolves.toEqual(body);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('sends POST /v2/testexecutions/{id}/teststeps/sync with custom body', async () => {
+      const body = { ok: true };
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testexecutions/e-sync/teststeps/sync`, (b: Record<string, unknown>) => (b as { mode?: string }).mode === 'FULL')
+        .reply(200, body);
+      await expect(client.syncTestExecutionTestSteps('e-sync', { mode: 'FULL' })).resolves.toEqual(body);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('encodes execution id in path segments', async () => {
+      const encoded = encodeURIComponent('E/1');
+      const scope = nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/${encoded}/links`).reply(200, {});
+      await client.getTestExecutionLinks('E/1');
+      expect(scope.isDone()).toBe(true);
+    });
+  });
+
   describe('getTestExecutionSummary', () => {
     it('aggregates statuses across branches', async () => {
       const values = [
