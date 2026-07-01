@@ -31,7 +31,7 @@ Optional: `ZEPHYR_BASE_URL` (default US Scale API; **EU:** `https://eu.api.zephy
 - Resolve keys: Jira **`GET /rest/api/3/issue/{key}`** (fields can include `id`), then POST to Zephyr.
 - **PUT** endpoints often need **full merged bodies** after GET (test cases, cycles, environments) — see existing client methods.
 - **Attachments:** No public Scale Cloud v2 routes — do not implement private TM4J/S3 flows without explicit request ([issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118); gaps doc §22).
-- **Execution status:** `execute_test` uses `PASS` | `FAIL` | `WIP` (In progress) | `BLOCKED`. Per-step: **`update_test_execution_test_steps`** (v0.17.0).
+- **Execution status:** `execute_test` uses `PASS` | `FAIL` | `WIP` (In progress) | `BLOCKED`; optional `environmentName` on update (v0.18.0). Per-step: **`update_test_execution_test_steps`** (v0.17.0).
 
 ## Tests
 

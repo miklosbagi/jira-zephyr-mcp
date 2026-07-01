@@ -58,6 +58,7 @@ export interface ZephyrTestExecution {
   cycleId: string;
   testCaseId: string;
   status: 'PASS' | 'FAIL' | 'WIP' | 'BLOCKED' | 'NOT_EXECUTED';
+  environmentName?: string;
   comment?: string;
   executedOn?: string;
   executedBy?: {

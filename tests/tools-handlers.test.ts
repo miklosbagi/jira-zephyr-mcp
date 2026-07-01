@@ -245,6 +245,19 @@ describe('tool handlers (smoke, mocked)', () => {
       expect(execOut.data?.defects).toEqual([{ key: 'BUG-1', summary: 'Defect summary' }]);
     }
 
+    nock(ZEPHYR_ORIGIN)
+      .put(`${V2}/testexecutions/e2`, (b: Record<string, unknown>) => b.environmentName === 'Staging')
+      .reply(200, { ...ex, key: 'E2', environmentName: 'Staging' });
+    const envOut = await executeTest({
+      executionId: 'e2',
+      status: 'WIP',
+      environmentName: 'Staging',
+    });
+    expect(envOut.success).toBe(true);
+    if (envOut.success) {
+      expect(envOut.data?.environmentName).toBe('Staging');
+    }
+
     nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions`).query({ testCycle: 'C1' }).reply(200, {
       values: [{ status: 'PASS' }],
       total: 1,

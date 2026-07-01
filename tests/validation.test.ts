@@ -124,6 +124,13 @@ describe('validation schemas', () => {
         status: 'PASS',
       })
     ).toMatchObject({ executionId: 'e1', status: 'PASS' });
+    expect(
+      executeTestSchema.parse({
+        executionId: 'e1',
+        status: 'WIP',
+        environmentName: 'Staging',
+      })
+    ).toMatchObject({ environmentName: 'Staging' });
   });
 
   it('getTestExecutionStatusSchema', () => {
@@ -149,6 +156,11 @@ describe('validation schemas', () => {
         executions: [{ executionId: 'e1', status: 'PASS' }],
       })
     ).toMatchObject({ continueOnError: true });
+    expect(
+      bulkExecuteTestsSchema.parse({
+        executions: [{ executionId: 'e1', status: 'PASS', environmentName: 'Production' }],
+      }).executions[0]
+    ).toMatchObject({ environmentName: 'Production' });
   });
 
   it('addTestCasesToCycleSchema', () => {

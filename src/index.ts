@@ -152,7 +152,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.17.0',
+    version: '0.18.0',
   },
   {
     capabilities: {
@@ -507,7 +507,8 @@ const TOOLS = [
   },
   {
     name: 'execute_test',
-    description: 'Update test execution results',
+    description:
+      'Update test execution results (status, comment, defects, environment). Optional environmentName sets or changes the environment assigned to this execution in the cycle (OpenAPI updateTestExecution).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -515,6 +516,11 @@ const TOOLS = [
         status: { type: 'string', enum: ['PASS', 'FAIL', 'WIP', 'BLOCKED'], description: 'Execution status' },
         comment: { type: 'string', description: 'Execution comment (optional)' },
         defects: { type: 'array', items: { type: 'string' }, description: 'Linked defect keys (optional)' },
+        environmentName: {
+          type: 'string',
+          description:
+            'Environment name for this execution (optional). Use list_environments for valid names; same field as create_test_execution environmentName.',
+        },
       },
       required: ['executionId', 'status'],
     },
@@ -522,13 +528,14 @@ const TOOLS = [
   {
     name: 'bulk_execute_tests',
     description:
-      'Update many test executions sequentially (one PUT per item). The public API has no single bulk-update endpoint; mirrors create_multiple_test_cases. Optional continueOnError (default true).',
+      'Update many test executions sequentially (one PUT per item). The public API has no single bulk-update endpoint; mirrors create_multiple_test_cases. Optional continueOnError (default true). Each item supports optional environmentName.',
     inputSchema: {
       type: 'object',
       properties: {
         executions: {
           type: 'array',
-          description: 'Each item: executionId, status (PASS|FAIL|WIP|BLOCKED), optional comment and defects',
+          description:
+            'Each item: executionId, status (PASS|FAIL|WIP|BLOCKED), optional comment, defects, and environmentName',
           items: {
             type: 'object',
             properties: {
@@ -536,6 +543,7 @@ const TOOLS = [
               status: { type: 'string', enum: ['PASS', 'FAIL', 'WIP', 'BLOCKED'] },
               comment: { type: 'string' },
               defects: { type: 'array', items: { type: 'string' } },
+              environmentName: { type: 'string', description: 'Environment name (optional)' },
             },
             required: ['executionId', 'status'],
           },

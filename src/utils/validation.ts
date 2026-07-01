@@ -92,6 +92,7 @@ export const executeTestSchema = z.object({
   status: z.enum(['PASS', 'FAIL', 'WIP', 'BLOCKED']),
   comment: z.string().optional(),
   defects: z.array(z.string()).optional(),
+  environmentName: z.string().optional(),
 });
 
 export const getTestExecutionStatusSchema = z.object({
@@ -170,6 +171,7 @@ const singleExecutionUpdateSchema = z.object({
   status: z.enum(['PASS', 'FAIL', 'WIP', 'BLOCKED']),
   comment: z.string().optional(),
   defects: z.array(z.string()).optional(),
+  environmentName: z.string().optional(),
 });
 
 /** Sequential PUTs; no single bulk endpoint in the public API. */

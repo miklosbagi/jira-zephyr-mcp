@@ -112,6 +112,7 @@ export const executeTest = async (input: ExecuteTestInput) => {
       status: validatedInput.status,
       comment: validatedInput.comment,
       defects: validatedInput.defects,
+      environmentName: validatedInput.environmentName,
     });
     
     return {
@@ -122,10 +123,11 @@ export const executeTest = async (input: ExecuteTestInput) => {
         cycleId: execution.cycleId,
         testCaseId: execution.testCaseId,
         status: execution.status,
+        environmentName: execution.environmentName,
         comment: execution.comment,
         executedOn: execution.executedOn,
         executedBy: execution.executedBy?.displayName,
-        defects: execution.defects.map(defect => ({
+        defects: execution.defects?.map(defect => ({
           key: defect.key,
           summary: defect.summary,
         })),
@@ -327,6 +329,7 @@ export const bulkExecuteTests = async (input: BulkExecuteTestsInput) => {
                   cycleId: r.data.cycleId,
                   testCaseId: r.data.testCaseId,
                   status: r.data.status,
+                  environmentName: r.data.environmentName,
                   comment: r.data.comment,
                   executedOn: r.data.executedOn,
                   executedBy: r.data.executedBy?.displayName,
