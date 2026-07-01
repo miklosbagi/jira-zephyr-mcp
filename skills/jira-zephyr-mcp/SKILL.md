@@ -39,6 +39,17 @@ Prefer **listing** before **creating** when the user did not give keys/IDs. Use 
 3. **Regions** — Default Zephyr API host is US; EU and others need `ZEPHYR_BASE_URL` set correctly or calls will fail or hit the wrong tenant.
 4. **Responses** — Tool results are usually JSON strings in MCP content; parse and present clearly. On `success: false`, surface the `error` field.
 
+## Known limitations (agents)
+
+| Need | Use instead |
+|------|-------------|
+| Upload screenshot/GIF evidence to a test execution | **Not supported** — [issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118). Attach to linked Jira defects or put artifact URLs in `execute_test` **comment**. |
+| Mark execution **In progress** from Not executed | **`execute_test`** with **`status: "WIP"`** (same as In progress in Zephyr). |
+| Set each **step** to Pass/Fail | **Not in MCP yet** — API is `PUT /testexecutions/{id}/teststeps`; today only **`get_test_execution_test_steps`** (read) and **`execute_test`** (whole case). |
+| Set execution back to Not executed | **Not via `execute_test`** — only `PASS` / `FAIL` / `WIP` / `BLOCKED` on update. |
+
+See `docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md` §22–§23.
+
 For more detail, load `references/zephyr-jira-conventions.md` in this skill folder when debugging linking, EU/US URLs, or update semantics.
 
 ## What not to do

@@ -151,7 +151,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **create_test_case** / **search_test_cases** / **list_test_cases_nextgen** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, cursor list ([`GET /testcases/nextgen`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/listTestCasesCursorPaginated)), get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
 | **archive_test_case** / **unarchive_test_case** / **delete_test_case** | Archive via PUT (`archived` flag), unarchive, or DELETE. **API support varies** — some instances reject `archived` or DELETE; see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md). |
 | **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). |
-| **execute_test** | Update one test execution status (PASS/FAIL/WIP/BLOCKED). |
+| **execute_test** | Update one test execution status: **`PASS`**, **`FAIL`**, **`WIP`** (In progress), or **`BLOCKED`** via `PUT /testexecutions/{id}`. Use **`WIP`** to move from Not executed to In progress. |
 | **bulk_execute_tests** | Update many executions **sequentially** (one `PUT /testexecutions/{id}` per item). The public API has **no** single bulk-update call; optional `continueOnError` (default true), same idea as `create_multiple_test_cases`. |
 | **get_test_execution_status** | Execution progress and stats for a cycle. |
 | **link_tests_to_issues** | Link a test case to Jira issue(s) as **coverage** ([`POST .../testcases/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/createTestCaseIssueLink)). Resolves each issue **key** to a numeric id via Jira REST, then calls Zephyr (v0.12.0; replaces the old `POST .../links` + `issueKeys` shape). |
@@ -161,6 +161,17 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **generate_test_report** | Generate cycle report (JSON or HTML). |
 
 **Zephyr tool failures (v0.15.1+):** When a Zephyr-backed tool returns `success: false`, the JSON includes **`errorInfo`**: `httpStatus`, **`kind`** (e.g. `permission_denied`, `validation`, `not_found`), **`permissionIssueLikely`**, **`relevantPermissionCategories`** (aligned with Zephyr UI buckets: Create, Edit, Archive, Manage Folders, Create Versions, Delete), optional **`hint`**, and **`integration`** (`zephyr` vs `jira` on issue-link steps). The top-level **`error`** string matches **`errorInfo.message`** (typically `HTTP <status>: …` when the API returned a status).
+
+## Known limitations
+
+Documented gaps between Zephyr Scale Cloud and this MCP server. Full detail: [docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md).
+
+| Topic | MCP today | Notes |
+|-------|-----------|--------|
+| **Attachments** (screenshots, GIFs, evidence) | No tools | Public Scale API v2 has no attachment upload/download routes on Cloud. [Issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118). Workarounds: Jira issue attachments on linked defects; URLs in execution comments; UI upload. |
+| **Per-step Pass/Fail on executions** | Read-only + sync | **`get_test_execution_test_steps`** reads step results; **`sync_test_execution_test_steps`** refreshes steps from the test case script. **`PUT /testexecutions/{id}/teststeps`** (`putTestExecutionTestSteps`) is **not** wrapped yet — use **`execute_test`** for whole-execution status only. |
+| **Execution status** | **`execute_test`** | **`WIP`** = In progress. **`PASS`** / **`FAIL`** / **`BLOCKED`** for final states. Cannot set back to Not executed via API update. |
+| **BDD script type** | Plain text / step-by-step only | BDD (Gherkin) requires UI or unsupported TM4J backend — see gaps doc §11b. |
 
 ---
 
@@ -339,6 +350,8 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Bulk / high-volume operations (v0.14.0)** — **`list_test_cases_nextgen`** / **`list_test_executions_nextgen`** (cursor pagination per OpenAPI). **`bulk_execute_tests`** (sequential PUTs; no single bulk endpoint in the public spec). See [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md).
 - [x] **Get single test execution (v0.15.0)** — **`get_test_execution`**: [`GET /testexecutions/{testExecutionIdOrKey}`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecution) (OpenAPI `getTestExecution`); aligns with **list_test_executions_in_cycle** row shape and test case key enrichment ([issue #67](https://github.com/miklosbagi/jira-zephyr-mcp/issues/67)).
 - [x] **Execution links and execution test steps (v0.16.0)** — **`get_test_execution_links`**, **`get_test_execution_issue_links`**, **`get_test_execution_test_steps`**, **`sync_test_execution_test_steps`** (OpenAPI `getTestExecutionLinks`, `getTestExecutionIssueLinks`, `getTestExecutionTestSteps`, `syncTestExecutionTestSteps`).
+- [ ] **Attachments on test cases / executions** — blocked: no public Cloud API ([issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118); [SmartBear/smartbear-mcp#456](https://github.com/SmartBear/smartbear-mcp/issues/456)).
+- [ ] **Update execution step results** — `PUT /testexecutions/{id}/teststeps` (`putTestExecutionTestSteps`); whole-execution **`execute_test`** (`WIP` = In progress) exists today.
 
 ---
 
