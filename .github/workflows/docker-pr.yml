@@ -23,6 +23,8 @@
 # (same as the built-in GITHUB_TOKEN — no secret to create).
 #
 # Security: fork PRs are skipped — untrusted code must not receive registry credentials.
+# Dependabot PRs are skipped — Actions does not expose registry secrets to dependabot[bot], so
+# GHCR login fails with "denied"; dependency bumps do not need preview images (CI still runs).
 #
 # Draft PRs: the Docker **job** is skipped (`draft == true`). CI (`test.yml`) still runs on drafts.
 # When you mark the PR ready, `ready_for_review` can run a Docker build without a new commit.
@@ -66,7 +68,8 @@ jobs:
     if: |
       (github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.pull_request.draft == false) ||
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.user.login != 'dependabot[bot]') ||
       (github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
