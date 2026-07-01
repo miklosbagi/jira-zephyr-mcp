@@ -25,7 +25,7 @@ If tools are unavailable, tell the user to add the server per the project README
 | Zephyr projects / folders / priorities / statuses | `list_projects`, `list_folders`, `list_priorities`, `list_statuses` |
 | Test plans | `create_test_plan`, `list_test_plans`, `get_test_plan`, `update_test_plan` |
 | Test cycles | `create_test_cycle`, `list_test_cycles`, `get_test_cycle`, `update_test_cycle`, `add_test_cases_to_cycle` |
-| Executions | `create_test_execution`, `get_test_execution`, `get_test_execution_links`, `get_test_execution_issue_links`, `get_test_execution_test_steps`, `sync_test_execution_test_steps`, `execute_test`, `bulk_execute_tests`, `list_test_executions_in_cycle`, `list_test_executions_nextgen`, `get_test_execution_status`, `remove_test_case_from_cycle`, `generate_test_report` |
+| Executions | `create_test_execution`, `get_test_execution`, `get_test_execution_links`, `get_test_execution_issue_links`, `get_test_execution_test_steps`, `sync_test_execution_test_steps`, `update_test_execution_test_steps`, `execute_test`, `bulk_execute_tests`, `list_test_executions_in_cycle`, `list_test_executions_nextgen`, `get_test_execution_status`, `remove_test_case_from_cycle`, `generate_test_report` |
 | Test cases & steps | `create_test_case`, `search_test_cases`, `list_test_cases_nextgen`, `get_test_case`, `get_test_case_links`, `update_test_case`, `archive_test_case`, `unarchive_test_case`, `delete_test_case`, `create_multiple_test_cases`, `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` |
 | Environments | `list_environments`, `get_environment`, `create_environment`, `update_environment` |
 | Coverage (Jira ↔ Zephyr) | `link_tests_to_issues`, `link_test_cycle_to_issues`, `link_test_plan_to_issues` |
@@ -37,7 +37,8 @@ Prefer **listing** before **creating** when the user did not give keys/IDs. Use 
 1. **Issue linking** — Zephyr expects **numeric Jira Cloud issue id** in `POST .../links/issues` bodies. The MCP tools `link_*_to_issues` accept **issue keys** and resolve them via Jira; do not invent legacy `issueKeys`-only Zephyr payloads.
 2. **Updates that need full bodies** — Test plans, cycles, cases, and environments often use **GET → merge → PUT** on the server. If an update fails with 404/405, the tenant may not expose that route—say so and suggest an alternative (e.g. archive vs delete).
 3. **Regions** — Default Zephyr API host is US; EU and others need `ZEPHYR_BASE_URL` set correctly or calls will fail or hit the wrong tenant.
-4. **Responses** — Tool results are usually JSON strings in MCP content; parse and present clearly. On `success: false`, surface the `error` field.
+4. **Execution results** — Whole case: **`execute_test`** with `PASS` | `FAIL` | `WIP` (In progress) | `BLOCKED`. Per step: **`update_test_execution_test_steps`** (`steps` array by index; `statusName` e.g. Pass, Fail). Read steps first with **`get_test_execution_test_steps`** when unsure of count/order.
+5. **Responses** — Tool results are usually JSON strings in MCP content; parse and present clearly. On `success: false`, surface the `error` field.
 
 For more detail, load `references/zephyr-jira-conventions.md` in this skill folder when debugging linking, EU/US URLs, or update semantics.
 

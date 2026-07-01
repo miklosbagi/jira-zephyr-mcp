@@ -23,6 +23,7 @@ import {
   getTestExecutionIssueLinks,
   getTestExecutionTestSteps,
   syncTestExecutionTestSteps,
+  updateTestExecutionTestSteps,
   linkTestsToIssues,
   linkTestCycleToIssues,
   linkTestPlanToIssues,
@@ -63,6 +64,7 @@ import {
   getTestExecutionIssueLinksSchema,
   getTestExecutionTestStepsSchema,
   syncTestExecutionTestStepsSchema,
+  updateTestExecutionTestStepsSchema,
   listTestExecutionsInCycleSchema,
   listTestExecutionsNextgenSchema,
   bulkExecuteTestsSchema,
@@ -112,6 +114,7 @@ import {
   type GetTestExecutionIssueLinksInput,
   type GetTestExecutionTestStepsInput,
   type SyncTestExecutionTestStepsInput,
+  type UpdateTestExecutionTestStepsInput,
   type ListTestExecutionsInCycleInput,
   type ListTestExecutionsNextgenInput,
   type BulkExecuteTestsInput,
@@ -149,7 +152,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.16.1',
+    version: '0.17.0',
   },
   {
     capabilities: {
@@ -419,6 +422,37 @@ const TOOLS = [
         },
       },
       required: ['executionId'],
+    },
+  },
+  {
+    name: 'update_test_execution_test_steps',
+    description:
+      'Update per-step execution results (PUT /testexecutions/{testExecutionIdOrKey}/teststeps, OpenAPI putTestExecutionTestSteps). steps array index matches step order (0 = first step). Only fields you include on each entry are updated; use {} to leave a step unchanged. statusName examples: Pass, Fail, In Progress, Blocked, Not Executed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        executionId: {
+          type: 'string',
+          description: 'Test execution id or key (from list_test_executions_in_cycle or get_test_execution)',
+        },
+        steps: {
+          type: 'array',
+          description:
+            'One object per execution step in order. Each may include statusName, actualResult, comment (all optional).',
+          items: {
+            type: 'object',
+            properties: {
+              statusName: {
+                type: 'string',
+                description: 'Step status (e.g. Pass, Fail, In Progress, Blocked, Not Executed)',
+              },
+              actualResult: { type: 'string', description: 'Observed result for this step' },
+              comment: { type: 'string', description: 'Step comment' },
+            },
+          },
+        },
+      },
+      required: ['executionId', 'steps'],
     },
   },
   {
@@ -1233,6 +1267,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify(await syncTestExecutionTestSteps(validatedArgs), null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'update_test_execution_test_steps': {
+        const validatedArgs = validateInput<UpdateTestExecutionTestStepsInput>(
+          updateTestExecutionTestStepsSchema,
+          args,
+          'update_test_execution_test_steps'
+        );
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(await updateTestExecutionTestSteps(validatedArgs), null, 2),
             },
           ],
         };

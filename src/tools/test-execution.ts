@@ -14,6 +14,7 @@ import {
   getTestExecutionIssueLinksSchema,
   getTestExecutionTestStepsSchema,
   syncTestExecutionTestStepsSchema,
+  updateTestExecutionTestStepsSchema,
   listTestExecutionsInCycleSchema,
   listTestExecutionsNextgenSchema,
   bulkExecuteTestsSchema,
@@ -30,6 +31,7 @@ import {
   type GetTestExecutionIssueLinksInput,
   type GetTestExecutionTestStepsInput,
   type SyncTestExecutionTestStepsInput,
+  type UpdateTestExecutionTestStepsInput,
   type ListTestExecutionsInCycleInput,
   type ListTestExecutionsNextgenInput,
   type BulkExecuteTestsInput,
@@ -286,6 +288,19 @@ export const syncTestExecutionTestSteps = async (input: SyncTestExecutionTestSte
       validatedInput.body
     );
     return { success: true, data };
+  } catch (error: unknown) {
+    return zephyrToolFailure(error, { permissionCategories: ['edit'] });
+  }
+};
+
+export const updateTestExecutionTestSteps = async (input: UpdateTestExecutionTestStepsInput) => {
+  const validatedInput = updateTestExecutionTestStepsSchema.parse(input);
+  try {
+    const data = await getZephyrClient().updateTestExecutionTestSteps(
+      validatedInput.executionId.trim(),
+      validatedInput.steps
+    );
+    return { success: true, data: data ?? {} };
   } catch (error: unknown) {
     return zephyrToolFailure(error, { permissionCategories: ['edit'] });
   }

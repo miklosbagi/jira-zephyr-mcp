@@ -809,6 +809,19 @@ describe('ZephyrClient (integration, mocked)', () => {
       expect(scope.isDone()).toBe(true);
     });
 
+    it('sends PUT /v2/testexecutions/{id}/teststeps with steps array', async () => {
+      const body = {};
+      const steps = [{ statusName: 'Pass', actualResult: 'ok' }, { statusName: 'Fail' }];
+      const scope = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testexecutions/ex-steps/teststeps`, (b: { steps?: unknown }) => {
+          const s = b.steps as typeof steps;
+          return s?.length === 2 && s[0].statusName === 'Pass' && s[1].statusName === 'Fail';
+        })
+        .reply(200, body);
+      await expect(client.updateTestExecutionTestSteps('ex-steps', steps)).resolves.toEqual(body);
+      expect(scope.isDone()).toBe(true);
+    });
+
     it('encodes execution id in path segments', async () => {
       const encoded = encodeURIComponent('E/1');
       const scope = nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/${encoded}/links`).reply(200, {});

@@ -33,6 +33,7 @@ import {
   getTestExecutionIssueLinks,
   getTestExecutionTestSteps,
   syncTestExecutionTestSteps,
+  updateTestExecutionTestSteps,
   bulkExecuteTests,
   generateTestReport,
   createTestExecution,
@@ -701,6 +702,32 @@ describe('tool handlers (smoke, mocked)', () => {
     const r = await syncTestExecutionTestSteps({ executionId: 'ex-sync' });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data).toEqual({ done: true });
+  });
+
+  it('update_test_execution_test_steps puts step results', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .put(`${V2}/testexecutions/ex-put/teststeps`, {
+        steps: [{ statusName: 'Pass' }, { statusName: 'Fail', actualResult: 'broken' }],
+      })
+      .reply(200, {});
+    const r = await updateTestExecutionTestSteps({
+      executionId: 'ex-put',
+      steps: [{ statusName: 'Pass' }, { statusName: 'Fail', actualResult: 'broken' }],
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data).toEqual({});
+  });
+
+  it('update_test_execution_test_steps returns error when Zephyr fails', async () => {
+    nock(ZEPHYR_ORIGIN)
+      .put(`${V2}/testexecutions/bad-steps/teststeps`, () => true)
+      .reply(400, { message: 'invalid steps' });
+    const r = await updateTestExecutionTestSteps({
+      executionId: 'bad-steps',
+      steps: [{ statusName: 'Pass' }],
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.errorInfo?.kind).toBe('validation');
   });
 
   it('get_test_execution returns a single execution row', async () => {
