@@ -145,6 +145,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **get_test_execution_issue_links** | List Jira issue links for an execution ([`GET .../links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecutionIssueLinks), OpenAPI `getTestExecutionIssueLinks`, v0.16.0). |
 | **get_test_execution_test_steps** | Get execution test steps / per-step results ([`GET .../teststeps`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecutionTestSteps), OpenAPI `getTestExecutionTestSteps`, v0.16.0). |
 | **sync_test_execution_test_steps** | Sync execution steps with the test case script ([`POST .../teststeps/sync`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/syncTestExecutionTestSteps), OpenAPI `syncTestExecutionTestSteps`; optional `body`, default `{}`, v0.16.0). |
+| **update_test_execution_test_steps** | Update per-step Pass/Fail and results ([`PUT .../teststeps`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/putTestExecutionTestSteps), OpenAPI `putTestExecutionTestSteps`; `steps` array by index, v0.17.0). |
 | **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
 | **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
 | **remove_test_case_from_cycle** | Remove a test case from a cycle by deleting its test execution (`DELETE /testexecutions/{id}`). Pass **`executionId`** from `list_test_executions_in_cycle`, or **`cycleKey` + `testCaseKey`** to resolve it. If the public API returns 404/405 on your instance, use the Zephyr UI or contact SmartBear. |
@@ -169,7 +170,7 @@ Documented gaps between Zephyr Scale Cloud and this MCP server. Full detail: [do
 | Topic | MCP today | Notes |
 |-------|-----------|--------|
 | **Attachments** (screenshots, GIFs, evidence) | No tools | Public Scale API v2 has no attachment upload/download routes on Cloud. [Issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118). Workarounds: Jira issue attachments on linked defects; URLs in execution comments; UI upload. |
-| **Per-step Pass/Fail on executions** | Read-only + sync | **`get_test_execution_test_steps`** reads step results; **`sync_test_execution_test_steps`** refreshes steps from the test case script. **`PUT /testexecutions/{id}/teststeps`** (`putTestExecutionTestSteps`) is **not** wrapped yet — use **`execute_test`** for whole-execution status only. |
+| **Per-step Pass/Fail on executions** | **`update_test_execution_test_steps`** | Per-step `statusName` (Pass, Fail, In Progress, Blocked, Not Executed), `actualResult`, `comment`. Read first with **`get_test_execution_test_steps`**. Whole-execution status: **`execute_test`**. |
 | **Execution status** | **`execute_test`** | **`WIP`** = In progress. **`PASS`** / **`FAIL`** / **`BLOCKED`** for final states. Cannot set back to Not executed via API update. |
 | **BDD script type** | Plain text / step-by-step only | BDD (Gherkin) requires UI or unsupported TM4J backend — see gaps doc §11b. |
 
@@ -209,6 +210,14 @@ get_test_execution_links({ executionId: "12345" });
 get_test_execution_issue_links({ executionId: "12345" });
 get_test_execution_test_steps({ executionId: "12345" });
 sync_test_execution_test_steps({ executionId: "12345" });  // optional body: { ... } per Scale API
+update_test_execution_test_steps({
+  executionId: "12345",
+  steps: [
+    { statusName: "Pass", actualResult: "Step 1 ok" },
+    { statusName: "Fail", actualResult: "Step 2 failed" },
+  ],
+});
+execute_test({ executionId: "12345", status: "WIP" });  // In progress
 add_test_cases_to_cycle({ cycleKey: "ABC-R1", testCaseKeys: ["ABC-T1", "ABC-T2"] });
 // If add_test_cases_to_cycle returns 404 (e.g. EU API), use create_test_execution per test case:
 create_test_execution({ projectKey: "ABC", testCycleKey: "ABC-R1", testCaseKey: "ABC-T1" });
@@ -350,8 +359,8 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Bulk / high-volume operations (v0.14.0)** — **`list_test_cases_nextgen`** / **`list_test_executions_nextgen`** (cursor pagination per OpenAPI). **`bulk_execute_tests`** (sequential PUTs; no single bulk endpoint in the public spec). See [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md).
 - [x] **Get single test execution (v0.15.0)** — **`get_test_execution`**: [`GET /testexecutions/{testExecutionIdOrKey}`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecution) (OpenAPI `getTestExecution`); aligns with **list_test_executions_in_cycle** row shape and test case key enrichment ([issue #67](https://github.com/miklosbagi/jira-zephyr-mcp/issues/67)).
 - [x] **Execution links and execution test steps (v0.16.0)** — **`get_test_execution_links`**, **`get_test_execution_issue_links`**, **`get_test_execution_test_steps`**, **`sync_test_execution_test_steps`** (OpenAPI `getTestExecutionLinks`, `getTestExecutionIssueLinks`, `getTestExecutionTestSteps`, `syncTestExecutionTestSteps`).
+- [x] **Update execution step results (v0.17.0)** — **`update_test_execution_test_steps`**: [`PUT /testexecutions/{id}/teststeps`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/putTestExecutionTestSteps) (`putTestExecutionTestSteps`).
 - [ ] **Attachments on test cases / executions** — blocked: no public Cloud API ([issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118); [SmartBear/smartbear-mcp#456](https://github.com/SmartBear/smartbear-mcp/issues/456)).
-- [ ] **Update execution step results** — `PUT /testexecutions/{id}/teststeps` (`putTestExecutionTestSteps`); whole-execution **`execute_test`** (`WIP` = In progress) exists today.
 
 ---
 

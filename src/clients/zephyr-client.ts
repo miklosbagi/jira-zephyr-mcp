@@ -455,6 +455,19 @@ export class ZephyrClient {
   }
 
   /**
+   * PUT /testexecutions/{id}/teststeps — update per-step execution results (OpenAPI `putTestExecutionTestSteps`).
+   * Array index matches step order; only fields present on each entry are updated. Use `{}` to skip a step.
+   */
+  async updateTestExecutionTestSteps(
+    executionIdOrKey: string,
+    steps: Array<{ statusName?: string; actualResult?: string; comment?: string }>
+  ): Promise<unknown> {
+    const id = encodeURIComponent(executionIdOrKey);
+    const response = await this.client.put(`/testexecutions/${id}/teststeps`, { steps });
+    return response.data;
+  }
+
+  /**
    * Remove a test case from a cycle by deleting its test execution (Scale Cloud v2:
    * DELETE /testexecutions/{id}). Some instances document this poorly; if the API returns
    * 404/405, removal may not be enabled for your tenant.

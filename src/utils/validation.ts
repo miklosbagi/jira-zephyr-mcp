@@ -124,6 +124,21 @@ export const syncTestExecutionTestStepsSchema = z.object({
   body: z.record(z.string(), z.any()).optional(),
 });
 
+/** One step patch for PUT /testexecutions/{idOrKey}/teststeps — OpenAPI `putTestExecutionTestSteps`. */
+export const testExecutionStepPatchSchema = z.object({
+  statusName: z.string().optional(),
+  actualResult: z.string().optional(),
+  comment: z.string().optional(),
+});
+
+/** PUT /testexecutions/{idOrKey}/teststeps — OpenAPI `putTestExecutionTestSteps`. */
+export const updateTestExecutionTestStepsSchema = z.object({
+  executionId: z.string().min(1, 'Test execution id or key is required'),
+  steps: z
+    .array(testExecutionStepPatchSchema)
+    .min(1, 'At least one step entry is required (use {} to leave a step unchanged)'),
+});
+
 export const listTestExecutionsInCycleSchema = z.object({
   cycleId: z.string().min(1, 'Cycle ID or key is required'),
 });
@@ -419,6 +434,7 @@ export type GetTestExecutionLinksInput = z.infer<typeof getTestExecutionLinksSch
 export type GetTestExecutionIssueLinksInput = z.infer<typeof getTestExecutionIssueLinksSchema>;
 export type GetTestExecutionTestStepsInput = z.infer<typeof getTestExecutionTestStepsSchema>;
 export type SyncTestExecutionTestStepsInput = z.infer<typeof syncTestExecutionTestStepsSchema>;
+export type UpdateTestExecutionTestStepsInput = z.infer<typeof updateTestExecutionTestStepsSchema>;
 export type ListTestExecutionsInCycleInput = z.infer<typeof listTestExecutionsInCycleSchema>;
 export type ListTestExecutionsNextgenInput = z.infer<typeof listTestExecutionsNextgenSchema>;
 export type ListTestCasesNextgenInput = z.infer<typeof listTestCasesNextgenSchema>;
