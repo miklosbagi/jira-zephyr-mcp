@@ -151,6 +151,19 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 - **API (OpenAPI):** `GET/POST /automations/testcases/...` (automation operations for test cases)
 - **MCP status:** Not implemented as MCP tools yet.
 
+### 22. **Attachments (upload / download evidence)**
+
+- **API (public Scale Cloud v2):** No documented **`POST`/`GET`** attachment routes on test cases, test executions, or execution steps in the [OpenAPI spec](https://support.smartbear.com/zephyr-scale-cloud/api-docs/). Server/DC paths (e.g. `POST /rest/atm/1.0/testresult/{id}/attachments`) do **not** apply to Cloud tenants.
+- **MCP status:** **Not implemented** — blocked on upstream API support. Tracked as [issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118).
+- **SmartBear / community:** Support repeatedly states Cloud attachment upload/download is **UI-only** via the public REST API — e.g. [Cloud API: Uploading an attachment to a test result](https://community.smartbear.com/discussions/zephyrscale/cloud-api-uploading-an-attachment-to-a-test-result/210086), [How to upload an attachment file to a test execution via REST API?](https://community.smartbear.com/discussions/zephyrscale/how-to-upload-an-attachment-file-to-a-test-execution-via-zephyr-scale-cloud-rest/277229), [accessing images](https://community.smartbear.com/discussions/zephyrscale/accessing-images/260279) (CloudFront URLs need session JWT, not the Scale API token). Upstream: [SmartBear/smartbear-mcp#456](https://github.com/SmartBear/smartbear-mcp/issues/456) (official attachment endpoints planned).
+- **Undocumented private TM4J backend:** The UI uses `app.tm4j.smartbear.com/backend/rest/tests/2.0/` with **Context JWT** (Jira Basic auth) + S3 upload — see community package [`@rbaileysr/zephyr-managed-api`](https://www.npmjs.com/package/@rbaileysr/zephyr-managed-api). Same auth/tenant problems as BDD via TM4J (§11b). **Not** planned for this MCP without explicit opt-in.
+- **Workarounds:** Jira issue attachments on linked defects (`POST /rest/api/3/issue/{key}/attachments`); artifact URLs in execution **comments**; manual upload in the Zephyr UI.
+
+### 23. **Update execution step results (per-step Pass / Fail / In progress)**
+
+- **Implemented (v0.17.0):** **`update_test_execution_test_steps`** — see §16. **`get_test_execution_test_steps`** / **`sync_test_execution_test_steps`** (v0.16.0) remain read/sync only.
+- **Whole-execution status:** **`execute_test`** / **`bulk_execute_tests`** — `PASS`, `FAIL`, `WIP` (In progress), `BLOCKED`. No `NOT_EXECUTED` on update.
+
 ---
 
 ## Summary table
@@ -180,6 +193,8 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 | 21 | Test case versions | `GET /testcases/{key}/versions` | Not exposed as MCP tools yet |
 | 22 | Per-id GETs and link retrieval | `GET /folders/{id}`, `GET /projects/{idOrKey}`, `GET /links/{linkId}` | Not exposed as MCP tools yet |
 | 23 | Test case automations | `/automations/testcases/...` | Not exposed as MCP tools yet |
+| 24 | Attachments (evidence files) | None in public OpenAPI | **Not implemented** — [issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118); wait for official Cloud API |
+| 25 | Per-step execution results | `PUT /testexecutions/{id}/teststeps` (`putTestExecutionTestSteps`) | Implemented (**`update_test_execution_test_steps`**, v0.17.0); whole-execution **`execute_test`** (`PASS`/`FAIL`/`WIP`/`BLOCKED`) |
 
 ---
 
@@ -202,6 +217,12 @@ These are limitations or bugs we have confirmed and for which we have references
 - **Observed:** When creating a test case with step-by-step script, a post-create call to add steps using the documented bulk shape fails. Sending `POST /testcases/{key}/teststeps` with `{ mode: "APPEND", items: [ { inline: { description, testData, expectedResult }, testCase: { testCaseKey, self } } ] }` returns **400** with message like **`createTestCaseTestSteps: must not be null`** (US) or **`createTestCaseTestSteps.mode: must not be null`** (EU). Wrapping in `{ createTestCaseTestSteps: { mode, items } }` does not resolve it on EU.
 - **Community evidence:** [Test to write to Zephyr Scale – createTestCaseTestSteps: must not be null](https://community.smartbear.com/discussions/zephyrscale/test-to-write-to-zphyr-scales--errorcode400messagecreatetestcaseteststeps-must-n/235621) — same payload and same error (bulk with `mode` and `items`).
 - **Workaround:** Add steps **one at a time** with a **flat** body per step: `POST /testcases/{key}/teststeps` with `{ description, expectedResult, testData }` (or `step` / `result` / `data`). The MCP server uses this single-step contract for `create_test_step` and for the step-by-step fallback after create.
+
+### Attachments cannot be uploaded or downloaded via the public Scale Cloud API
+
+- **Conclusion:** Zephyr Scale Cloud has **no supported public REST API** for uploading or downloading attachments (screenshots, GIFs, PDFs) on test cases or test executions. The MCP server has **no attachment tools**.
+- **GitHub:** [issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118) — full references, private TM4J/S3 reverse-engineering notes, and workarounds.
+- **When to implement:** After SmartBear documents stable Cloud **`POST`/`GET`** attachment endpoints ([smartbear-mcp#456](https://github.com/SmartBear/smartbear-mcp/issues/456)).
 
 ---
 

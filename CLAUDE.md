@@ -52,6 +52,11 @@ The following environment variables are required:
 - `archive_test_case` / `unarchive_test_case` / `delete_test_case`: Archive, unarchive, or delete a test case (API support varies by tenant)
 - `list_environments` / `get_environment` / `create_environment` / `update_environment`: List and manage Zephyr test environments per project
 
+### Known limitations
+
+- **Attachments:** No upload/download tools — public Scale Cloud API has no attachment routes ([issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118); see `docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md` §22).
+- **Per-step execution results:** `get_test_execution_test_steps` / `sync_test_execution_test_steps` only; `PUT /testexecutions/{id}/teststeps` not exposed yet. Use `execute_test` with `WIP` (In progress), `PASS`, `FAIL`, or `BLOCKED` for whole-execution status.
+
 ### Setup Instructions
 
 1. Build the project: `npm run build`
