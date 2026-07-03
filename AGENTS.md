@@ -87,6 +87,8 @@ Use this end-to-end flow for versioned releases on **`miklosbagi/jira-zephyr-mcp
 
 **What the labels mean:** They do **not** set the version in `package.json` directly — they tell CI **how much to bump the git tag** after merge. You must still align `package.json` / MCP version with the **expected** tag (e.g. label `tag-minor` after `v0.17.0` → ship code as **0.18.0**).
 
+**Avoid double tags:** Close or remove **`tag-minor`** / **`tag-patch`** / **`tag-major`** from superseded PRs before merging a release. Each merged labeled PR bumps the tag again (e.g. two `tag-minor` merges in a row → `v0.18.0` then `v0.19.0`). Keep **one** release PR open with the version label.
+
 ### Pull requests
 
 When opening or preparing a **PR**, include:
