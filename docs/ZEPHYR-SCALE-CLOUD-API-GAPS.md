@@ -162,7 +162,8 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 ### 23. **Update execution step results (per-step Pass / Fail / In progress)**
 
 - **Implemented (v0.17.0):** **`update_test_execution_test_steps`** — see §16. **`get_test_execution_test_steps`** / **`sync_test_execution_test_steps`** (v0.16.0) remain read/sync only.
-- **Whole-execution status:** **`execute_test`** / **`bulk_execute_tests`** — `PASS`, `FAIL`, `WIP` (In progress), `BLOCKED`. No `NOT_EXECUTED` on update.
+- **Execution reads (v0.18.0):** Scale Cloud returns `testExecutionStatus` (not a flat `status` string). The server normalizes to **`status`** (`PASS`/`FAIL`/…) and **`statusName`** on **`get_test_execution`**, **`list_test_executions_in_cycle`**, **`list_test_executions_nextgen`**, and **`get_test_execution_status`**. Cycle lists auto-paginate past the API default of 10 results per page.
+- **Whole-execution status (write):** **`execute_test`** / **`bulk_execute_tests`** — `PASS`, `FAIL`, `WIP` (In progress), `BLOCKED`. No `NOT_EXECUTED` on update.
 
 ---
 

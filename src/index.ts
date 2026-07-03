@@ -152,7 +152,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.17.0',
+    version: '0.18.0',
   },
   {
     capabilities: {

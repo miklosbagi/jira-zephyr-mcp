@@ -117,10 +117,10 @@ describe('tool handlers — HTTP error paths', () => {
       (await executeTest({ executionId: 'e', status: 'PASS' })).success
     ).toBe(false);
 
-    nock(Z).get(`${V2}/testexecutions`).query({ testCycle: 'c' }).reply(500);
+    nock(Z).get(`${V2}/testexecutions`).query({ testCycle: 'c', maxResults: 1000, startAt: 0 }).reply(500);
     expect((await getTestExecutionStatus({ cycleId: 'c' })).success).toBe(false);
 
-    nock(Z).get(`${V2}/testexecutions`).query({ testCycle: 'c' }).reply(500);
+    nock(Z).get(`${V2}/testexecutions`).query({ testCycle: 'c', maxResults: 1000, startAt: 0 }).reply(500);
     expect((await listTestExecutionsInCycle({ cycleId: 'c' })).success).toBe(false);
 
     nock(Z).get(`${V2}/testexecutions/nextgen`).query(true).reply(500);
