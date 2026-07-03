@@ -6,6 +6,13 @@ import {
   getExecutionTestCaseKey,
 } from '../utils/test-execution-identity.js';
 import {
+  getExecutionProjectKey,
+  getExecutionStatusCodeFromRow,
+  getExecutionStatusNameFromRow,
+  summarizeExecutionStatusCode,
+  type ExecutionStatusCode,
+} from '../utils/execution-status.js';
+import {
   type ZephyrTestPlan,
   type ZephyrTestCycle,
   type ZephyrTestExecution,
@@ -23,6 +30,7 @@ import {
 
 export class ZephyrClient {
   private client: AxiosInstance;
+  private executionStatusNamesByProject = new Map<string, Map<number, string>>();
 
   /** Trim, drop empties, dedupe case-insensitively (reduces Zephyr "duplicate option" style errors). */
   private static dedupeLabelStrings(labels: string[]): string[] {
@@ -408,7 +416,10 @@ export class ZephyrClient {
   async getTestExecution(executionIdOrKey: string): Promise<ZephyrTestExecution> {
     const id = encodeURIComponent(executionIdOrKey);
     const response = await this.client.get(`/testexecutions/${id}`);
-    return response.data;
+    const [normalized] = await this.normalizeExecutionStatuses([
+      response.data as Record<string, unknown>,
+    ]);
+    return normalized as unknown as ZephyrTestExecution;
   }
 
   /**
@@ -514,15 +525,22 @@ export class ZephyrClient {
     status: 'PASS' | 'FAIL' | 'WIP' | 'BLOCKED';
     comment?: string;
     defects?: string[];
+    environmentName?: string;
   }): Promise<ZephyrTestExecution> {
-    const payload = {
+    const payload: Record<string, unknown> = {
       status: data.status,
       comment: data.comment,
       issues: data.defects?.map(key => ({ key })),
     };
+    if (data.environmentName !== undefined) {
+      payload.environmentName = data.environmentName;
+    }
 
     const response = await this.client.put(`/testexecutions/${data.executionId}`, payload);
-    return response.data;
+    const [normalized] = await this.normalizeExecutionStatuses([
+      response.data as Record<string, unknown>,
+    ]);
+    return normalized as unknown as ZephyrTestExecution;
   }
 
   /**
@@ -557,8 +575,11 @@ export class ZephyrClient {
     const response = await this.client.get('/testexecutions/nextgen', { params });
     const d = response.data as Record<string, unknown>;
     const values = (d.values as ZephyrTestExecution[]) ?? [];
+    const normalized = await this.normalizeExecutionStatuses(
+      (Array.isArray(values) ? values : []) as unknown as Record<string, unknown>[]
+    );
     return {
-      values: Array.isArray(values) ? values : [],
+      values: normalized as unknown as ZephyrTestExecution[],
       limit: Number(d.limit ?? 0),
       nextStartAtId: d.nextStartAtId != null ? Number(d.nextStartAtId) : null,
       next: d.next != null ? String(d.next) : null,
@@ -575,6 +596,7 @@ export class ZephyrClient {
       status: 'PASS' | 'FAIL' | 'WIP' | 'BLOCKED';
       comment?: string;
       defects?: string[];
+      environmentName?: string;
     }>,
     continueOnError = true
   ): Promise<{
@@ -615,17 +637,95 @@ export class ZephyrClient {
     };
   }
 
+  /**
+   * Load TEST_EXECUTION status id → name map (GET /statuses?statusType=TEST_EXECUTION).
+   * Paginates — default API maxResults is 10.
+   */
+  async getExecutionStatusNameMap(projectKey?: string): Promise<Map<number, string>> {
+    const cacheKey = projectKey ?? '';
+    const cached = this.executionStatusNamesByProject.get(cacheKey);
+    if (cached) return cached;
+
+    const map = new Map<number, string>();
+    let startAt = 0;
+    const maxResults = 1000;
+    while (true) {
+      const params: Record<string, string | number> = {
+        statusType: 'TEST_EXECUTION',
+        maxResults,
+        startAt,
+      };
+      if (projectKey) params.projectKey = projectKey;
+      const response = await this.client.get('/statuses', { params });
+      const list = response.data.values ?? response.data ?? [];
+      const batch = Array.isArray(list) ? list : [];
+      for (const s of batch) {
+        if (s?.id != null && s?.name) map.set(Number(s.id), String(s.name));
+      }
+      const total = response.data.total ?? batch.length;
+      startAt += batch.length;
+      if (batch.length === 0 || startAt >= total || batch.length < maxResults) break;
+    }
+
+    this.executionStatusNamesByProject.set(cacheKey, map);
+    return map;
+  }
+
+  /** Add normalized `status` (PASS/FAIL/…) and `statusName` (UI label) on each execution row. */
+  async normalizeExecutionStatuses(
+    executions: Record<string, unknown>[]
+  ): Promise<Record<string, unknown>[]> {
+    if (executions.length === 0) return executions;
+
+    const needsStatusLookup = executions.some(ex => {
+      const tes = ex.testExecutionStatus as { id?: number; name?: string } | undefined;
+      return tes != null && typeof tes === 'object' && tes.id != null && !tes.name;
+    });
+
+    let statusNameById: Map<number, string> | undefined;
+    if (needsStatusLookup) {
+      const projectKey =
+        getExecutionProjectKey(executions[0]) ??
+        executions.map(getExecutionProjectKey).find((k): k is string => Boolean(k));
+      statusNameById = await this.getExecutionStatusNameMap(projectKey);
+    }
+
+    return executions.map(ex => {
+      const statusName = getExecutionStatusNameFromRow(ex, statusNameById);
+      const status = getExecutionStatusCodeFromRow(ex, statusNameById);
+      return {
+        ...ex,
+        ...(statusName !== undefined && { statusName }),
+        ...(status !== undefined && { status }),
+      };
+    });
+  }
+
   async getTestExecutionsInCycle(cycleId: string): Promise<{
     executions: ZephyrTestExecution[];
     total: number;
   }> {
-    // Zephyr Scale Cloud: use query param (path /testcycles/{id}/testexecutions may not exist)
-    const response = await this.client.get('/testexecutions', {
-      params: { testCycle: cycleId },
-    });
-    const executions = response.data.values || response.data || [];
-    const total = response.data.total ?? (Array.isArray(executions) ? executions.length : 0);
-    return { executions: Array.isArray(executions) ? executions : [], total };
+    const all: ZephyrTestExecution[] = [];
+    let startAt = 0;
+    const maxResults = 1000;
+    let total = 0;
+
+    while (true) {
+      const response = await this.client.get('/testexecutions', {
+        params: { testCycle: cycleId, maxResults, startAt },
+      });
+      const executions = response.data.values || response.data || [];
+      const batch = Array.isArray(executions) ? executions : [];
+      total = response.data.total ?? all.length + batch.length;
+      all.push(...(batch as ZephyrTestExecution[]));
+      startAt += batch.length;
+      if (batch.length === 0 || all.length >= total) break;
+    }
+
+    const normalized = await this.normalizeExecutionStatuses(
+      all as unknown as Record<string, unknown>[]
+    );
+    return { executions: normalized as unknown as ZephyrTestExecution[], total };
   }
 
   /**
@@ -665,28 +765,14 @@ export class ZephyrClient {
   async getTestExecutionSummary(cycleId: string): Promise<ZephyrExecutionSummary> {
     const { executions } = await this.getTestExecutionsInCycle(cycleId);
 
-    const summary = executions.reduce(
-      (acc: any, execution: any) => {
+    const summary: ZephyrExecutionSummary = executions.reduce(
+      (acc, execution) => {
         acc.total++;
-        switch (execution.status) {
-          case 'PASS':
-            acc.passed++;
-            break;
-          case 'FAIL':
-            acc.failed++;
-            break;
-          case 'BLOCKED':
-            acc.blocked++;
-            break;
-          case 'WIP':
-            acc.inProgress++;
-            break;
-          default:
-            acc.notExecuted++;
-        }
+        const bucket = summarizeExecutionStatusCode(execution.status as ExecutionStatusCode | undefined);
+        acc[bucket]++;
         return acc;
       },
-      { total: 0, passed: 0, failed: 0, blocked: 0, inProgress: 0, notExecuted: 0 }
+      { total: 0, passed: 0, failed: 0, blocked: 0, inProgress: 0, notExecuted: 0, passRate: 0 }
     );
 
     summary.passRate = summary.total > 0 ? (summary.passed / summary.total) * 100 : 0;

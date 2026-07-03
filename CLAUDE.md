@@ -28,8 +28,8 @@ The following environment variables are required:
 - `list_test_cycles`: List existing test cycles with execution status
 - `get_test_cycle`: Get one test cycle by key or id
 - `update_test_cycle`: Update a test cycle (`PUT /testcycles/{key}`; GET-merge-PUT, including status, version, owner, custom fields)
-- `execute_test`: Update test execution results
-- `bulk_execute_tests`: Update many executions sequentially (one PUT each; no single bulk API in public spec)
+- `execute_test`: Update test execution results (status, comment, defects, optional environmentName)
+- `bulk_execute_tests`: Update many executions sequentially (one PUT each; no single bulk API in public spec); each item may include environmentName
 - `list_test_executions_nextgen`: Cursor-paged list of executions (`GET /testexecutions/nextgen`)
 - `get_test_execution`: Get one execution by id or key (`GET /testexecutions/{idOrKey}`, OpenAPI `getTestExecution`)
 - `get_test_execution_links`: List web links for an execution (`GET /testexecutions/{id}/links`, OpenAPI `getTestExecutionLinks`)

@@ -43,6 +43,37 @@ import {
   type RemoveTestCaseFromCycleInput,
 } from '../utils/validation.js';
 
+function formatExecutionRow(ex: Record<string, unknown>) {
+  const testCycle = ex.testCycle as { id?: string | number; key?: string } | undefined;
+  const cycleId =
+    ex.cycleId ??
+    testCycle?.id ??
+    testCycle?.key;
+  const links = ex.links as { issues?: Array<{ key: string; summary?: string }> } | undefined;
+  const defects =
+    (ex.defects as Array<{ key: string; summary?: string }> | undefined) ??
+    links?.issues?.map(i => ({ key: i.key, summary: i.summary })) ??
+    [];
+
+  return {
+    id: ex.id,
+    key: ex.key,
+    testCaseId: getExecutionTestCaseEntityId(ex),
+    testCaseKey: getExecutionTestCaseKey(ex),
+    cycleId,
+    status: ex.status,
+    statusName: ex.statusName,
+    environmentName: ex.environmentName,
+    comment: ex.comment,
+    executedOn: ex.executedOn ?? ex.actualEndDate,
+    executedBy: (ex.executedBy as { displayName?: string } | undefined)?.displayName,
+    defects: defects.map(d => ({
+      key: d.key,
+      summary: d.summary,
+    })),
+  };
+}
+
 let zephyrClient: ZephyrClient | null = null;
 
 const getZephyrClient = (): ZephyrClient => {
@@ -112,6 +143,7 @@ export const executeTest = async (input: ExecuteTestInput) => {
       status: validatedInput.status,
       comment: validatedInput.comment,
       defects: validatedInput.defects,
+      environmentName: validatedInput.environmentName,
     });
     
     return {
@@ -122,10 +154,12 @@ export const executeTest = async (input: ExecuteTestInput) => {
         cycleId: execution.cycleId,
         testCaseId: execution.testCaseId,
         status: execution.status,
+        statusName: execution.statusName,
+        environmentName: execution.environmentName,
         comment: execution.comment,
         executedOn: execution.executedOn,
         executedBy: execution.executedBy?.displayName,
-        defects: execution.defects.map(defect => ({
+        defects: execution.defects?.map(defect => ({
           key: defect.key,
           summary: defect.summary,
         })),
@@ -149,21 +183,7 @@ export const listTestExecutionsInCycle = async (input: ListTestExecutionsInCycle
       data: {
         cycleId: validatedInput.cycleId,
         total,
-        executions: executions.map((ex: Record<string, unknown>) => ({
-          id: ex.id,
-          key: ex.key,
-          testCaseId: getExecutionTestCaseEntityId(ex),
-          testCaseKey: getExecutionTestCaseKey(ex),
-          status: ex.status,
-          comment: ex.comment,
-          executedOn: ex.executedOn,
-          executedBy: (ex.executedBy as { displayName?: string } | undefined)?.displayName,
-          defects:
-            (ex.defects as Array<{ key: string; summary?: string }> | undefined)?.map(d => ({
-              key: d.key,
-              summary: d.summary,
-            })) ?? [],
-        })),
+        executions: executions.map((ex: Record<string, unknown>) => formatExecutionRow(ex)),
       },
     };
   } catch (error: unknown) {
@@ -192,25 +212,7 @@ export const listTestExecutionsNextgen = async (input: ListTestExecutionsNextgen
         limit: page.limit,
         nextStartAtId: page.nextStartAtId,
         next: page.next,
-        executions: page.values.map(ex => {
-          const row = ex as unknown as Record<string, unknown>;
-          return {
-            id: row.id,
-            key: row.key,
-            cycleId: row.cycleId,
-            testCaseId: getExecutionTestCaseEntityId(row),
-            testCaseKey: getExecutionTestCaseKey(row),
-            status: row.status,
-            comment: row.comment,
-            executedOn: row.executedOn,
-            executedBy: (row.executedBy as { displayName?: string } | undefined)?.displayName,
-            defects:
-              (row.defects as Array<{ key: string; summary?: string }> | undefined)?.map(d => ({
-                key: d.key,
-                summary: d.summary,
-              })) ?? [],
-          };
-        }),
+        executions: page.values.map(ex => formatExecutionRow(ex as unknown as Record<string, unknown>)),
       },
     };
   } catch (error: unknown) {
@@ -228,22 +230,7 @@ export const getTestExecution = async (input: GetTestExecutionInput) => {
     const row = ex as Record<string, unknown>;
     return {
       success: true,
-      data: {
-        id: row.id,
-        key: row.key,
-        testCaseId: getExecutionTestCaseEntityId(row),
-        testCaseKey: getExecutionTestCaseKey(row),
-        cycleId: row.cycleId,
-        status: row.status,
-        comment: row.comment,
-        executedOn: row.executedOn,
-        executedBy: (row.executedBy as { displayName?: string } | undefined)?.displayName,
-        defects:
-          (row.defects as Array<{ key: string; summary?: string }> | undefined)?.map(d => ({
-            key: d.key,
-            summary: d.summary,
-          })) ?? [],
-      },
+      data: formatExecutionRow(row),
     };
   } catch (error: unknown) {
     return zephyrToolFailure(error, { permissionCategories: [] });
@@ -327,6 +314,8 @@ export const bulkExecuteTests = async (input: BulkExecuteTestsInput) => {
                   cycleId: r.data.cycleId,
                   testCaseId: r.data.testCaseId,
                   status: r.data.status,
+                  statusName: r.data.statusName,
+                  environmentName: r.data.environmentName,
                   comment: r.data.comment,
                   executedOn: r.data.executedOn,
                   executedBy: r.data.executedBy?.displayName,

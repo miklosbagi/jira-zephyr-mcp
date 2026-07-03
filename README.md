@@ -138,9 +138,9 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **list_priorities** / **list_statuses** | List test case priorities and statuses (id and name). Use the returned ids when creating or updating test cases. Optional projectKey. |
 | **list_environments** / **get_environment** / **create_environment** / **update_environment** | List and manage test environments per project (`GET/POST/PUT /environments`). Use returned names with **create_test_cycle** / **update_test_cycle** (`environment`) and **create_test_execution** (`environmentName`). |
 | **list_projects** | List Zephyr-visible projects (id, key, name). Optional `limit`, `startAt` for pagination. Use for projectKey discovery. |
-| **list_test_executions_in_cycle** | List test cases and executions in a cycle (`GET /testexecutions` with `testCycle`). |
+| **list_test_executions_in_cycle** | List test cases and executions in a cycle (`GET /testexecutions` with `testCycle`). Auto-paginates (API default page size is **10**). Returns normalized **`status`** and **`statusName`**. |
 | **list_test_executions_nextgen** | Cursor-paged executions for large volumes ([`GET /testexecutions/nextgen`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/listTestExecutionsNextgen)); use `nextStartAtId` or `next` for the next page. |
-| **get_test_execution** | Get one execution by id or key ([`GET /testexecutions/{testExecutionIdOrKey}`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecution), OpenAPI `getTestExecution`). Same row shape as **list_test_executions_in_cycle**; resolves **testCaseKey** when the API omits it (v0.15.0). |
+| **get_test_execution** | Get one execution by id or key ([`GET /testexecutions/{testExecutionIdOrKey}`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecution), OpenAPI `getTestExecution`). Same row shape as **list_test_executions_in_cycle**; includes **`status`**, **`statusName`**, and resolves **testCaseKey** when the API omits it (v0.15.0). |
 | **get_test_execution_links** | List web links for an execution ([`GET .../testexecutions/{id}/links`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecutionLinks), OpenAPI `getTestExecutionLinks`, v0.16.0). |
 | **get_test_execution_issue_links** | List Jira issue links for an execution ([`GET .../links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecutionIssueLinks), OpenAPI `getTestExecutionIssueLinks`, v0.16.0). |
 | **get_test_execution_test_steps** | Get execution test steps / per-step results ([`GET .../teststeps`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Executions/operation/getTestExecutionTestSteps), OpenAPI `getTestExecutionTestSteps`, v0.16.0). |
@@ -152,9 +152,9 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **create_test_case** / **search_test_cases** / **list_test_cases_nextgen** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, cursor list ([`GET /testcases/nextgen`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/listTestCasesCursorPaginated)), get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
 | **archive_test_case** / **unarchive_test_case** / **delete_test_case** | Archive via PUT (`archived` flag), unarchive, or DELETE. **API support varies** — some instances reject `archived` or DELETE; see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md). |
 | **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). |
-| **execute_test** | Update one test execution status: **`PASS`**, **`FAIL`**, **`WIP`** (In progress), or **`BLOCKED`** via `PUT /testexecutions/{id}`. Use **`WIP`** to move from Not executed to In progress. |
-| **bulk_execute_tests** | Update many executions **sequentially** (one `PUT /testexecutions/{id}` per item). The public API has **no** single bulk-update call; optional `continueOnError` (default true), same idea as `create_multiple_test_cases`. |
-| **get_test_execution_status** | Execution progress and stats for a cycle. |
+| **execute_test** | Update one test execution: **`PASS`**, **`FAIL`**, **`WIP`** (In progress), or **`BLOCKED`** via `PUT /testexecutions/{id}`. Optional **`environmentName`** to set or change the environment on an existing execution. Use **`WIP`** to move from Not executed to In progress. |
+| **bulk_execute_tests** | Update many executions **sequentially** (one `PUT /testexecutions/{id}` per item). Each item may include **`environmentName`**. The public API has **no** single bulk-update call; optional `continueOnError` (default true), same idea as `create_multiple_test_cases`. |
+| **get_test_execution_status** | Execution progress and stats for a cycle. Full pagination + normalized statuses (v0.18.0). |
 | **link_tests_to_issues** | Link a test case to Jira issue(s) as **coverage** ([`POST .../testcases/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/createTestCaseIssueLink)). Resolves each issue **key** to a numeric id via Jira REST, then calls Zephyr (v0.12.0; replaces the old `POST .../links` + `issueKeys` shape). |
 | **get_test_case_links** | List Jira issue links and web links for a test case ([`GET .../testcases/{key}/links`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/getTestCaseLinks)). |
 | **link_test_cycle_to_issues** | Link a test cycle to Jira issue(s) ([`POST .../testcycles/{key}/links/issues`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cycles/operation/createTestCycleIssueLink)). Same Jira id resolution as test cases. |
@@ -171,6 +171,7 @@ Documented gaps between Zephyr Scale Cloud and this MCP server. Full detail: [do
 |-------|-----------|--------|
 | **Attachments** (screenshots, GIFs, evidence) | No tools | Public Scale API v2 has no attachment upload/download routes on Cloud. [Issue #118](https://github.com/miklosbagi/jira-zephyr-mcp/issues/118). Workarounds: Jira issue attachments on linked defects; URLs in execution comments; UI upload. |
 | **Per-step Pass/Fail on executions** | **`update_test_execution_test_steps`** | Per-step `statusName` (Pass, Fail, In Progress, Blocked, Not Executed), `actualResult`, `comment`. Read first with **`get_test_execution_test_steps`**. Whole-execution status: **`execute_test`**. |
+| **Execution environment** | **`execute_test`** / **`bulk_execute_tests`** | Optional **`environmentName`** on update (v0.18.0). Also set at create via **`create_test_execution`**. Use **`list_environments`** for valid names. |
 | **Execution status** | **`execute_test`** | **`WIP`** = In progress. **`PASS`** / **`FAIL`** / **`BLOCKED`** for final states. Cannot set back to Not executed via API update. |
 | **BDD script type** | Plain text / step-by-step only | BDD (Gherkin) requires UI or unsupported TM4J backend — see gaps doc §11b. |
 
@@ -275,8 +276,8 @@ delete_test_step({ testCaseKey: "ABC-T123", stepId: 2 });
 **Execution and reporting**
 ```ts
 get_test_execution({ executionId: "12345" });
-execute_test({ executionId: "12345", status: "PASS", comment: "All passed" });
-bulk_execute_tests({ executions: [{ executionId: "12345", status: "PASS" }, { executionId: "12346", status: "FAIL" }], continueOnError: true });
+execute_test({ executionId: "12345", status: "PASS", comment: "All passed", environmentName: "Staging" });
+bulk_execute_tests({ executions: [{ executionId: "12345", status: "PASS", environmentName: "Staging" }, { executionId: "12346", status: "FAIL" }], continueOnError: true });
 get_test_execution_status({ cycleId: "67890" });
 link_tests_to_issues({ testCaseId: "ABC-T123", issueKeys: ["ABC-456"] });
 link_test_cycle_to_issues({ cycleKey: "ABC-R1", issueKeys: ["ABC-456"] });

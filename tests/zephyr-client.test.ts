@@ -535,11 +535,11 @@ describe('ZephyrClient (integration, mocked)', () => {
   });
 
   describe('getTestExecutionsInCycle', () => {
-    it('sends GET /v2/testexecutions with query testCycle', async () => {
+    it('sends GET /v2/testexecutions with query testCycle, maxResults, and startAt', async () => {
       const body = loadFixture('testexecutions-in-cycle.json');
       const scope = nock(ZEPHYR_ORIGIN)
         .get(`${V2}/testexecutions`)
-        .query({ testCycle: 'PROJ-R1' })
+        .query({ testCycle: 'PROJ-R1', maxResults: 1000, startAt: 0 })
         .reply(200, body);
 
       const result = await client.getTestExecutionsInCycle('PROJ-R1');
@@ -548,6 +548,63 @@ describe('ZephyrClient (integration, mocked)', () => {
       expect(result.executions).toHaveLength(2);
       expect(result.executions[0].key).toBe('PROJ-E1');
       expect(scope.isDone()).toBe(true);
+    });
+
+    it('paginates until total is reached', async () => {
+      const page1 = {
+        values: Array.from({ length: 10 }, (_, i) => ({
+          id: i + 1,
+          key: `E-${i + 1}`,
+          testExecutionStatus: { id: 1, name: 'Pass' },
+          testCase: { key: `T-${i + 1}` },
+        })),
+        total: 15,
+        maxResults: 10,
+        startAt: 0,
+      };
+      const page2 = {
+        values: Array.from({ length: 5 }, (_, i) => ({
+          id: i + 11,
+          key: `E-${i + 11}`,
+          testExecutionStatus: { id: 1, name: 'Pass' },
+          testCase: { key: `T-${i + 11}` },
+        })),
+        total: 15,
+        maxResults: 10,
+        startAt: 10,
+      };
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testexecutions`)
+        .query({ testCycle: 'BIG-R1', maxResults: 1000, startAt: 0 })
+        .reply(200, page1);
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testexecutions`)
+        .query({ testCycle: 'BIG-R1', maxResults: 1000, startAt: 10 })
+        .reply(200, page2);
+
+      const result = await client.getTestExecutionsInCycle('BIG-R1');
+      expect(result.total).toBe(15);
+      expect(result.executions).toHaveLength(15);
+      expect(result.executions.every(ex => ex.status === 'PASS')).toBe(true);
+    });
+
+    it('resolves testExecutionStatus id via GET /statuses', async () => {
+      const body = {
+        values: [{ id: 1, key: 'E1', testExecutionStatus: { id: 99 }, testCase: { key: 'T-1' } }],
+        total: 1,
+      };
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testexecutions`)
+        .query({ testCycle: 'PROJ-R1', maxResults: 1000, startAt: 0 })
+        .reply(200, body);
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/statuses`)
+        .query({ statusType: 'TEST_EXECUTION', maxResults: 1000, startAt: 0 })
+        .reply(200, { values: [{ id: 99, name: 'Pass' }], total: 1 });
+
+      const result = await client.getTestExecutionsInCycle('PROJ-R1');
+      expect(result.executions[0].status).toBe('PASS');
+      expect(result.executions[0].statusName).toBe('Pass');
     });
   });
 
@@ -581,7 +638,7 @@ describe('ZephyrClient (integration, mocked)', () => {
       const listBody = loadFixture('testexecutions-in-cycle.json');
       const listScope = nock(ZEPHYR_ORIGIN)
         .get(`${V2}/testexecutions`)
-        .query({ testCycle: 'PROJ-R1' })
+        .query({ testCycle: 'PROJ-R1', maxResults: 1000, startAt: 0 })
         .reply(200, listBody);
       const delScope = nock(ZEPHYR_ORIGIN).delete(`${V2}/testexecutions/5002`).reply(204);
 
@@ -596,7 +653,7 @@ describe('ZephyrClient (integration, mocked)', () => {
       const listBody = loadFixture('testexecutions-in-cycle.json');
       nock(ZEPHYR_ORIGIN)
         .get(`${V2}/testexecutions`)
-        .query({ testCycle: 'PROJ-R1' })
+        .query({ testCycle: 'PROJ-R1', maxResults: 1000, startAt: 0 })
         .reply(200, listBody);
 
       await expect(client.removeTestCaseFromCycle('PROJ-R1', 'PROJ-T99')).rejects.toThrow(
@@ -609,7 +666,7 @@ describe('ZephyrClient (integration, mocked)', () => {
         values: [{ id: 5002, key: 'PROJ-E2', testCase: { id: 1001 }, status: 'PASS' }],
         total: 1,
       };
-      nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions`).query({ testCycle: 'PROJ-R1' }).reply(200, listBody);
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions`).query({ testCycle: 'PROJ-R1', maxResults: 1000, startAt: 0 }).reply(200, listBody);
       nock(ZEPHYR_ORIGIN)
         .get(`${V2}/testcases/1001`)
         .reply(200, { id: 1001, key: 'PROJ-T2', name: 'n', project: { id: 1 } });
@@ -626,7 +683,7 @@ describe('ZephyrClient (integration, mocked)', () => {
         values: [{ id: 5002, key: 'PROJ-E2', testCase: { id: 1001 }, status: 'PASS' }],
         total: 1,
       };
-      nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions`).query({ testCycle: 'PROJ-R1' }).reply(200, listBody);
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions`).query({ testCycle: 'PROJ-R1', maxResults: 1000, startAt: 0 }).reply(200, listBody);
       const delScope = nock(ZEPHYR_ORIGIN).delete(`${V2}/testexecutions/5002`).reply(204);
 
       const result = await client.removeTestCaseFromCycle('PROJ-R1', '1001');
@@ -766,6 +823,20 @@ describe('ZephyrClient (integration, mocked)', () => {
       });
       expect(u.status).toBe('PASS');
       expect(scope.isDone()).toBe(true);
+
+      const envScope = nock(ZEPHYR_ORIGIN)
+        .put(
+          `${V2}/testexecutions/e1`,
+          (b: Record<string, unknown>) => b.status === 'WIP' && b.environmentName === 'Staging'
+        )
+        .reply(200, { ...ex, status: 'WIP', environmentName: 'Staging' });
+      const withEnv = await client.updateTestExecution({
+        executionId: 'e1',
+        status: 'WIP',
+        environmentName: 'Staging',
+      });
+      expect(withEnv.environmentName).toBe('Staging');
+      expect(envScope.isDone()).toBe(true);
     });
   });
 
@@ -841,7 +912,7 @@ describe('ZephyrClient (integration, mocked)', () => {
       ];
       nock(ZEPHYR_ORIGIN)
         .get(`${V2}/testexecutions`)
-        .query({ testCycle: 'CYC-1' })
+        .query({ testCycle: 'CYC-1', maxResults: 1000, startAt: 0 })
         .reply(200, { values, total: 5 });
 
       const s = await client.getTestExecutionSummary('CYC-1');
@@ -866,7 +937,7 @@ describe('ZephyrClient (integration, mocked)', () => {
         .reply(200, { values: [{ key: 'E1', status: 'PASS', comment: '', defects: [] }] });
       nock(ZEPHYR_ORIGIN)
         .get(`${V2}/testexecutions`)
-        .query({ testCycle: 'C1' })
+        .query({ testCycle: 'C1', maxResults: 1000, startAt: 0 })
         .reply(200, { values: [{ status: 'PASS' }], total: 1 });
 
       const r = await client.generateTestReport('C1');
