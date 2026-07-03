@@ -823,6 +823,20 @@ describe('ZephyrClient (integration, mocked)', () => {
       });
       expect(u.status).toBe('PASS');
       expect(scope.isDone()).toBe(true);
+
+      const envScope = nock(ZEPHYR_ORIGIN)
+        .put(
+          `${V2}/testexecutions/e1`,
+          (b: Record<string, unknown>) => b.status === 'WIP' && b.environmentName === 'Staging'
+        )
+        .reply(200, { ...ex, status: 'WIP', environmentName: 'Staging' });
+      const withEnv = await client.updateTestExecution({
+        executionId: 'e1',
+        status: 'WIP',
+        environmentName: 'Staging',
+      });
+      expect(withEnv.environmentName).toBe('Staging');
+      expect(envScope.isDone()).toBe(true);
     });
   });
 

@@ -10,7 +10,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 |------|-------------|
 | **Test plans** | Create, list (by projectKey), get one, update (**`update_test_plan`**: GET-merge-PUT — **not** in public OpenAPI; see §14) |
 | **Test cycles** | Create, list (by projectKey, optional versionId), get one, **`update_test_cycle`** (PUT `testcycles/{key}`, OpenAPI `updateTestCycle`) |
-| **Test executions** | Create (add test case to cycle), **get one** (**`get_test_execution`**, `GET /testexecutions/{idOrKey}`, v0.15.0), **links & steps** (**`get_test_execution_links`**, **`get_test_execution_issue_links`**, **`get_test_execution_test_steps`**, **`sync_test_execution_test_steps`**, **`update_test_execution_test_steps`**, v0.16.0–v0.17.0), update status/comment/defects (**`execute_test`**: `PASS`/`FAIL`/`WIP`/In progress/`BLOCKED`), list in cycle, cursor list (**`list_test_executions_nextgen`**, v0.14.0), summary by cycle, **`bulk_execute_tests`** (sequential PUTs — not one API call) |
+| **Test executions** | Create (add test case to cycle), **get one** (**`get_test_execution`**, `GET /testexecutions/{idOrKey}`, v0.15.0), **links & steps** (**`get_test_execution_links`**, **`get_test_execution_issue_links`**, **`get_test_execution_test_steps`**, **`sync_test_execution_test_steps`**, **`update_test_execution_test_steps`**, v0.16.0–v0.17.0), update status/comment/defects/**environment** (**`execute_test`**: `PASS`/`FAIL`/`WIP`/In progress/`BLOCKED`, optional **`environmentName`** v0.18.0), list in cycle, cursor list (**`list_test_executions_nextgen`**, v0.14.0), summary by cycle, **`bulk_execute_tests`** (sequential PUTs — not one API call) |
 | **Test cases** | Get one, search, cursor list (**`list_test_cases_nextgen`**, v0.14.0), create, update, create multiple |
 | **Folders** | List (by projectKey, optional folderType, parentId), create (with optional parentId, folderType) |
 | **Priorities / statuses** | List priorities and statuses (GET /priorities, GET /statuses; optional projectKey) for test case create/update |
@@ -111,7 +111,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 ### 15. **Bulk or batch operations**
 
 - **API (OpenAPI):** There is **no** documented endpoint that accepts **multiple test execution updates in one request**. **`GET /testcases/nextgen`** (`listTestCasesCursorPaginated`) and **`GET /testexecutions/nextgen`** (`listTestExecutionsNextgen`) are **cursor-paged list** APIs for **large read volumes** (use `nextStartAtId` / `next` for the next page). **`POST /testcycles/{key}/testcases`** with an `items` array adds several cases to a cycle in one call — already exposed as **`add_test_cases_to_cycle`** (may 404 on some regions).
-- **MCP status (v0.14.0+):** **`list_test_cases_nextgen`** and **`list_test_executions_nextgen`** call the documented nextgen GET routes. **`bulk_execute_tests`** applies the same payload as **`execute_test`** via **sequential `PUT /testexecutions/{id}`** calls (optional **`continueOnError`**, same pattern as **`create_multiple_test_cases`**). For very large batches, prefer external orchestration or rate limits to avoid throttling.
+- **MCP status (v0.14.0+):** **`list_test_cases_nextgen`** and **`list_test_executions_nextgen`** call the documented nextgen GET routes. **`bulk_execute_tests`** applies the same payload as **`execute_test`** via **sequential `PUT /testexecutions/{id}`** calls (optional **`continueOnError`**, same pattern as **`create_multiple_test_cases`**). **`execute_test`** / **`bulk_execute_tests`** accept optional **`environmentName`** on update (v0.18.0; OpenAPI `TestExecutionUpdate`). For very large batches, prefer external orchestration or rate limits to avoid throttling.
 
 ### 16. Additional test execution endpoints (links, steps, sync)
 
@@ -163,7 +163,7 @@ This document lists **Zephyr Scale for Jira Cloud API** capabilities that are **
 
 - **Implemented (v0.17.0):** **`update_test_execution_test_steps`** — see §16. **`get_test_execution_test_steps`** / **`sync_test_execution_test_steps`** (v0.16.0) remain read/sync only.
 - **Execution reads (v0.18.0):** Scale Cloud returns `testExecutionStatus` (not a flat `status` string). The server normalizes to **`status`** (`PASS`/`FAIL`/…) and **`statusName`** on **`get_test_execution`**, **`list_test_executions_in_cycle`**, **`list_test_executions_nextgen`**, and **`get_test_execution_status`**. Cycle lists auto-paginate past the API default of 10 results per page.
-- **Whole-execution status (write):** **`execute_test`** / **`bulk_execute_tests`** — `PASS`, `FAIL`, `WIP` (In progress), `BLOCKED`. No `NOT_EXECUTED` on update.
+- **Whole-execution status (write):** **`execute_test`** / **`bulk_execute_tests`** — `PASS`, `FAIL`, `WIP` (In progress), `BLOCKED`. Optional **`environmentName`** to assign or change environment on an existing execution (v0.18.0). No `NOT_EXECUTED` on update.
 
 ---
 

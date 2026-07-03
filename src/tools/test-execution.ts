@@ -143,6 +143,7 @@ export const executeTest = async (input: ExecuteTestInput) => {
       status: validatedInput.status,
       comment: validatedInput.comment,
       defects: validatedInput.defects,
+      environmentName: validatedInput.environmentName,
     });
     
     return {

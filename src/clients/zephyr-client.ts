@@ -525,12 +525,16 @@ export class ZephyrClient {
     status: 'PASS' | 'FAIL' | 'WIP' | 'BLOCKED';
     comment?: string;
     defects?: string[];
+    environmentName?: string;
   }): Promise<ZephyrTestExecution> {
-    const payload = {
+    const payload: Record<string, unknown> = {
       status: data.status,
       comment: data.comment,
       issues: data.defects?.map(key => ({ key })),
     };
+    if (data.environmentName !== undefined) {
+      payload.environmentName = data.environmentName;
+    }
 
     const response = await this.client.put(`/testexecutions/${data.executionId}`, payload);
     const [normalized] = await this.normalizeExecutionStatuses([
@@ -592,6 +596,7 @@ export class ZephyrClient {
       status: 'PASS' | 'FAIL' | 'WIP' | 'BLOCKED';
       comment?: string;
       defects?: string[];
+      environmentName?: string;
     }>,
     continueOnError = true
   ): Promise<{
