@@ -26,7 +26,7 @@ If tools are unavailable, tell the user to add the server per the project README
 | Test plans | `create_test_plan`, `list_test_plans`, `get_test_plan`, `update_test_plan` |
 | Test cycles | `create_test_cycle`, `list_test_cycles`, `get_test_cycle`, `update_test_cycle`, `add_test_cases_to_cycle` |
 | Executions | `create_test_execution`, `get_test_execution`, `get_test_execution_links`, `get_test_execution_issue_links`, `get_test_execution_test_steps`, `sync_test_execution_test_steps`, `update_test_execution_test_steps`, `execute_test`, `bulk_execute_tests`, `list_test_executions_in_cycle`, `list_test_executions_nextgen`, `get_test_execution_status`, `remove_test_case_from_cycle`, `generate_test_report` |
-| Test cases & steps | `create_test_case`, `search_test_cases`, `list_test_cases_nextgen`, `get_test_case`, `get_test_case_links`, `update_test_case`, `archive_test_case`, `unarchive_test_case`, `delete_test_case`, `create_multiple_test_cases`, `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` |
+| Test cases & steps | `list_folders` (discover folders), `search_test_cases` (list/filter via nextgen), `list_test_cases_nextgen`, `create_test_case`, `get_test_case`, `get_test_case_links`, `update_test_case`, `archive_test_case`, `unarchive_test_case`, `delete_test_case`, `create_multiple_test_cases`, `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` |
 | Environments | `list_environments`, `get_environment`, `create_environment`, `update_environment` |
 | Coverage (Jira ↔ Zephyr) | `link_tests_to_issues`, `link_test_cycle_to_issues`, `link_test_plan_to_issues` |
 
@@ -39,6 +39,7 @@ Prefer **listing** before **creating** when the user did not give keys/IDs. Use 
 3. **Regions** — Default Zephyr API host is US; EU and others need `ZEPHYR_BASE_URL` set correctly or calls will fail or hit the wrong tenant.
 4. **Execution results** — Whole case: **`execute_test`** with `PASS` | `FAIL` | `WIP` (In progress) | `BLOCKED`; optional **`environmentName`** to set or change environment on an existing execution (v0.18.0). Per step: **`update_test_execution_test_steps`** (`steps` array by index; `statusName` e.g. Pass, Fail). Read steps first with **`get_test_execution_test_steps`** when unsure of count/order.
 5. **Responses** — Tool results are usually JSON strings in MCP content; parse and present clearly. On `success: false`, surface the `error` field.
+6. **Test case discovery** — Cloud has no native text search API. Use **`list_folders`** (`folderType: "TEST_CASE"`) then **`list_test_cases_nextgen`** or **`search_test_cases`** with **`folderId`**. Optional **`query`** on **`search_test_cases`** filters client-side only.
 
 ## Known limitations (agents)
 
@@ -49,6 +50,7 @@ Prefer **listing** before **creating** when the user did not give keys/IDs. Use 
 | Mark execution **In progress** from Not executed | **`execute_test`** with **`status: "WIP"`** (same as In progress in Zephyr). |
 | Set each **step** to Pass/Fail / In progress / Blocked / Not executed | **`update_test_execution_test_steps`** with `statusName` per step (UI labels, e.g. Pass, Fail, In Progress). |
 | Set execution back to Not executed | **Not via `execute_test`** — only `PASS` / `FAIL` / `WIP` / `BLOCKED` on update. |
+| Server-style ZQL / `GET /testcases/search` text search | **`list_folders`** + **`list_test_cases_nextgen`** / **`search_test_cases`** (`folderId`, optional client-side `query`) |
 
 See `docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md` §22–§23.
 

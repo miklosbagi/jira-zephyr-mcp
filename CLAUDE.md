@@ -46,7 +46,7 @@ The following environment variables are required:
 - `generate_test_report`: Generate test execution report
 - `create_test_case`: Create a new test case in Zephyr
 - `create_multiple_test_cases`: Create multiple test cases in Zephyr at once
-- `search_test_cases`: Search for test cases in a project
+- `search_test_cases`: List/filter test cases via `GET /testcases/nextgen` (optional client-side text filter; optional `folderId`)
 - `list_test_cases_nextgen`: Cursor-paged test cases (`GET /testcases/nextgen`)
 - `get_test_case`: Get detailed information about a specific test case
 - `archive_test_case` / `unarchive_test_case` / `delete_test_case`: Archive, unarchive, or delete a test case (API support varies by tenant)

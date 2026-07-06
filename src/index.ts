@@ -152,7 +152,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.18.0',
+    version: '0.18.1',
   },
   {
     capabilities: {
@@ -815,12 +815,17 @@ const TOOLS = [
   },
   {
     name: 'search_test_cases',
-    description: 'Search for test cases in a project',
+    description:
+      'List or filter test cases in a project via GET /testcases/nextgen. Optional query filters name/key/objective client-side (Cloud has no /testcases/search). Prefer list_folders + folderId for folder-scoped discovery.',
     inputSchema: {
       type: 'object',
       properties: {
         projectKey: { type: 'string', description: 'JIRA project key' },
-        query: { type: 'string', description: 'Search query (optional)' },
+        query: {
+          type: 'string',
+          description: 'Optional text filter (client-side; matches name, key, objective, precondition, labels)',
+        },
+        folderId: { type: 'number', description: 'Optional folder id (use list_folders to discover)' },
         limit: { type: 'number', description: 'Maximum number of results (default: 50)' },
       },
       required: ['projectKey'],

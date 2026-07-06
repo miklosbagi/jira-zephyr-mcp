@@ -937,20 +937,86 @@ export class ZephyrClient {
     await this.client.delete(`/testcases/${testCaseKey}/teststeps/${stepId}`);
   }
 
-  async searchTestCases(projectKey: string, query?: string, limit = 50): Promise<{
+  /** Case-insensitive match on name, key, objective, precondition, and labels. */
+  private static testCaseMatchesQuery(testCase: ZephyrTestCase, query: string): boolean {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return true;
+    const haystack = [
+      testCase.name,
+      testCase.key,
+      testCase.objective,
+      testCase.precondition,
+      ...(testCase.labels ?? []),
+    ]
+      .filter((part): part is string => typeof part === 'string' && part.length > 0)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(needle);
+  }
+
+  /**
+   * List test cases for a project (Scale Cloud has no GET /testcases/search — that path is routed as getTestCase).
+   * Uses GET /testcases/nextgen; optional query is filtered client-side over paginated results.
+   */
+  async searchTestCases(
+    projectKey: string,
+    query?: string,
+    limit = 50,
+    folderId?: number
+  ): Promise<{
     testCases: ZephyrTestCase[];
     total: number;
+    hasMore?: boolean;
+    queryFilter?: boolean;
+    truncated?: boolean;
   }> {
-    const params = {
-      projectKey,
-      query,
-      maxResults: limit,
-    };
+    const normalizedQuery = query?.trim();
+    const useQueryFilter = Boolean(normalizedQuery);
+    const collected: ZephyrTestCase[] = [];
+    let startAtId = 0;
+    const pageSize = useQueryFilter ? Math.min(100, limit) : limit;
+    const maxPages = useQueryFilter ? 50 : 1;
+    let hasMore = false;
 
-    const response = await this.client.get('/testcases/search', { params });
+    for (let page = 0; page < maxPages; page++) {
+      const pageResult = await this.listTestCasesNextgen({
+        projectKey,
+        folderId,
+        limit: pageSize,
+        startAtId,
+      });
+
+      if (pageResult.values.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      for (const testCase of pageResult.values) {
+        if (!useQueryFilter || ZephyrClient.testCaseMatchesQuery(testCase, normalizedQuery!)) {
+          collected.push(testCase);
+          if (collected.length >= limit) break;
+        }
+      }
+
+      if (collected.length >= limit) {
+        hasMore = pageResult.nextStartAtId != null;
+        break;
+      }
+
+      if (pageResult.nextStartAtId == null) {
+        hasMore = false;
+        break;
+      }
+
+      startAtId = pageResult.nextStartAtId;
+      hasMore = true;
+    }
+
     return {
-      testCases: response.data.values || response.data,
-      total: response.data.total || response.data.length,
+      testCases: collected.slice(0, limit),
+      total: collected.length,
+      ...(hasMore ? { hasMore: true } : {}),
+      ...(useQueryFilter ? { queryFilter: true, truncated: hasMore } : {}),
     };
   }
 

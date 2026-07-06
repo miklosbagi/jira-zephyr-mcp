@@ -329,6 +329,7 @@ export const createTestCaseSchema = z.object({
 export const searchTestCasesSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),
   query: z.string().optional(),
+  folderId: z.number().int().positive().optional(),
   limit: z.number().min(1).max(100).default(50),
 });
 

@@ -155,7 +155,7 @@ describe('tool handlers — HTTP error paths', () => {
     nock(Z).post(`${V2}/testcases`).reply(500);
     expect((await createTestCase({ projectKey: 'p', name: 'n' })).success).toBe(false);
 
-    nock(Z).get(`${V2}/testcases/search`).query(true).reply(500);
+    nock(Z).get(`${V2}/testcases/nextgen`).query(true).reply(500);
     expect((await searchTestCases({ projectKey: 'p' })).success).toBe(false);
 
     nock(Z).get(`${V2}/testcases/nextgen`).query(true).reply(500);

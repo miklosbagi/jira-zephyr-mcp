@@ -85,9 +85,10 @@ export const searchTestCases = async (input: SearchTestCasesInput) => {
     const result = await getZephyrClient().searchTestCases(
       validatedInput.projectKey,
       validatedInput.query,
-      validatedInput.limit
+      validatedInput.limit,
+      validatedInput.folderId
     );
-    
+
     return {
       success: true,
       data: {
@@ -109,6 +110,17 @@ export const searchTestCases = async (input: SearchTestCasesInput) => {
         })),
         total: result.total,
         projectKey: validatedInput.projectKey,
+        ...(validatedInput.folderId !== undefined ? { folderId: validatedInput.folderId } : {}),
+        ...(result.hasMore ? { hasMore: true } : {}),
+        ...(result.queryFilter
+          ? {
+              queryFilter: true,
+              query: validatedInput.query,
+              ...(result.truncated ? { truncated: true } : {}),
+              note:
+                'Zephyr Scale Cloud has no native text search API; results are filtered client-side from paginated listings. Use list_folders + folderId or list_test_cases_nextgen for full discovery.',
+            }
+          : {}),
       },
     };
   } catch (error: unknown) {

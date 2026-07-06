@@ -149,7 +149,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **add_test_cases_to_cycle** | Add existing test cases to a test cycle (by cycle key and test case keys). On **EU API** this endpoint often returns 404; use **create_test_execution** instead (one call per test case, status “Not Executed”). |
 | **create_test_execution** | Create a test execution (add a test case to a cycle). Use when `add_test_cases_to_cycle` returns 404 (e.g. EU). One call per test case; default status “Not Executed” mimics adding via UI. |
 | **remove_test_case_from_cycle** | Remove a test case from a cycle by deleting its test execution (`DELETE /testexecutions/{id}`). Pass **`executionId`** from `list_test_executions_in_cycle`, or **`cycleKey` + `testCaseKey`** to resolve it. If the public API returns 404/405 on your instance, use the Zephyr UI or contact SmartBear. |
-| **create_test_case** / **search_test_cases** / **list_test_cases_nextgen** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, cursor list ([`GET /testcases/nextgen`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/listTestCasesCursorPaginated)), get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
+| **create_test_case** / **search_test_cases** / **list_test_cases_nextgen** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create; **search** lists via `GET /testcases/nextgen` with optional client-side text filter (Cloud has no `/testcases/search`); cursor list ([`GET /testcases/nextgen`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/listTestCasesCursorPaginated)), get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
 | **archive_test_case** / **unarchive_test_case** / **delete_test_case** | Archive via PUT (`archived` flag), unarchive, or DELETE. **API support varies** — some instances reject `archived` or DELETE; see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md). |
 | **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). |
 | **execute_test** | Update one test execution: **`PASS`**, **`FAIL`**, **`WIP`** (In progress), or **`BLOCKED`** via `PUT /testexecutions/{id}`. Optional **`environmentName`** to set or change the environment on an existing execution. Use **`WIP`** to move from Not executed to In progress. |
@@ -255,8 +255,8 @@ update_environment({ environmentId: "101", name: "Staging EU" });
 create_test_case({ projectKey: "ABC", name: "Login test", objective: "...", testScript: { type: "STEP_BY_STEP", steps: [...] }, customFields: { "Execution": "Manual" } });
 create_test_case({ projectKey: "ABC", name: "Free text test", testScript: { type: "PLAIN_TEXT", text: "Manual instructions here." } });
 create_test_case({ projectKey: "ABC", name: "BDD scenario", testScript: { type: "CUCUMBER", text: "Given ... When ... Then ..." });  // CUCUMBER if supported by instance
-search_test_cases({ projectKey: "ABC", query: "login", limit: 20 });
-list_test_cases_nextgen({ projectKey: "ABC", limit: 200, startAtId: 0 });
+search_test_cases({ projectKey: "ABC", query: "login", limit: 20, folderId: 12345 });
+list_test_cases_nextgen({ projectKey: "ABC", folderId: 12345, limit: 200, startAtId: 0 });
 get_test_case({ testCaseId: "ABC-T123" });
 update_test_case({ testCaseId: "ABC-T123", customFields: { "Created On": "2026-03-11" } });
 create_multiple_test_cases({ testCases: [...], continueOnError: true });

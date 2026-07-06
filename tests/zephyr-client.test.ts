@@ -395,11 +395,16 @@ describe('ZephyrClient (integration, mocked)', () => {
   });
 
   describe('searchTestCases', () => {
-    it('sends GET /v2/testcases/search with projectKey and maxResults', async () => {
-      const body = loadFixture('testcases-search.json');
+    it('lists via GET /v2/testcases/nextgen without query', async () => {
+      const body = {
+        values: [{ id: 1001, key: 'CP-T1', name: 'Sample test case' }],
+        limit: 50,
+        nextStartAtId: null,
+        next: null,
+      };
       const scope = nock(ZEPHYR_ORIGIN)
-        .get(`${V2}/testcases/search`)
-        .query({ projectKey: 'CP', maxResults: 50 })
+        .get(`${V2}/testcases/nextgen`)
+        .query({ projectKey: 'CP', limit: 50, startAtId: 0 })
         .reply(200, body);
 
       const result = await client.searchTestCases('CP', undefined, 50);
@@ -407,6 +412,41 @@ describe('ZephyrClient (integration, mocked)', () => {
       expect(result.total).toBe(1);
       expect(result.testCases[0].key).toBe('CP-T1');
       expect(result.testCases[0].name).toBe('Sample test case');
+      expect(result.queryFilter).toBeUndefined();
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('filters client-side when query is provided', async () => {
+      const page = {
+        values: [
+          { id: 1, key: 'CP-T1', name: 'Login flow' },
+          { id: 2, key: 'CP-T2', name: 'Logout flow' },
+        ],
+        limit: 10,
+        nextStartAtId: null,
+        next: null,
+      };
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/nextgen`)
+        .query({ projectKey: 'CP', limit: 10, startAtId: 0 })
+        .twice()
+        .reply(200, page);
+
+      const loginOnly = await client.searchTestCases('CP', 'login', 10);
+      expect(loginOnly.testCases.map((tc) => tc.key)).toEqual(['CP-T1']);
+      expect(loginOnly.queryFilter).toBe(true);
+
+      const none = await client.searchTestCases('CP', 'billing', 10);
+      expect(none.testCases).toEqual([]);
+    });
+
+    it('passes folderId to nextgen', async () => {
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/nextgen`)
+        .query({ projectKey: 'CP', folderId: 3382, limit: 10, startAtId: 0 })
+        .reply(200, { values: [], limit: 10, nextStartAtId: null, next: null });
+
+      await client.searchTestCases('CP', undefined, 10, 3382);
       expect(scope.isDone()).toBe(true);
     });
   });
