@@ -18,6 +18,18 @@ export function executionStatusNameToCode(name: string): ExecutionStatusCode | u
   return STATUS_NAME_TO_CODE[key];
 }
 
+const CODE_TO_STATUS_NAME: Record<'PASS' | 'FAIL' | 'WIP' | 'BLOCKED', string> = {
+  PASS: 'Pass',
+  FAIL: 'Fail',
+  WIP: 'In Progress',
+  BLOCKED: 'Blocked',
+};
+
+/** UI status label Zephyr's PUT /testexecutions/{id} expects in `statusName`. */
+export function executionStatusCodeToName(code: 'PASS' | 'FAIL' | 'WIP' | 'BLOCKED'): string {
+  return CODE_TO_STATUS_NAME[code];
+}
+
 export function executionStatusTokenToCode(token: string): ExecutionStatusCode | undefined {
   const upper = token.trim().toUpperCase();
   if (upper === 'PASS' || upper === 'FAIL' || upper === 'WIP' || upper === 'BLOCKED' || upper === 'NOT_EXECUTED') {

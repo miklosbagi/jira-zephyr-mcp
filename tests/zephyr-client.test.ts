@@ -222,10 +222,10 @@ describe('ZephyrClient (integration, mocked)', () => {
   describe('bulkExecuteTests', () => {
     it('sends sequential PUTs for each execution', async () => {
       const put1 = nock(ZEPHYR_ORIGIN)
-        .put(`${V2}/testexecutions/e1`, (b: Record<string, unknown>) => b.status === 'PASS')
+        .put(`${V2}/testexecutions/e1`, (b: Record<string, unknown>) => b.statusName === 'Pass')
         .reply(200, { id: 'e1', key: 'E1', cycleId: 'c', testCaseId: 't', status: 'PASS', defects: [] });
       const put2 = nock(ZEPHYR_ORIGIN)
-        .put(`${V2}/testexecutions/e2`, (b: Record<string, unknown>) => b.status === 'FAIL')
+        .put(`${V2}/testexecutions/e2`, (b: Record<string, unknown>) => b.statusName === 'Fail')
         .reply(200, { id: 'e2', key: 'E2', cycleId: 'c', testCaseId: 't', status: 'FAIL', defects: [] });
 
       const result = await client.bulkExecuteTests([
@@ -814,7 +814,7 @@ describe('ZephyrClient (integration, mocked)', () => {
       expect(g.key).toBe('E-1');
 
       const scope = nock(ZEPHYR_ORIGIN)
-        .put(`${V2}/testexecutions/e1`, (b: Record<string, unknown>) => b.status === 'PASS')
+        .put(`${V2}/testexecutions/e1`, (b: Record<string, unknown>) => b.statusName === 'Pass')
         .reply(200, { ...ex, status: 'PASS' });
       const u = await client.updateTestExecution({
         executionId: 'e1',
@@ -827,7 +827,7 @@ describe('ZephyrClient (integration, mocked)', () => {
       const envScope = nock(ZEPHYR_ORIGIN)
         .put(
           `${V2}/testexecutions/e1`,
-          (b: Record<string, unknown>) => b.status === 'WIP' && b.environmentName === 'Staging'
+          (b: Record<string, unknown>) => b.statusName === 'In Progress' && b.environmentName === 'Staging'
         )
         .reply(200, { ...ex, status: 'WIP', environmentName: 'Staging' });
       const withEnv = await client.updateTestExecution({
@@ -837,6 +837,31 @@ describe('ZephyrClient (integration, mocked)', () => {
       });
       expect(withEnv.environmentName).toBe('Staging');
       expect(envScope.isDone()).toBe(true);
+    });
+
+    it('re-fetches the execution when PUT returns an empty body', async () => {
+      const ex = {
+        id: 2,
+        key: 'E-2',
+        cycleId: 1,
+        testCaseId: 1,
+        status: 'PASS',
+        comment: null,
+        executedOn: null,
+        executedBy: null,
+        defects: [],
+      };
+      const putScope = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testexecutions/e2`, (b: Record<string, unknown>) => b.statusName === 'Pass')
+        .reply(200, {});
+      const getScope = nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/e2`).reply(200, ex);
+
+      const u = await client.updateTestExecution({ executionId: 'e2', status: 'PASS' });
+
+      expect(u.key).toBe('E-2');
+      expect(u.status).toBe('PASS');
+      expect(putScope.isDone()).toBe(true);
+      expect(getScope.isDone()).toBe(true);
     });
   });
 
