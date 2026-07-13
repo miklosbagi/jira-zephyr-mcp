@@ -6,6 +6,7 @@ import {
   getExecutionTestCaseKey,
 } from '../utils/test-execution-identity.js';
 import {
+  executionStatusCodeToName,
   getExecutionProjectKey,
   getExecutionStatusCodeFromRow,
   getExecutionStatusNameFromRow,
@@ -414,12 +415,15 @@ export class ZephyrClient {
   }
 
   async getTestExecution(executionIdOrKey: string): Promise<ZephyrTestExecution> {
+    const raw = await this.rawTestExecution(executionIdOrKey);
+    const [normalized] = await this.normalizeExecutionStatuses([raw]);
+    return normalized as unknown as ZephyrTestExecution;
+  }
+
+  private async rawTestExecution(executionIdOrKey: string): Promise<Record<string, unknown>> {
     const id = encodeURIComponent(executionIdOrKey);
     const response = await this.client.get(`/testexecutions/${id}`);
-    const [normalized] = await this.normalizeExecutionStatuses([
-      response.data as Record<string, unknown>,
-    ]);
-    return normalized as unknown as ZephyrTestExecution;
+    return response.data as Record<string, unknown>;
   }
 
   /**
@@ -528,7 +532,7 @@ export class ZephyrClient {
     environmentName?: string;
   }): Promise<ZephyrTestExecution> {
     const payload: Record<string, unknown> = {
-      status: data.status,
+      statusName: executionStatusCodeToName(data.status),
       comment: data.comment,
       issues: data.defects?.map(key => ({ key })),
     };
@@ -537,9 +541,11 @@ export class ZephyrClient {
     }
 
     const response = await this.client.put(`/testexecutions/${data.executionId}`, payload);
-    const [normalized] = await this.normalizeExecutionStatuses([
-      response.data as Record<string, unknown>,
-    ]);
+    // PUT commonly returns an empty body on success; re-fetch so callers get the actual
+    // post-update execution rather than trusting the 200 status alone.
+    const body = response.data as Record<string, unknown> | undefined;
+    const raw = body && Object.keys(body).length > 0 ? body : await this.rawTestExecution(data.executionId);
+    const [normalized] = await this.normalizeExecutionStatuses([raw]);
     return normalized as unknown as ZephyrTestExecution;
   }
 
