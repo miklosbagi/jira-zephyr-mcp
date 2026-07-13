@@ -314,17 +314,17 @@ describe('validation schemas', () => {
 
   it('updateTestStepSchema refine', () => {
     expect(() =>
-      updateTestStepSchema.parse({ testCaseKey: 'T-1', stepId: 1 })
+      updateTestStepSchema.parse({ testCaseKey: 'T-1', index: 0 })
     ).toThrow(/At least one field/);
     expect(
-      updateTestStepSchema.parse({ testCaseKey: 'T-1', stepId: 1, description: 'd' })
+      updateTestStepSchema.parse({ testCaseKey: 'T-1', index: 0, description: 'd' })
     ).toMatchObject({ description: 'd' });
   });
 
   it('deleteTestStepSchema', () => {
-    expect(deleteTestStepSchema.parse({ testCaseKey: 'T-1', stepId: 1 })).toEqual({
+    expect(deleteTestStepSchema.parse({ testCaseKey: 'T-1', index: 0 })).toEqual({
       testCaseKey: 'T-1',
-      stepId: 1,
+      index: 0,
     });
   });
 });

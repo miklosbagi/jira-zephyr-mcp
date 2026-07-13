@@ -151,7 +151,7 @@ When using the Docker image, pass these via your MCP config’s `env` (as in Qui
 | **remove_test_case_from_cycle** | Remove a test case from a cycle by deleting its test execution (`DELETE /testexecutions/{id}`). Pass **`executionId`** from `list_test_executions_in_cycle`, or **`cycleKey` + `testCaseKey`** to resolve it. If the public API returns 404/405 on your instance, use the Zephyr UI or contact SmartBear. |
 | **create_test_case** / **search_test_cases** / **list_test_cases_nextgen** / **get_test_case** / **update_test_case** / **create_multiple_test_cases** | Full test case lifecycle: create, search, cursor list ([`GET /testcases/nextgen`](https://support.smartbear.com/zephyr-scale-cloud/api-docs/#tag/Test-Cases/operation/listTestCasesCursorPaginated)), get, update (including custom fields), bulk create. Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. |
 | **archive_test_case** / **unarchive_test_case** / **delete_test_case** | Archive via PUT (`archived` flag), unarchive, or DELETE. **API support varies** — some instances reject `archived` or DELETE; see [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md). |
-| **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). |
+| **list_test_steps** / **create_test_step** / **update_test_step** / **delete_test_step** | Manage test steps for a test case independently (step-by-step scripts). The public API has no per-step id — steps are addressed by their **0-based `index`** (as returned by `list_test_steps`); `update_test_step`/`delete_test_step` fetch the full list and re-POST it with `mode: OVERWRITE` under the hood. |
 | **execute_test** | Update one test execution: **`PASS`**, **`FAIL`**, **`WIP`** (In progress), or **`BLOCKED`** via `PUT /testexecutions/{id}`. Optional **`environmentName`** to set or change the environment on an existing execution. Use **`WIP`** to move from Not executed to In progress. |
 | **bulk_execute_tests** | Update many executions **sequentially** (one `PUT /testexecutions/{id}` per item). Each item may include **`environmentName`**. The public API has **no** single bulk-update call; optional `continueOnError` (default true), same idea as `create_multiple_test_cases`. |
 | **get_test_execution_status** | Execution progress and stats for a cycle. Full pagination + normalized statuses (v0.18.0). |
@@ -265,12 +265,12 @@ unarchive_test_case({ testCaseKey: "ABC-T999" });
 delete_test_case({ testCaseKey: "ABC-T999" });  // may 404/405; remove from cycles first
 ```
 
-**Test steps (step-by-step test cases)**
+**Test steps (step-by-step test cases)** — steps have no id; address them by **0-based `index`** from `list_test_steps`.
 ```ts
 list_test_steps({ testCaseKey: "ABC-T123" });
-create_test_step({ testCaseKey: "ABC-T123", description: "Click Login", expectedResult: "Form submits", testData: "user@example.com" });
-update_test_step({ testCaseKey: "ABC-T123", stepId: 1, expectedResult: "Redirect to dashboard" });
-delete_test_step({ testCaseKey: "ABC-T123", stepId: 2 });
+create_test_step({ testCaseKey: "ABC-T123", description: "Click Login", expectedResult: "Form submits", testData: "user@example.com" });  // appends to the end
+update_test_step({ testCaseKey: "ABC-T123", index: 0, expectedResult: "Redirect to dashboard" });
+delete_test_step({ testCaseKey: "ABC-T123", index: 1 });
 ```
 
 **Execution and reporting**
@@ -352,7 +352,8 @@ Planned additions (no dates; order may change). Based on [Zephyr Scale Cloud API
 - [x] **Zephyr projects list** — `list_projects` (id, key, name; pagination).
 - [x] **Environments** — `list_environments`, `get_environment`, `create_environment`, `update_environment` (v0.10.0).
 - [x] **Test case archive / delete** — `archive_test_case`, `unarchive_test_case`, `delete_test_case` (v0.11.0; API caveats in gaps doc).
-- [x] **Test steps as separate resource** — `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` (v0.7). Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER.
+- [x] **Test steps as separate resource** — `list_test_steps`, `create_test_step`, `update_test_step`, `delete_test_step` (v0.7). Test script types: STEP_BY_STEP (default), PLAIN_TEXT, CUCUMBER. Steps are addressed by 0-based `index` (no per-step id in the public API); `update`/`delete_test_step` emulate per-step mutation via GET + `POST .../teststeps` with `mode: OVERWRITE` (fixed alongside the `testScript`/`create_test_step` issues below).
+- [x] **Fix: `testScript` on update, `create_test_step`, `update_test_step`/`delete_test_step`** — `update_test_case`/`create_test_case` no longer send `testScript` inline on the test case entity (a read-only link the API silently ignored); `create_test_step` now sends the required bulk `{ mode, items }` shape instead of a flat body; `update_test_step`/`delete_test_step` no longer call the nonexistent `PUT`/`DELETE .../teststeps/{stepId}`. See [ZEPHYR-SCALE-CLOUD-API-GAPS.md](docs/ZEPHYR-SCALE-CLOUD-API-GAPS.md) §11.
 - [x] **Remove test case from cycle** — `remove_test_case_from_cycle` calls `DELETE /testexecutions/{id}` (resolve via `list_test_executions_in_cycle` or pass `cycleKey` + `testCaseKey`). Official docs may not advertise this; some tenants return 404/405.
 - [x] **Test case ↔ Jira issue links (coverage)** — `link_tests_to_issues` uses **`POST /testcases/{key}/links/issues`** with numeric Jira issue id (v0.12.0). `get_test_case_links` lists links (**`GET /testcases/{key}/links`**). Older `POST .../links` + `issueKeys` is not used (405 on current API).
 - [x] **Update test cycle** — **`update_test_cycle`**: **`PUT /testcycles/{key}`** (OpenAPI `updateTestCycle`); MCP merges from GET before PUT (including status, `versionId` → `jiraProjectVersion`, owner, custom fields).

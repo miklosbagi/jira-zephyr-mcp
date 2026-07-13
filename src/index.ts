@@ -152,7 +152,7 @@ import {
 const server = new Server(
   {
     name: 'jira-zephyr-mcp',
-    version: '0.19.1',
+    version: '0.20.0',
   },
   {
     capabilities: {
@@ -772,7 +772,8 @@ const TOOLS = [
   },
   {
     name: 'create_test_step',
-    description: 'Add a test step to an existing test case. Use for step-by-step test cases.',
+    description:
+      'Add a test step to an existing test case. Use for step-by-step test cases. Zephyr has no per-step id — steps are addressed by their 0-based position (see list_test_steps).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -780,37 +781,40 @@ const TOOLS = [
         description: { type: 'string', description: 'Step description/action' },
         expectedResult: { type: 'string', description: 'Expected result' },
         testData: { type: 'string', description: 'Test data (optional)' },
-        index: { type: 'number', description: 'Step order (optional)' },
+        index: {
+          type: 'number',
+          description: '0-based position to insert at (optional; default: append to the end)',
+        },
       },
       required: ['testCaseKey', 'description', 'expectedResult'],
     },
   },
   {
     name: 'update_test_step',
-    description: 'Update an existing test step (description, expectedResult, testData, or index).',
+    description:
+      'Update an existing test step (description, expectedResult, and/or testData) by its 0-based position.',
     inputSchema: {
       type: 'object',
       properties: {
         testCaseKey: { type: 'string', description: 'Test case key' },
-        stepId: { type: 'number', description: 'Step ID (from list_test_steps)' },
+        index: { type: 'number', description: '0-based step position (from list_test_steps)' },
         description: { type: 'string', description: 'New step description (optional)' },
         expectedResult: { type: 'string', description: 'New expected result (optional)' },
         testData: { type: 'string', description: 'New test data (optional)' },
-        index: { type: 'number', description: 'New step order (optional)' },
       },
-      required: ['testCaseKey', 'stepId'],
+      required: ['testCaseKey', 'index'],
     },
   },
   {
     name: 'delete_test_step',
-    description: 'Delete a test step from a test case.',
+    description: 'Delete a test step from a test case by its 0-based position.',
     inputSchema: {
       type: 'object',
       properties: {
         testCaseKey: { type: 'string', description: 'Test case key' },
-        stepId: { type: 'number', description: 'Step ID (from list_test_steps)' },
+        index: { type: 'number', description: '0-based step position (from list_test_steps)' },
       },
-      required: ['testCaseKey', 'stepId'],
+      required: ['testCaseKey', 'index'],
     },
   },
   {

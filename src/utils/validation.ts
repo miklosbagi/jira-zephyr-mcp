@@ -396,27 +396,26 @@ export const createTestStepSchema = z.object({
   description: z.string().min(1, 'Step description is required'),
   expectedResult: z.string().min(1, 'Expected result is required'),
   testData: z.string().optional(),
-  index: z.number().min(1).optional(),
+  index: z.number().int().min(0).optional(),
 });
 
 export const updateTestStepSchema = z.object({
   testCaseKey: z.string().min(1, 'Test case key is required'),
-  stepId: z.number().int().min(1, 'Step ID is required'),
+  index: z.number().int().min(0, 'Step index is required'),
   description: z.string().min(1).optional(),
   expectedResult: z.string().min(1).optional(),
   testData: z.string().optional(),
-  index: z.number().min(1).optional(),
 }).refine(
   data => {
-    const { testCaseKey: _testCaseKey, stepId: _stepId, ...updates } = data;
+    const { testCaseKey: _testCaseKey, index: _index, ...updates } = data;
     return Object.keys(updates).length >= 1;
   },
-  { message: 'At least one field to update (description, expectedResult, testData, index) is required' }
+  { message: 'At least one field to update (description, expectedResult, testData) is required' }
 );
 
 export const deleteTestStepSchema = z.object({
   testCaseKey: z.string().min(1, 'Test case key is required'),
-  stepId: z.number().int().min(1, 'Step ID is required'),
+  index: z.number().int().min(0, 'Step index is required'),
 });
 
 export type CreateTestPlanInput = z.infer<typeof createTestPlanSchema>;
