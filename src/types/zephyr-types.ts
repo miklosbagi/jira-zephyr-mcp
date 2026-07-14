@@ -179,20 +179,16 @@ export interface ZephyrTestReport {
 /** Test script type: step-by-step, plain text, or Cucumber/BDD. Default STEP_BY_STEP when steps are provided, PLAIN_TEXT for free text. */
 export type ZephyrTestScriptType = 'STEP_BY_STEP' | 'PLAIN_TEXT' | 'CUCUMBER';
 
-/** Single test step (API may use step/data/result or description/expectedResult/testData). */
+/**
+ * Single inline test step, normalized from the API's `{ inline: { description, testData,
+ * expectedResult } }` shape. `index` is the step's 0-based position in the script — the public
+ * API has no per-step id, so position is the only way to address a step.
+ */
 export interface ZephyrTestStep {
-  id?: number;
-  orderId?: number;
-  index?: number;
-  /** Step action/description (API field may be "step" or "description") */
-  description?: string;
-  step?: string;
-  /** Test data (API field may be "data" or "testData") */
+  index: number;
+  description: string;
   testData?: string;
-  data?: string;
-  /** Expected result (API field may be "result" or "expectedResult") */
-  expectedResult?: string;
-  result?: string;
+  expectedResult: string;
 }
 
 export interface ZephyrProject {

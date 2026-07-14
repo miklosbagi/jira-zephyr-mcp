@@ -408,7 +408,8 @@ describe('tool handlers (smoke, mocked)', () => {
 
     const tc = load('testcase-get.json');
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, tc);
-    nock(ZEPHYR_ORIGIN).put(`${V2}/testcases/PROJ-T1`).reply(200, { ...tc, name: 'U' });
+    nock(ZEPHYR_ORIGIN).put(`${V2}/testcases/PROJ-T1`).reply(200, {});
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, { ...tc, name: 'U' });
     expect((await updateTestCase({ testCaseId: 'PROJ-T1', name: 'U' })).success).toBe(true);
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, tc);
@@ -443,12 +444,16 @@ describe('tool handlers (smoke, mocked)', () => {
   });
 
   it('test-steps', async () => {
-    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/T1/teststeps`).reply(200, load('teststeps-list.json'));
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/T1/teststeps`).query(true).reply(200, load('teststeps-list.json'));
     expect((await listTestSteps({ testCaseKey: 'T1' })).success).toBe(true);
 
     nock(ZEPHYR_ORIGIN)
       .post(`${V2}/testcases/T1/teststeps`)
-      .reply(200, { id: 1, description: 'd', expectedResult: 'e', orderId: 1 });
+      .reply(201, { id: 1, self: 'https://example/testcases/T1/teststeps' });
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testcases/T1/teststeps`)
+      .query(true)
+      .reply(200, { values: [{ inline: { description: 'd', expectedResult: 'e', testData: '' } }], total: 1 });
     expect(
       (
         await createTestStep({
@@ -460,20 +465,32 @@ describe('tool handlers (smoke, mocked)', () => {
     ).toBe(true);
 
     nock(ZEPHYR_ORIGIN)
-      .put(`${V2}/testcases/T1/teststeps/1`)
-      .reply(200, { id: 1, description: 'd2', expectedResult: 'e', orderId: 1 });
+      .get(`${V2}/testcases/T1/teststeps`)
+      .query(true)
+      .reply(200, { values: [{ inline: { description: 'd', expectedResult: 'e', testData: '' } }], total: 1 });
+    nock(ZEPHYR_ORIGIN)
+      .post(`${V2}/testcases/T1/teststeps`)
+      .reply(201, { id: 2, self: 'https://example/testcases/T1/teststeps' });
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testcases/T1/teststeps`)
+      .query(true)
+      .reply(200, { values: [{ inline: { description: 'd2', expectedResult: 'e', testData: '' } }], total: 1 });
     expect(
       (
         await updateTestStep({
           testCaseKey: 'T1',
-          stepId: 1,
+          index: 0,
           description: 'd2',
         })
       ).success
     ).toBe(true);
 
-    nock(ZEPHYR_ORIGIN).delete(`${V2}/testcases/T1/teststeps/1`).reply(204);
-    expect((await deleteTestStep({ testCaseKey: 'T1', stepId: 1 })).success).toBe(true);
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testcases/T1/teststeps`)
+      .query(true)
+      .reply(200, { values: [{ inline: { description: 'd2', expectedResult: 'e', testData: '' } }], total: 1 });
+    nock(ZEPHYR_ORIGIN).post(`${V2}/testcases/T1/teststeps`).reply(201, { id: 3, self: 'https://example/testcases/T1/teststeps' });
+    expect((await deleteTestStep({ testCaseKey: 'T1', index: 0 })).success).toBe(true);
   });
 
   it('folders', async () => {

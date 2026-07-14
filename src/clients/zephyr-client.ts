@@ -872,75 +872,125 @@ export class ZephyrClient {
     }
   }
 
-  /** Normalize step from API (step/data/result or description/expectedResult/testData) to unified shape. */
-  private normalizeStep(raw: Record<string, any>): ZephyrTestStep {
+  /**
+   * Normalize a step from the API's `{ inline: { description, testData, expectedResult } }`
+   * shape (steps that delegate to another test case via `testCase` have no inline text).
+   * `index` is the step's 0-based position — the public API has no per-step id.
+   */
+  private normalizeStep(raw: Record<string, any>, index: number): ZephyrTestStep {
+    const inline = (raw.inline ?? {}) as Record<string, any>;
     return {
-      id: raw.id,
-      orderId: raw.orderId ?? raw.index,
-      index: raw.orderId ?? raw.index,
-      description: raw.description ?? raw.step ?? '',
-      step: raw.step ?? raw.description,
-      testData: raw.testData ?? raw.data,
-      data: raw.data ?? raw.testData,
-      expectedResult: raw.expectedResult ?? raw.result ?? '',
-      result: raw.result ?? raw.expectedResult,
+      index,
+      description: inline.description ?? '',
+      testData: inline.testData ?? '',
+      expectedResult: inline.expectedResult ?? '',
     };
   }
 
-  async getTestSteps(testCaseKey: string): Promise<ZephyrTestStep[]> {
-    const response = await this.client.get(`/testcases/${testCaseKey}/teststeps`);
-    const rawSteps = response.data?.values ?? response.data ?? [];
-    const list = Array.isArray(rawSteps) ? rawSteps : [];
-    return list.map((s: Record<string, any>) => this.normalizeStep(s));
+  /**
+   * Raw, unnormalized step items (`{ inline: {...} }` or `{ testCase: {...} }`) in list order,
+   * fully paginated. Used as the round-trip payload for POST .../teststeps with mode OVERWRITE,
+   * since that's the only way to update or delete an existing step (no per-step endpoint exists).
+   */
+  private async getRawTestStepItems(testCaseKey: string): Promise<Record<string, unknown>[]> {
+    const values: Record<string, unknown>[] = [];
+    let startAt = 0;
+    while (true) {
+      const response = await this.client.get(`/testcases/${testCaseKey}/teststeps`, {
+        params: { maxResults: 1000, startAt },
+      });
+      const batch = (response.data?.values ?? []) as Record<string, unknown>[];
+      values.push(...batch);
+      const total = Number(response.data?.total ?? values.length);
+      startAt += batch.length;
+      if (batch.length === 0 || startAt >= total) break;
+    }
+    return values.map(v =>
+      (v as { inline?: unknown }).inline !== undefined
+        ? { inline: (v as { inline: unknown }).inline }
+        : { testCase: (v as { testCase?: unknown }).testCase }
+    );
   }
 
+  async getTestSteps(testCaseKey: string): Promise<ZephyrTestStep[]> {
+    const raw = await this.getRawTestStepItems(testCaseKey);
+    return raw.map((s, i) => this.normalizeStep(s, i));
+  }
+
+  /**
+   * Append a step via `POST .../teststeps` (mode APPEND), or, when `index` is given, splice it
+   * into that 0-based position and re-send the full list (mode OVERWRITE) — the bulk API has no
+   * insert-at-position primitive of its own.
+   */
   async createTestStep(testCaseKey: string, step: {
     description: string;
     expectedResult: string;
     testData?: string;
     index?: number;
   }): Promise<ZephyrTestStep> {
-    const body: Record<string, any> = {
-      description: step.description,
-      expectedResult: step.expectedResult,
-      step: step.description,
-      result: step.expectedResult,
+    const newItem = {
+      inline: {
+        description: step.description,
+        expectedResult: step.expectedResult,
+        testData: step.testData ?? '',
+      },
     };
-    if (step.testData !== undefined && step.testData !== '') {
-      body.testData = step.testData;
-      body.data = step.testData;
+
+    if (step.index == null) {
+      await this.client.post(`/testcases/${testCaseKey}/teststeps`, {
+        mode: 'APPEND',
+        items: [newItem],
+      });
+      const steps = await this.getTestSteps(testCaseKey);
+      return steps[steps.length - 1];
     }
-    if (step.index != null) body.index = step.index;
-    const response = await this.client.post(`/testcases/${testCaseKey}/teststeps`, body);
-    return this.normalizeStep(response.data ?? {});
+
+    const items = await this.getRawTestStepItems(testCaseKey);
+    const insertAt = Math.max(0, Math.min(step.index, items.length));
+    items.splice(insertAt, 0, newItem);
+    await this.client.post(`/testcases/${testCaseKey}/teststeps`, { mode: 'OVERWRITE', items });
+    const steps = await this.getTestSteps(testCaseKey);
+    return steps[insertAt];
   }
 
-  async updateTestStep(testCaseKey: string, stepId: number, step: {
+  /**
+   * Update one step by its 0-based position. There is no per-step PUT in the public API — the
+   * only mutation primitive is re-posting the whole list with mode OVERWRITE.
+   */
+  async updateTestStep(testCaseKey: string, index: number, step: {
     description?: string;
     expectedResult?: string;
     testData?: string;
-    index?: number;
   }): Promise<ZephyrTestStep> {
-    const body: Record<string, any> = {};
-    if (step.description !== undefined) {
-      body.description = step.description;
-      body.step = step.description;
+    const items = await this.getRawTestStepItems(testCaseKey);
+    if (index < 0 || index >= items.length) {
+      throw new Error(`Step index ${index} is out of range (test case has ${items.length} step(s)).`);
     }
-    if (step.expectedResult !== undefined) {
-      body.expectedResult = step.expectedResult;
-      body.result = step.expectedResult;
+    const current = items[index] as { inline?: Record<string, unknown> };
+    if (!current.inline) {
+      throw new Error(`Step ${index} delegates to another test case and has no inline text to update.`);
     }
-    if (step.testData !== undefined) {
-      body.testData = step.testData;
-      body.data = step.testData;
-    }
-    if (step.index !== undefined) body.index = step.index;
-    const response = await this.client.put(`/testcases/${testCaseKey}/teststeps/${stepId}`, body);
-    return this.normalizeStep(response.data ?? {});
+    items[index] = {
+      inline: {
+        ...current.inline,
+        ...(step.description !== undefined && { description: step.description }),
+        ...(step.expectedResult !== undefined && { expectedResult: step.expectedResult }),
+        ...(step.testData !== undefined && { testData: step.testData }),
+      },
+    };
+    await this.client.post(`/testcases/${testCaseKey}/teststeps`, { mode: 'OVERWRITE', items });
+    const steps = await this.getTestSteps(testCaseKey);
+    return steps[index];
   }
 
-  async deleteTestStep(testCaseKey: string, stepId: number): Promise<void> {
-    await this.client.delete(`/testcases/${testCaseKey}/teststeps/${stepId}`);
+  /** Remove one step by its 0-based position via re-posting the remaining list (mode OVERWRITE). */
+  async deleteTestStep(testCaseKey: string, index: number): Promise<void> {
+    const items = await this.getRawTestStepItems(testCaseKey);
+    if (index < 0 || index >= items.length) {
+      throw new Error(`Step index ${index} is out of range (test case has ${items.length} step(s)).`);
+    }
+    items.splice(index, 1);
+    await this.client.post(`/testcases/${testCaseKey}/teststeps`, { mode: 'OVERWRITE', items });
   }
 
   async searchTestCases(projectKey: string, query?: string, limit = 50): Promise<{
@@ -1046,153 +1096,47 @@ export class ZephyrClient {
       payload.customFields = data.customFields;
     }
 
-    const script = data.testScript;
-    const isPlainOrCucumber = script && (script.type === 'PLAIN_TEXT' || script.type === 'CUCUMBER') && script.text;
-    if (isPlainOrCucumber) {
-      const apiType = script!.type === 'PLAIN_TEXT' ? 'plain' : 'bdd';
-      payload.testScript = { type: apiType, text: script!.text };
-    }
-
     const response = await this.client.post('/testcases', payload);
     const created = response.data;
-    if (script && created?.key) {
-      await this._applyTestScriptAfterCreate(created, script);
+    if (data.testScript && created?.key) {
+      await this._applyTestScript(created.key, data.testScript);
     }
     return created;
   }
 
   /**
-   * Apply test script after create. Cloud API often ignores inline testScript on POST /testcases.
-   * BDD script type cannot be set via public API (see docs Known issues).
+   * Apply a test script via its dedicated endpoints — `POST /testcases/{key}/testscript`
+   * (plain/BDD text) or `POST /testcases/{key}/teststeps` with mode OVERWRITE (step-by-step).
+   * `testScript` on the main test case entity is a read-only link (see `TestCase` schema); the
+   * create/update payload for the test case itself never carries the script body.
+   * BDD script type cannot be reliably set via the public API (see docs Known issues).
    */
-  private async _applyTestScriptAfterCreate(created: ZephyrTestCase | { key: string; id?: number; project?: { id: number }; projectId?: number }, script: {
+  private async _applyTestScript(testCaseKey: string, script: {
     type?: 'STEP_BY_STEP' | 'PLAIN_TEXT' | 'CUCUMBER';
     steps?: Array<{ index: number; description: string; testData?: string; expectedResult: string }>;
     text?: string;
   }): Promise<void> {
-    const testCaseKey = created.key;
-    const baseUrl = (this.client.defaults.baseURL ?? '').replace(/\/$/, '');
     const scriptType = script.type ?? (script.steps?.length ? 'STEP_BY_STEP' : 'PLAIN_TEXT');
 
     if ((scriptType === 'PLAIN_TEXT' || scriptType === 'CUCUMBER') && script.text) {
-      const path = `/testcases/${testCaseKey}/testscript`;
-      const payload = scriptType === 'PLAIN_TEXT'
-        ? { plainScript: { text: script.text } }
-        : { bddScript: { text: script.text } };
-      let done = false;
-
-      const existing = await this.getTestScript(testCaseKey).catch(() => null);
-      if (existing && typeof existing === 'object') {
-        const key = scriptType === 'PLAIN_TEXT' ? 'plainScript' : 'bddScript';
-        const existingBlock = (existing as any)[key];
-        const putBody = existingBlock
-          ? { ...(existing as object), [key]: { ...(existingBlock as object), text: script.text } }
-          : payload;
-        try {
-          await this.client.put(path, putBody);
-          done = true;
-        } catch {
-          // continue to fallbacks
-        }
-      }
-      if (!done) {
-        try {
-          await this.client.put(path, payload);
-          done = true;
-        } catch {
-          // continue
-        }
-      }
-      if (!done) {
-        try {
-          await this.client.post(path, payload);
-          done = true;
-        } catch {
-          // continue
-        }
-      }
-      if (!done && scriptType === 'PLAIN_TEXT') {
-        const alt = { type: 'plain', text: script.text };
-        try {
-          await this.client.put(path, alt);
-          done = true;
-        } catch {
-          try {
-            await this.client.post(path, alt);
-            done = true;
-          } catch {
-            // ignore
-          }
-        }
-      }
-      if (!done && scriptType === 'CUCUMBER') {
-        for (const typeVal of ['bdd', 'bddScript']) {
-          try {
-            await this.client.put(path, { type: typeVal, bddScript: { text: script.text } });
-            done = true;
-            break;
-          } catch {
-            try {
-              await this.client.put(path, { type: typeVal, text: script.text });
-              done = true;
-              break;
-            } catch {
-              // continue
-            }
-          }
-        }
-      }
+      await this.client.post(`/testcases/${testCaseKey}/testscript`, {
+        type: scriptType === 'PLAIN_TEXT' ? 'plain' : 'bdd',
+        text: script.text,
+      });
       return;
     }
 
     if (scriptType === 'STEP_BY_STEP' && script.steps?.length) {
-      const steps = script.steps.sort((a, b) => a.index - b.index);
-      const selfUrl = `${baseUrl}/testcases/${testCaseKey}/teststeps`;
-      for (const s of steps) {
-        await this._addOneTestStep(testCaseKey, selfUrl, s);
-      }
-    }
-  }
-
-  /**
-   * Add a single step. Tries flat body first (createTestStep); if API returns createTestCaseTestSteps error, retries with bulk wrapper (one item).
-   */
-  private async _addOneTestStep(
-    testCaseKey: string,
-    _selfUrl: string,
-    s: { index: number; description: string; testData?: string; expectedResult: string },
-  ): Promise<void> {
-    try {
-      await this.createTestStep(testCaseKey, {
-        description: s.description,
-        expectedResult: s.expectedResult,
-        testData: s.testData ?? '',
-        index: s.index,
-      });
-    } catch (err: any) {
-      const msg = err.response?.data?.message ?? err.message ?? '';
-      if (err.response?.status !== 400 || !String(msg).includes('createTestCaseTestSteps')) {
-        throw err;
-      }
-      // Inline step only: do not send testCase in item (API: "inline or call to test, not both").
-      const oneItem = {
-        inline: {
-          description: s.description,
-          testData: s.testData ?? '',
-          expectedResult: s.expectedResult,
-          customFields: null,
-        },
-      };
-      try {
-        await this.client.post(`/testcases/${testCaseKey}/teststeps`, {
-          createTestCaseTestSteps: { mode: 'APPEND', items: [oneItem] },
-        });
-      } catch {
-        await this.client.post(`/testcases/${testCaseKey}/teststeps`, {
-          mode: 'APPEND',
-          items: [oneItem],
-        });
-      }
+      const items = [...script.steps]
+        .sort((a, b) => a.index - b.index)
+        .map(s => ({
+          inline: {
+            description: s.description,
+            expectedResult: s.expectedResult,
+            testData: s.testData ?? '',
+          },
+        }));
+      await this.client.post(`/testcases/${testCaseKey}/teststeps`, { mode: 'OVERWRITE', items });
     }
   }
 
@@ -1243,10 +1187,13 @@ export class ZephyrClient {
         ...(data.customFields ?? {}),
       },
     };
-    if (data.testScript !== undefined) payload.testScript = data.testScript;
-
-    const response = await this.client.put(`/testcases/${testCaseKey}`, payload);
-    return response.data;
+    // `testScript` on TestCase is a read-only link — PUT /testcases/{key} does not accept a
+    // script body. Apply it via the dedicated endpoints instead, after the main PUT succeeds.
+    await this.client.put(`/testcases/${testCaseKey}`, payload);
+    if (data.testScript !== undefined) {
+      await this._applyTestScript(testCaseKey, data.testScript);
+    }
+    return this.getTestCase(testCaseKey);
   }
 
   /**

@@ -29,11 +29,10 @@ export const listTestSteps = async (input: ListTestStepsInput) => {
       data: {
         testCaseKey: validated.testCaseKey,
         steps: steps.map(s => ({
-          id: s.id,
-          index: s.index ?? s.orderId,
-          description: s.description ?? s.step,
-          testData: s.testData ?? s.data,
-          expectedResult: s.expectedResult ?? s.result,
+          index: s.index,
+          description: s.description,
+          testData: s.testData,
+          expectedResult: s.expectedResult,
         })),
         total: steps.length,
       },
@@ -57,11 +56,10 @@ export const createTestStep = async (input: CreateTestStepInput) => {
       data: {
         testCaseKey: validated.testCaseKey,
         step: {
-          id: step.id,
-          index: step.index ?? step.orderId,
-          description: step.description ?? step.step,
-          testData: step.testData ?? step.data,
-          expectedResult: step.expectedResult ?? step.result,
+          index: step.index,
+          description: step.description,
+          testData: step.testData,
+          expectedResult: step.expectedResult,
         },
       },
     };
@@ -72,20 +70,18 @@ export const createTestStep = async (input: CreateTestStepInput) => {
 
 export const updateTestStep = async (input: UpdateTestStepInput) => {
   const validated = updateTestStepSchema.parse(input);
-  const { testCaseKey, stepId, ...updates } = validated;
+  const { testCaseKey, index, ...updates } = validated;
   try {
-    const step = await getZephyrClient().updateTestStep(testCaseKey, stepId, updates);
+    const step = await getZephyrClient().updateTestStep(testCaseKey, index, updates);
     return {
       success: true,
       data: {
         testCaseKey,
-        stepId,
         step: {
-          id: step.id,
-          index: step.index ?? step.orderId,
-          description: step.description ?? step.step,
-          testData: step.testData ?? step.data,
-          expectedResult: step.expectedResult ?? step.result,
+          index: step.index,
+          description: step.description,
+          testData: step.testData,
+          expectedResult: step.expectedResult,
         },
       },
     };
@@ -97,10 +93,10 @@ export const updateTestStep = async (input: UpdateTestStepInput) => {
 export const deleteTestStep = async (input: DeleteTestStepInput) => {
   const validated = deleteTestStepSchema.parse(input);
   try {
-    await getZephyrClient().deleteTestStep(validated.testCaseKey, validated.stepId);
+    await getZephyrClient().deleteTestStep(validated.testCaseKey, validated.index);
     return {
       success: true,
-      data: { testCaseKey: validated.testCaseKey, stepId: validated.stepId, deleted: true },
+      data: { testCaseKey: validated.testCaseKey, index: validated.index, deleted: true },
     };
   } catch (error: unknown) {
     return zephyrToolFailure(error, { permissionCategories: ['delete'] });

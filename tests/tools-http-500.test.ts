@@ -188,7 +188,7 @@ describe('tool handlers — HTTP error paths', () => {
   });
 
   it('test-steps', async () => {
-    nock(Z).get(`${V2}/testcases/t/teststeps`).reply(500);
+    nock(Z).get(`${V2}/testcases/t/teststeps`).query(true).reply(500);
     expect((await listTestSteps({ testCaseKey: 't' })).success).toBe(false);
 
     nock(Z).post(`${V2}/testcases/t/teststeps`).reply(500);
@@ -202,19 +202,19 @@ describe('tool handlers — HTTP error paths', () => {
       ).success
     ).toBe(false);
 
-    nock(Z).put(`${V2}/testcases/t/teststeps/1`).reply(500);
+    nock(Z).get(`${V2}/testcases/t/teststeps`).query(true).reply(500);
     expect(
       (
         await updateTestStep({
           testCaseKey: 't',
-          stepId: 1,
+          index: 0,
           description: 'd',
         })
       ).success
     ).toBe(false);
 
-    nock(Z).delete(`${V2}/testcases/t/teststeps/1`).reply(500);
-    expect((await deleteTestStep({ testCaseKey: 't', stepId: 1 })).success).toBe(false);
+    nock(Z).get(`${V2}/testcases/t/teststeps`).query(true).reply(500);
+    expect((await deleteTestStep({ testCaseKey: 't', index: 0 })).success).toBe(false);
   });
 
   it('folders', async () => {

@@ -488,6 +488,47 @@ describe('ZephyrClient (integration, mocked)', () => {
       expect(result.id).toBe(1002);
       expect(scope.isDone()).toBe(true);
     });
+
+    it('applies a plain-text testScript via POST /testscript after create (not inline on POST /testcases)', async () => {
+      const body = loadFixture('testcase-create.json');
+      const createScope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases`, (reqBody: Record<string, unknown>) => !('testScript' in reqBody))
+        .reply(200, body);
+      const scriptScope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/CP-T2/testscript`, { type: 'plain', text: 'Do the thing' })
+        .reply(201, { id: 1 });
+
+      await client.createTestCase({
+        projectKey: 'CP',
+        name: 'New case',
+        testScript: { type: 'PLAIN_TEXT', text: 'Do the thing' },
+      });
+
+      expect(createScope.isDone()).toBe(true);
+      expect(scriptScope.isDone()).toBe(true);
+    });
+
+    it('applies a step-by-step testScript via POST /teststeps mode OVERWRITE after create', async () => {
+      const body = loadFixture('testcase-create.json');
+      nock(ZEPHYR_ORIGIN).post(`${V2}/testcases`).reply(200, body);
+      const stepsScope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/CP-T2/teststeps`, {
+          mode: 'OVERWRITE',
+          items: [{ inline: { description: 'Step 1', expectedResult: 'Result 1', testData: '' } }],
+        })
+        .reply(201, { id: 1 });
+
+      await client.createTestCase({
+        projectKey: 'CP',
+        name: 'New case',
+        testScript: {
+          type: 'STEP_BY_STEP',
+          steps: [{ index: 1, description: 'Step 1', expectedResult: 'Result 1' }],
+        },
+      });
+
+      expect(stepsScope.isDone()).toBe(true);
+    });
   });
 
   describe('getTestSteps', () => {
@@ -495,6 +536,7 @@ describe('ZephyrClient (integration, mocked)', () => {
       const body = loadFixture('teststeps-list.json');
       const scope = nock(ZEPHYR_ORIGIN)
         .get(`${V2}/testcases/CP-T1/teststeps`)
+        .query({ maxResults: 1000, startAt: 0 })
         .reply(200, body);
 
       const result = await client.getTestSteps('CP-T1');
@@ -502,7 +544,7 @@ describe('ZephyrClient (integration, mocked)', () => {
       expect(result).toHaveLength(1);
       expect(result[0].description).toBe('Step one');
       expect(result[0].expectedResult).toBe('Result one');
-      expect(result[0].id).toBe(1);
+      expect(result[0].index).toBe(0);
       expect(scope.isDone()).toBe(true);
     });
   });
@@ -983,42 +1025,126 @@ describe('ZephyrClient (integration, mocked)', () => {
   });
 
   describe('createTestStep / updateTestStep / deleteTestStep', () => {
-    it('POST / PUT / DELETE teststeps', async () => {
-      const step = { id: 1, description: 'd', expectedResult: 'e', orderId: 1, index: 1 };
+    it('appends a step via POST mode APPEND, then re-fetches to return it', async () => {
+      const post = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/T1/teststeps`, {
+          mode: 'APPEND',
+          items: [{ inline: { description: 'd', expectedResult: 'e', testData: 'td' } }],
+        })
+        .reply(201, { id: 1, self: 'https://example/testcases/T1/teststeps' });
       nock(ZEPHYR_ORIGIN)
-        .post(`${V2}/testcases/T1/teststeps`)
-        .reply(200, { id: 1, description: 'd', expectedResult: 'e', orderId: 1 });
-      const c = await client.createTestStep('T1', {
-        description: 'd',
-        expectedResult: 'e',
-        testData: 'td',
-        index: 1,
-      });
+        .get(`${V2}/testcases/T1/teststeps`)
+        .query({ maxResults: 1000, startAt: 0 })
+        .reply(200, {
+          values: [{ inline: { description: 'd', expectedResult: 'e', testData: 'td' } }],
+          total: 1,
+        });
+
+      const c = await client.createTestStep('T1', { description: 'd', expectedResult: 'e', testData: 'td' });
+
       expect(c.description).toBe('d');
+      expect(c.index).toBe(0);
+      expect(post.isDone()).toBe(true);
+    });
 
+    it('inserts a step at a given index via GET then POST mode OVERWRITE', async () => {
       nock(ZEPHYR_ORIGIN)
-        .put(`${V2}/testcases/T1/teststeps/1`)
-        .reply(200, { ...step, description: 'd2' });
-      const u = await client.updateTestStep('T1', 1, { description: 'd2' });
-      expect(u.description).toBe('d2');
+        .get(`${V2}/testcases/T1/teststeps`)
+        .query({ maxResults: 1000, startAt: 0 })
+        .reply(200, { values: [{ inline: { description: 'existing', expectedResult: 'e0', testData: '' } }], total: 1 });
+      const overwrite = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/T1/teststeps`, {
+          mode: 'OVERWRITE',
+          items: [
+            { inline: { description: 'new', expectedResult: 'e1', testData: '' } },
+            { inline: { description: 'existing', expectedResult: 'e0', testData: '' } },
+          ],
+        })
+        .reply(201, { id: 2, self: 'https://example/testcases/T1/teststeps' });
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/T1/teststeps`)
+        .query({ maxResults: 1000, startAt: 0 })
+        .reply(200, {
+          values: [
+            { inline: { description: 'new', expectedResult: 'e1', testData: '' } },
+            { inline: { description: 'existing', expectedResult: 'e0', testData: '' } },
+          ],
+          total: 2,
+        });
 
-      const del = nock(ZEPHYR_ORIGIN).delete(`${V2}/testcases/T1/teststeps/1`).reply(204);
-      await client.deleteTestStep('T1', 1);
-      expect(del.isDone()).toBe(true);
+      const c = await client.createTestStep('T1', { description: 'new', expectedResult: 'e1', index: 0 });
+
+      expect(c.description).toBe('new');
+      expect(c.index).toBe(0);
+      expect(overwrite.isDone()).toBe(true);
+    });
+
+    it('updates a step by index via GET then POST mode OVERWRITE', async () => {
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/T1/teststeps`)
+        .query({ maxResults: 1000, startAt: 0 })
+        .reply(200, { values: [{ inline: { description: 'd', expectedResult: 'e', testData: '' } }], total: 1 });
+      const overwrite = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/T1/teststeps`, {
+          mode: 'OVERWRITE',
+          items: [{ inline: { description: 'd2', expectedResult: 'e', testData: '' } }],
+        })
+        .reply(201, { id: 3, self: 'https://example/testcases/T1/teststeps' });
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/T1/teststeps`)
+        .query({ maxResults: 1000, startAt: 0 })
+        .reply(200, { values: [{ inline: { description: 'd2', expectedResult: 'e', testData: '' } }], total: 1 });
+
+      const u = await client.updateTestStep('T1', 0, { description: 'd2' });
+
+      expect(u.description).toBe('d2');
+      expect(overwrite.isDone()).toBe(true);
+    });
+
+    it('throws when updating an out-of-range index', async () => {
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/T1/teststeps`)
+        .query({ maxResults: 1000, startAt: 0 })
+        .reply(200, { values: [], total: 0 });
+
+      await expect(client.updateTestStep('T1', 0, { description: 'd2' })).rejects.toThrow(/out of range/);
+    });
+
+    it('deletes a step by index via GET then POST mode OVERWRITE with it removed', async () => {
+      nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases/T1/teststeps`)
+        .query({ maxResults: 1000, startAt: 0 })
+        .reply(200, {
+          values: [
+            { inline: { description: 'a', expectedResult: 'e0', testData: '' } },
+            { inline: { description: 'b', expectedResult: 'e1', testData: '' } },
+          ],
+          total: 2,
+        });
+      const overwrite = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/T1/teststeps`, {
+          mode: 'OVERWRITE',
+          items: [{ inline: { description: 'b', expectedResult: 'e1', testData: '' } }],
+        })
+        .reply(201, { id: 4, self: 'https://example/testcases/T1/teststeps' });
+
+      await client.deleteTestStep('T1', 0);
+
+      expect(overwrite.isDone()).toBe(true);
     });
   });
 
   describe('updateTestCase', () => {
-    it('GETs then PUTs merged test case', async () => {
+    it('GETs then PUTs merged test case, then re-GETs the fresh entity', async () => {
       const existing = loadFixture('testcase-get.json') as Record<string, unknown>;
       nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, existing);
-      const scope = nock(ZEPHYR_ORIGIN).put(`${V2}/testcases/PROJ-T1`).reply(200, {
-        ...existing,
-        name: 'Updated',
-      });
+      const putScope = nock(ZEPHYR_ORIGIN).put(`${V2}/testcases/PROJ-T1`).reply(200, {});
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, { ...existing, name: 'Updated' });
+
       const r = await client.updateTestCase('PROJ-T1', { name: 'Updated' });
+
       expect(r.name).toBe('Updated');
-      expect(scope.isDone()).toBe(true);
+      expect(putScope.isDone()).toBe(true);
     });
 
     it('dedupes labels case-insensitively in PUT body', async () => {
@@ -1034,9 +1160,29 @@ describe('ZephyrClient (integration, mocked)', () => {
             labels.includes('beta')
           );
         })
-        .reply(200, { ...existing, labels: ['Alpha', 'beta'] });
+        .reply(200, {});
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, { ...existing, labels: ['Alpha', 'beta'] });
+
       await client.updateTestCase('PROJ-T1', { labels: ['Alpha', 'alpha', 'beta', 'Beta'] });
+
       expect(scope.isDone()).toBe(true);
+    });
+
+    it('does not send testScript on the main PUT; applies it via /testscript afterwards', async () => {
+      const existing = loadFixture('testcase-get.json') as Record<string, unknown>;
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, existing);
+      const putScope = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testcases/PROJ-T1`, (body: Record<string, unknown>) => !('testScript' in body))
+        .reply(200, {});
+      const scriptScope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/PROJ-T1/testscript`, { type: 'plain', text: 'Updated script' })
+        .reply(201, { id: 1 });
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, existing);
+
+      await client.updateTestCase('PROJ-T1', { testScript: { type: 'PLAIN_TEXT', text: 'Updated script' } });
+
+      expect(putScope.isDone()).toBe(true);
+      expect(scriptScope.isDone()).toBe(true);
     });
   });
 
