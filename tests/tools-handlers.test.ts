@@ -671,6 +671,25 @@ describe('tool handlers (smoke, mocked)', () => {
     }
   });
 
+  it('searchTestCases tolerates a non-array testCases from the client (defensive guard)', async () => {
+    const spy = vi
+      .spyOn(ZephyrClient.prototype, 'searchTestCases')
+      // Force the tool's `Array.isArray(...) ? ... : []` false branch.
+      .mockResolvedValueOnce({
+        testCases: undefined as never,
+        total: 0,
+        scanned: 0,
+        truncated: false,
+      });
+    const r = await searchTestCases({ projectKey: 'CP' });
+    spy.mockRestore();
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.testCases).toEqual([]);
+      expect(r.data.total).toBe(0);
+    }
+  });
+
   it('get_test_execution_links returns raw links payload', async () => {
     const payload = { issueLinks: [], webLinks: [] };
     nock(ZEPHYR_ORIGIN).get(`${V2}/testexecutions/e-links/links`).reply(200, payload);
