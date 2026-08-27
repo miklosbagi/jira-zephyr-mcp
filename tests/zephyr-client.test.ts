@@ -395,11 +395,11 @@ describe('ZephyrClient (integration, mocked)', () => {
   });
 
   describe('searchTestCases', () => {
-    it('sends GET /v2/testcases/search with projectKey and maxResults', async () => {
+    it('sends GET /v2/testcases (no phantom /search) with projectKey and maxResults when no query', async () => {
       const body = loadFixture('testcases-search.json');
       const scope = nock(ZEPHYR_ORIGIN)
-        .get(`${V2}/testcases/search`)
-        .query({ projectKey: 'CP', maxResults: 50 })
+        .get(`${V2}/testcases`)
+        .query({ projectKey: 'CP', maxResults: 50, startAt: 0 })
         .reply(200, body);
 
       const result = await client.searchTestCases('CP', undefined, 50);
@@ -407,6 +407,32 @@ describe('ZephyrClient (integration, mocked)', () => {
       expect(result.total).toBe(1);
       expect(result.testCases[0].key).toBe('CP-T1');
       expect(result.testCases[0].name).toBe('Sample test case');
+      expect(result.truncated).toBe(false);
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('filters client-side by free-text query (name/objective contains) and returns >1 match', async () => {
+      const page = {
+        total: 4,
+        values: [
+          { id: 1, key: 'CP-T1', name: 'Login with valid credentials' },
+          { id: 2, key: 'CP-T2', name: 'Logout', objective: 'Ends an active login session' },
+          { id: 3, key: 'CP-T3', name: 'Reset password' },
+          { id: 4, key: 'CP-T4', name: 'LOGIN rate limiting', objective: 'Blocks brute force' },
+        ],
+      };
+      const scope = nock(ZEPHYR_ORIGIN)
+        .get(`${V2}/testcases`)
+        .query({ projectKey: 'CP', maxResults: 1000, startAt: 0 })
+        .reply(200, page);
+
+      const result = await client.searchTestCases('CP', 'login', 50);
+
+      // CP-T1 (name), CP-T2 (objective "login"), CP-T4 (name, case-insensitive)
+      expect(result.testCases.map(tc => tc.key)).toEqual(['CP-T1', 'CP-T2', 'CP-T4']);
+      expect(result.total).toBe(3);
+      expect(result.scanned).toBe(4);
+      expect(result.truncated).toBe(false);
       expect(scope.isDone()).toBe(true);
     });
   });

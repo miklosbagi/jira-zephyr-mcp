@@ -370,7 +370,7 @@ describe('tool handlers (smoke, mocked)', () => {
       ).success
     ).toBe(true);
 
-    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/search`).query(true).reply(200, load('testcases-search.json'));
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases`).query(true).reply(200, load('testcases-search.json'));
     expect((await searchTestCases({ projectKey: 'CP' })).success).toBe(true);
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/nextgen`).query(true).reply(200, {

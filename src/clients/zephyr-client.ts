@@ -993,20 +993,74 @@ export class ZephyrClient {
     await this.client.post(`/testcases/${testCaseKey}/teststeps`, { mode: 'OVERWRITE', items });
   }
 
-  async searchTestCases(projectKey: string, query?: string, limit = 50): Promise<{
+  /**
+   * Search test cases in a project.
+   *
+   * Scale Cloud has **no** free-text search endpoint — `GET /testcases/{key}` owns the
+   * `/testcases/*` path, so the old `/testcases/search` call was parsed as
+   * `getTestCase(testCaseKey="search")` and 400'd (issue #150). The correct list endpoint is
+   * `GET /testcases`, which accepts `projectKey`/`startAt`/`maxResults` but silently ignores any
+   * `query` param. When `query` is given we therefore paginate and filter client-side on
+   * `name`/`objective` (case-insensitive substring), bounded by `maxScan` so a huge project can't
+   * hang the call. `truncated` signals the scan stopped before exhausting the project.
+   */
+  async searchTestCases(
+    projectKey: string,
+    query?: string,
+    limit = 50,
+    maxScan = 10000
+  ): Promise<{
     testCases: ZephyrTestCase[];
     total: number;
+    scanned: number;
+    truncated: boolean;
   }> {
-    const params = {
-      projectKey,
-      query,
-      maxResults: limit,
-    };
+    const needle = query?.trim().toLowerCase();
 
-    const response = await this.client.get('/testcases/search', { params });
+    // No query: behave as a plain first-page listing.
+    if (!needle) {
+      const response = await this.client.get('/testcases', {
+        params: { projectKey, maxResults: limit, startAt: 0 },
+      });
+      const values = Array.isArray(response.data?.values) ? response.data.values : [];
+      const total = Number.isFinite(response.data?.total) ? response.data.total : values.length;
+      return { testCases: values, total, scanned: values.length, truncated: false };
+    }
+
+    // Query: scan pages and filter client-side (server ignores free-text).
+    const matches: ZephyrTestCase[] = [];
+    const pageSize = 1000;
+    let startAt = 0;
+    let scanned = 0;
+    let projectTotal = 0;
+    let truncated = false;
+
+    while (true) {
+      const response = await this.client.get('/testcases', {
+        params: { projectKey, maxResults: pageSize, startAt },
+      });
+      const batch: ZephyrTestCase[] = Array.isArray(response.data?.values) ? response.data.values : [];
+      projectTotal = Number.isFinite(response.data?.total) ? response.data.total : scanned + batch.length;
+
+      for (const tc of batch) {
+        const name = String(tc?.name ?? '').toLowerCase();
+        const objective = String((tc as { objective?: string })?.objective ?? '').toLowerCase();
+        if (name.includes(needle) || objective.includes(needle)) matches.push(tc);
+      }
+
+      scanned += batch.length;
+      startAt += batch.length;
+
+      if (matches.length >= limit) { truncated = scanned < projectTotal; break; }
+      if (batch.length === 0 || startAt >= projectTotal || batch.length < pageSize) break;
+      if (scanned >= maxScan) { truncated = scanned < projectTotal; break; }
+    }
+
     return {
-      testCases: response.data.values || response.data,
-      total: response.data.total || response.data.length,
+      testCases: matches.slice(0, limit),
+      total: matches.length,
+      scanned,
+      truncated,
     };
   }
 

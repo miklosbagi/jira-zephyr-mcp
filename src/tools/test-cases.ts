@@ -88,10 +88,12 @@ export const searchTestCases = async (input: SearchTestCasesInput) => {
       validatedInput.limit
     );
     
+    const testCases = Array.isArray(result.testCases) ? result.testCases : [];
+
     return {
       success: true,
       data: {
-        testCases: result.testCases.map(testCase => ({
+        testCases: testCases.map(testCase => ({
           id: testCase.id,
           key: testCase.key,
           name: testCase.name,
@@ -108,6 +110,8 @@ export const searchTestCases = async (input: SearchTestCasesInput) => {
           linkedIssues: testCase.links?.issues?.length || 0,
         })),
         total: result.total,
+        scanned: result.scanned,
+        truncated: result.truncated,
         projectKey: validatedInput.projectKey,
       },
     };
