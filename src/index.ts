@@ -820,7 +820,7 @@ const TOOLS = [
   {
     name: 'search_test_cases',
     description:
-      'Search test cases in a project via GET /testcases. Scale Cloud has no free-text search endpoint, so when `query` is given the server pages through cases and filters client-side on name/objective (case-insensitive substring), bounded by a scan cap. The response includes `scanned` and `truncated` — `truncated: true` means more matches may exist beyond the scanned range (narrow the query or raise the scan). With no `query` it returns the first page of cases.',
+      'Search test cases in a project. Scale Cloud has no free-text search endpoint, so when `query` is given the server scans the project via cursor pagination (GET /testcases/nextgen) and filters client-side (case-insensitive substring over name, key, objective, precondition, and labels), bounded by a scan cap. The response includes `scanned` and `truncated` — `truncated: true` means more matches may exist beyond the scanned range (narrow the query or filter by folderId). With no `query` it returns the first page of cases (GET /testcases) plus the project `total`.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -828,9 +828,10 @@ const TOOLS = [
         query: {
           type: 'string',
           description:
-            'Free-text substring matched (case-insensitive) against test-case name and objective. Optional; omit to list the first page.',
+            'Free-text substring matched (case-insensitive) against name, key, objective, precondition, and labels. Optional; omit to list the first page.',
         },
         limit: { type: 'number', description: 'Maximum number of matches to return (default: 50, max: 100)' },
+        folderId: { type: 'number', description: 'Restrict the search to a single folder id (optional)' },
       },
       required: ['projectKey'],
     },

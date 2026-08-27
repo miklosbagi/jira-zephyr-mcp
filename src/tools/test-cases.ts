@@ -85,7 +85,8 @@ export const searchTestCases = async (input: SearchTestCasesInput) => {
     const result = await getZephyrClient().searchTestCases(
       validatedInput.projectKey,
       validatedInput.query,
-      validatedInput.limit
+      validatedInput.limit,
+      validatedInput.folderId
     );
     
     const testCases = Array.isArray(result.testCases) ? result.testCases : [];
