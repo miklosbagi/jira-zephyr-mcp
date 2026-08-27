@@ -529,6 +529,25 @@ describe('ZephyrClient (integration, mocked)', () => {
 
       expect(stepsScope.isDone()).toBe(true);
     });
+
+    it('sends inline customFields in the POST /testcases body (issue #151)', async () => {
+      const body = loadFixture('testcase-create.json');
+      const scope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases`, (reqBody: Record<string, unknown>) => {
+          const cf = reqBody.customFields as Record<string, unknown> | undefined;
+          return !!cf && cf.Execution === 'Manual' && cf['Ready for automation'] === true;
+        })
+        .reply(200, body);
+
+      const result = await client.createTestCase({
+        projectKey: 'CP',
+        name: 'New case',
+        customFields: { Execution: 'Manual', 'Ready for automation': true, Negative: false },
+      });
+
+      expect(result.key).toBe('CP-T2');
+      expect(scope.isDone()).toBe(true);
+    });
   });
 
   describe('getTestSteps', () => {
