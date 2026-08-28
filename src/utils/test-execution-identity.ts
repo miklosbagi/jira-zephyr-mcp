@@ -4,9 +4,23 @@
  */
 
 export function getExecutionTestCaseKey(ex: Record<string, unknown>): string | undefined {
-  const tc = ex.testCase as { key?: string } | undefined;
+  const tc = ex.testCase as { key?: string; self?: string } | undefined;
   if (tc?.key && typeof tc.key === 'string') return tc.key;
   if (typeof ex.testCaseKey === 'string') return ex.testCaseKey;
+  // Scale Cloud execution rows often carry only `testCase.self`
+  // (e.g. .../testcases/CP-T8/versions/1) with a numeric `testCase.id` that is NOT usable
+  // with GET /testcases/{key}. The real key is the path segment after /testcases/, so parse it
+  // directly instead of a lookup that would 400 on the numeric id (issue #153).
+  const key = getExecutionTestCaseKeyFromSelf(tc?.self);
+  if (key) return key;
+  return undefined;
+}
+
+/** Extract a test case key (e.g. `CP-T8`) from a Scale `testCase.self` URL, if present. */
+export function getExecutionTestCaseKeyFromSelf(self: unknown): string | undefined {
+  if (typeof self !== 'string') return undefined;
+  const m = self.match(/\/testcases\/([^/?#]+)/i);
+  if (m && /-T\d+$/i.test(m[1])) return m[1];
   return undefined;
 }
 
