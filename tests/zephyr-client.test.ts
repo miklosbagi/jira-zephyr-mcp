@@ -1257,6 +1257,37 @@ describe('ZephyrClient (integration, mocked)', () => {
       expect(putScope.isDone()).toBe(true);
       expect(scriptScope.isDone()).toBe(true);
     });
+
+    it('persists a step-by-step testScript via POST /teststeps OVERWRITE (issue #152)', async () => {
+      const existing = loadFixture('testcase-get.json') as Record<string, unknown>;
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, existing);
+      const putScope = nock(ZEPHYR_ORIGIN)
+        .put(`${V2}/testcases/PROJ-T1`, (body: Record<string, unknown>) => !('testScript' in body))
+        .reply(200, {});
+      const stepsScope = nock(ZEPHYR_ORIGIN)
+        .post(`${V2}/testcases/PROJ-T1/teststeps`, {
+          mode: 'OVERWRITE',
+          items: [
+            { inline: { description: 'Step A', expectedResult: 'Result A', testData: 'data A' } },
+            { inline: { description: 'Step B', expectedResult: 'Result B', testData: '' } },
+          ],
+        })
+        .reply(201, { id: 1 });
+      nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/PROJ-T1`).reply(200, existing);
+
+      await client.updateTestCase('PROJ-T1', {
+        testScript: {
+          type: 'STEP_BY_STEP',
+          steps: [
+            { index: 1, description: 'Step A', testData: 'data A', expectedResult: 'Result A' },
+            { index: 2, description: 'Step B', expectedResult: 'Result B' },
+          ],
+        },
+      });
+
+      expect(putScope.isDone()).toBe(true);
+      expect(stepsScope.isDone()).toBe(true);
+    });
   });
 
   describe('createMultipleTestCases', () => {
