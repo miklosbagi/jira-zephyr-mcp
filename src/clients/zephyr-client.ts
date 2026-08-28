@@ -993,20 +993,87 @@ export class ZephyrClient {
     await this.client.post(`/testcases/${testCaseKey}/teststeps`, { mode: 'OVERWRITE', items });
   }
 
-  async searchTestCases(projectKey: string, query?: string, limit = 50): Promise<{
+  /** Case-insensitive substring match across a test case's user-facing text fields. */
+  private static testCaseMatchesQuery(testCase: ZephyrTestCase, needle: string): boolean {
+    if (!needle) return true;
+    const haystack = [
+      testCase.name,
+      testCase.key,
+      (testCase as { objective?: string }).objective,
+      (testCase as { precondition?: string }).precondition,
+      ...(testCase.labels ?? []),
+    ]
+      .filter((part): part is string => typeof part === 'string' && part.length > 0)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(needle);
+  }
+
+  /**
+   * Search test cases in a project.
+   *
+   * Scale Cloud has **no** free-text search endpoint — `GET /testcases/{key}` owns the
+   * `/testcases/*` path, so the old `/testcases/search` call was parsed as
+   * `getTestCase(testCaseKey="search")` and 400'd (issue #150). When `query` is given we scan the
+   * project with the cursor-paged `GET /testcases/nextgen` (the documented large-volume list) and
+   * filter client-side (case-insensitive substring over name/key/objective/precondition/labels),
+   * bounded by `maxScan` so a huge project can't hang the call. `truncated` signals the scan
+   * stopped before exhausting the project. With no `query` it returns a plain first-page listing
+   * (via `GET /testcases`, which also yields the project `total`).
+   */
+  async searchTestCases(
+    projectKey: string,
+    query?: string,
+    limit = 50,
+    folderId?: number,
+    maxScan = 10000
+  ): Promise<{
     testCases: ZephyrTestCase[];
     total: number;
+    scanned: number;
+    truncated: boolean;
   }> {
-    const params = {
-      projectKey,
-      query,
-      maxResults: limit,
-    };
+    const needle = query?.trim().toLowerCase();
 
-    const response = await this.client.get('/testcases/search', { params });
+    // No query: plain first-page listing (also exposes the project total).
+    if (!needle) {
+      const params: Record<string, string | number> = { projectKey, maxResults: limit, startAt: 0 };
+      if (folderId !== undefined) params.folderId = folderId;
+      const response = await this.client.get('/testcases', { params });
+      const values = Array.isArray(response.data?.values) ? response.data.values : [];
+      const total = Number.isFinite(response.data?.total) ? response.data.total : values.length;
+      return { testCases: values, total, scanned: values.length, truncated: false };
+    }
+
+    // Query: scan via cursor pagination and filter client-side (server ignores free-text).
+    const matches: ZephyrTestCase[] = [];
+    const pageSize = 100;
+    let startAtId = 0;
+    let scanned = 0;
+    let truncated = false;
+
+    while (true) {
+      const page = await this.listTestCasesNextgen({ projectKey, folderId, limit: pageSize, startAtId });
+      const batch = page.values;
+
+      for (const tc of batch) {
+        if (ZephyrClient.testCaseMatchesQuery(tc, needle)) matches.push(tc);
+      }
+
+      scanned += batch.length;
+
+      if (matches.length >= limit) { truncated = page.nextStartAtId != null; break; }
+      if (batch.length === 0 || page.nextStartAtId == null) break;
+      if (scanned >= maxScan) { truncated = true; break; }
+
+      startAtId = page.nextStartAtId;
+    }
+
     return {
-      testCases: response.data.values || response.data,
-      total: response.data.total || response.data.length,
+      testCases: matches.slice(0, limit),
+      total: matches.length,
+      scanned,
+      truncated,
     };
   }
 

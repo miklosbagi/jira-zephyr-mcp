@@ -370,7 +370,7 @@ describe('tool handlers (smoke, mocked)', () => {
       ).success
     ).toBe(true);
 
-    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/search`).query(true).reply(200, load('testcases-search.json'));
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcases`).query(true).reply(200, load('testcases-search.json'));
     expect((await searchTestCases({ projectKey: 'CP' })).success).toBe(true);
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcases/nextgen`).query(true).reply(200, {
@@ -668,6 +668,25 @@ describe('tool handlers (smoke, mocked)', () => {
     expect(r.success).toBe(false);
     if (!r.success) {
       expect(r.error).toBe('unexpected bulk failure');
+    }
+  });
+
+  it('searchTestCases tolerates a non-array testCases from the client (defensive guard)', async () => {
+    const spy = vi
+      .spyOn(ZephyrClient.prototype, 'searchTestCases')
+      // Force the tool's `Array.isArray(...) ? ... : []` false branch.
+      .mockResolvedValueOnce({
+        testCases: undefined as never,
+        total: 0,
+        scanned: 0,
+        truncated: false,
+      });
+    const r = await searchTestCases({ projectKey: 'CP' });
+    spy.mockRestore();
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.testCases).toEqual([]);
+      expect(r.data.total).toBe(0);
     }
   });
 
