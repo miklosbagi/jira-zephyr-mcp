@@ -6,7 +6,7 @@ An [MCP](https://modelcontextprotocol.io/) server for JIRA and **Zephyr Scale** 
 
 [![CI](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/test.yml) · Lint, typecheck, tests + coverage (PR/push)  
 [![codecov](https://codecov.io/gh/miklosbagi/jira-zephyr-mcp/graph/badge.svg)](https://codecov.io/gh/miklosbagi/jira-zephyr-mcp) · Test coverage  
-[![Zephyr contract](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml/badge.svg)](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml) · Zephyr contract (daily 6am CET / on demand).
+[DISABLED] [![Zephyr contract](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml/badge.svg)](https://github.com/miklosbagi/jira-zephyr-mcp/actions/workflows/contract.yml) · Zephyr contract (daily 6am CET / on demand). This is disabled until I can find $10 a month funding to cover these costs.
 
 [![Docker Pulls](https://badgen.net/docker/pulls/miklosbagi/jira-zephyr-mcp?icon=docker&label=Docker%20Pulls)](https://hub.docker.com/r/miklosbagi/jira-zephyr-mcp/)
 
