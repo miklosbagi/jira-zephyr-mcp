@@ -67,6 +67,10 @@ export const listTestCyclesSchema = z.object({
   projectKey: z.string().min(1, 'Project key is required'),
   versionId: z.string().optional(),
   limit: z.number().min(1).max(100).default(50),
+  // Scale Cloud has no per-cycle execution counts, so a real summary requires aggregating each
+  // cycle's executions (one extra paged read per cycle). Off by default to keep listing cheap;
+  // when false, executionSummary is omitted rather than returned as misleading zeros (issue #156).
+  includeExecutionSummary: z.boolean().default(false),
 });
 
 export const getTestCycleSchema = z.object({

@@ -210,7 +210,16 @@ describe('tool handlers (smoke, mocked)', () => {
     expect((await listTestCycles({ projectKey: 'CP' })).success).toBe(true);
 
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles/TC-1`).reply(200, load('testcycle-get.json'));
-    expect((await getTestCycle({ cycleKey: 'TC-1' })).success).toBe(true);
+    // get_test_cycle aggregates a real executionSummary from the cycle's executions (by cycleKey).
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query({ testCycle: 'TC-1', maxResults: 1000, startAt: 0 })
+      .reply(200, { values: [{ status: 'PASS' }, { status: 'FAIL' }], total: 2 });
+    const gotCycle = await getTestCycle({ cycleKey: 'TC-1' });
+    expect(gotCycle.success).toBe(true);
+    if (gotCycle.success) {
+      expect(gotCycle.data.executionSummary).toMatchObject({ total: 2, passed: 1, failed: 1, passRate: 50 });
+    }
 
     nock(ZEPHYR_ORIGIN).post(`${V2}/testcycles/TC-1/testcases`).reply(200);
     expect(
@@ -221,6 +230,65 @@ describe('tool handlers (smoke, mocked)', () => {
     nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles/TC-1`).reply(200, cyc);
     nock(ZEPHYR_ORIGIN).put(`${V2}/testcycles/TC-1`).reply(200, cyc);
     expect((await updateTestCycle({ cycleKey: 'TC-1', name: 'X' })).success).toBe(true);
+  });
+
+  it('get_test_cycle returns executionSummary null when aggregation fails, cycle read still succeeds (#156)', async () => {
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles/TC-9`).reply(200, load('testcycle-get.json'));
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query({ testCycle: 'TC-9', maxResults: 1000, startAt: 0 })
+      .reply(500, { message: 'boom' });
+    const r = await getTestCycle({ cycleKey: 'TC-9' });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.key).toBe('PROJ-R1');
+      expect(r.data.executionSummary).toBeNull();
+    }
+  });
+
+  it('list_test_cycles omits executionSummary by default and populates it when requested (#156)', async () => {
+    // Default: no per-cycle execution aggregation, field omitted (not fake zeros).
+    nock(ZEPHYR_ORIGIN).get(`${V2}/testcycles`).query(true).reply(200, load('testcycles-list.json'));
+    const def = await listTestCycles({ projectKey: 'CP' });
+    expect(def.success).toBe(true);
+    if (def.success) {
+      expect(def.data.includeExecutionSummary).toBe(false);
+      expect(def.data.testCycles[0]).not.toHaveProperty('executionSummary');
+    }
+
+    // Opt-in: aggregates each cycle's executions into a real summary. Two cycles — the second has
+    // no `key` (falls back to numeric id) and zero executions (passRate 0 branch).
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testcycles`)
+      .query(true)
+      .reply(200, {
+        total: 2,
+        values: [
+          { id: 200, key: 'PROJ-R1', name: 'Cycle 1' },
+          { id: 201, name: 'Cycle 2 (no key)' },
+        ],
+      });
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query({ testCycle: 'PROJ-R1', maxResults: 1000, startAt: 0 })
+      .reply(200, { values: [{ status: 'PASS' }, { status: 'PASS' }, { status: 'BLOCKED' }], total: 3 });
+    nock(ZEPHYR_ORIGIN)
+      .get(`${V2}/testexecutions`)
+      .query({ testCycle: '201', maxResults: 1000, startAt: 0 })
+      .reply(200, { values: [], total: 0 });
+    const inc = await listTestCycles({ projectKey: 'CP', includeExecutionSummary: true });
+    expect(inc.success).toBe(true);
+    if (inc.success) {
+      expect(inc.data.includeExecutionSummary).toBe(true);
+      expect(inc.data.testCycles[0].executionSummary).toMatchObject({
+        total: 3,
+        passed: 2,
+        blocked: 1,
+        passRate: 67,
+      });
+      // keyless cycle resolved by id; empty cycle → passRate 0
+      expect(inc.data.testCycles[1].executionSummary).toMatchObject({ total: 0, passRate: 0 });
+    }
   });
 
   it('test-execution helpers', async () => {

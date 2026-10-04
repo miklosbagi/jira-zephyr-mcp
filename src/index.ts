@@ -290,20 +290,27 @@ const TOOLS = [
   },
   {
     name: 'list_test_cycles',
-    description: 'List existing test cycles with execution status',
+    description:
+      'List existing test cycles. Scale Cloud exposes no per-cycle execution counts, so executionSummary is omitted by default. Pass includeExecutionSummary:true to aggregate a real summary per cycle from its executions (one extra paged read per cycle — slower for large lists). For a single cycle, get_test_cycle always returns a real summary.',
     inputSchema: {
       type: 'object',
       properties: {
         projectKey: { type: 'string', description: 'JIRA project key' },
         versionId: { type: 'string', description: 'JIRA version ID (optional)' },
         limit: { type: 'number', description: 'Maximum number of results (default: 50)' },
+        includeExecutionSummary: {
+          type: 'boolean',
+          description:
+            'Compute a real execution summary per cycle by aggregating its executions (default false). Adds one paged read per cycle.',
+        },
       },
       required: ['projectKey'],
     },
   },
   {
     name: 'get_test_cycle',
-    description: 'Get a single test cycle by key or ID',
+    description:
+      'Get a single test cycle by key or ID. executionSummary is a real aggregate computed from the cycle\'s executions (Scale Cloud has no per-cycle counts); null if it could not be computed.',
     inputSchema: {
       type: 'object',
       properties: {
