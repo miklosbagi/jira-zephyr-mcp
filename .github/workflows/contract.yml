@@ -12,9 +12,10 @@
 name: Zephyr contract
 
 on:
-  schedule:
+  # schedule removed until funding is resolved - or for good ;-)
+  #schedule:
     # 6am CET = 05:00 UTC (CEST = 04:00 UTC; we use 05:00 for CET)
-    - cron: '0 5 * * *'
+  #  - cron: '0 5 * * *'
   workflow_dispatch:
 
 jobs:
